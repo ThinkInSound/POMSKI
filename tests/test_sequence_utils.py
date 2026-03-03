@@ -661,3 +661,80 @@ def test_logistic_map_different_x0_different_output () -> None:
 	b = subsequence.sequence_utils.logistic_map(r=3.7, steps=16, x0=0.7)
 
 	assert a != b
+
+
+# --- perlin_1d_sequence ---
+
+
+def test_perlin_1d_sequence_length () -> None:
+
+	"""Should return exactly count values."""
+
+	result = subsequence.sequence_utils.perlin_1d_sequence(start=0.0, step=0.1, count=16, seed=0)
+
+	assert len(result) == 16
+
+
+def test_perlin_1d_sequence_values_in_range () -> None:
+
+	"""All values should be in [0.0, 1.0]."""
+
+	result = subsequence.sequence_utils.perlin_1d_sequence(start=0.0, step=0.1, count=32, seed=42)
+
+	assert all(0.0 <= v <= 1.0 for v in result)
+
+
+def test_perlin_1d_sequence_matches_scalar () -> None:
+
+	"""Each value should match the equivalent perlin_1d call."""
+
+	start, step, count, seed = 1.5, 0.07, 8, 10
+
+	seq = subsequence.sequence_utils.perlin_1d_sequence(start, step, count, seed)
+	scalar = [subsequence.sequence_utils.perlin_1d(start + i * step, seed) for i in range(count)]
+
+	assert seq == scalar
+
+
+def test_perlin_1d_sequence_zero_count () -> None:
+
+	"""count=0 should return an empty list."""
+
+	assert subsequence.sequence_utils.perlin_1d_sequence(0.0, 0.1, 0) == []
+
+
+# --- perlin_2d_grid ---
+
+
+def test_perlin_2d_grid_shape () -> None:
+
+	"""Should return y_count rows each of length x_count."""
+
+	grid = subsequence.sequence_utils.perlin_2d_grid(0.0, 0.0, 0.1, 0.1, x_count=4, y_count=3)
+
+	assert len(grid) == 3
+	assert all(len(row) == 4 for row in grid)
+
+
+def test_perlin_2d_grid_values_in_range () -> None:
+
+	"""All values should be in [0.0, 1.0]."""
+
+	grid = subsequence.sequence_utils.perlin_2d_grid(0.0, 0.0, 0.1, 0.25, x_count=8, y_count=4, seed=5)
+
+	assert all(0.0 <= v <= 1.0 for row in grid for v in row)
+
+
+def test_perlin_2d_grid_matches_scalar () -> None:
+
+	"""Each value should match the equivalent perlin_2d call."""
+
+	x_start, y_start, x_step, y_step = 0.5, 0.0, 0.1, 0.25
+	x_count, y_count, seed = 4, 3, 7
+
+	grid = subsequence.sequence_utils.perlin_2d_grid(x_start, y_start, x_step, y_step, x_count, y_count, seed)
+
+	for yi in range(y_count):
+		for xi in range(x_count):
+			expected = subsequence.sequence_utils.perlin_2d(x_start + xi * x_step, y_start + yi * y_step, seed)
+			assert grid[yi][xi] == expected

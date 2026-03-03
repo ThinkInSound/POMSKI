@@ -491,6 +491,94 @@ def perlin_2d (x: float, y: float, seed: int = 0) -> float:
 	return max(0.0, min(1.0, (value + 1.0) / 2.0))
 
 
+def perlin_1d_sequence (start: float, step: float, count: int, seed: int = 0) -> typing.List[float]:
+
+	"""Generate a sequence of smooth 1D noise values.
+
+	Equivalent to calling :func:`perlin_1d` *count* times at evenly-spaced
+	positions, but expressed as a single call.  Every value is in [0.0, 1.0].
+
+	Parameters:
+		start: Position of the first sample in the noise field.
+			Typically ``p.bar * p.grid * scale`` to anchor the sequence
+			to an absolute position in the piece.
+		step: Distance between consecutive samples.  Matches the
+			``scale`` factor used in single calls — e.g. ``0.1`` gives
+			the same per-step change as ``perlin_1d(i * 0.1, seed)``.
+		count: Number of values to return.
+		seed: Noise field seed.  Same seed as a matching :func:`perlin_1d`
+			call produces identical values at the same positions.
+
+	Example:
+		```python
+		# 16 smoothly-varying velocities for hi-hat ghost notes
+		noise = subsequence.sequence_utils.perlin_1d_sequence(
+		    start = p.bar * p.grid * 0.1,
+		    step  = 0.1,
+		    count = p.grid,
+		    seed  = 10
+		)
+		hat_velocities = [
+		    int(subsequence.easing.map_value(n, out_min=50, out_max=75, shape="ease_in"))
+		    for n in noise
+		]
+		```
+	"""
+
+	return [perlin_1d(start + i * step, seed) for i in range(count)]
+
+
+def perlin_2d_grid (
+	x_start: float,
+	y_start: float,
+	x_step: float,
+	y_step: float,
+	x_count: int,
+	y_count: int,
+	seed: int = 0
+) -> typing.List[typing.List[float]]:
+
+	"""Generate a 2D grid of smooth noise values.
+
+	Returns a list of ``y_count`` rows, each containing ``x_count`` values
+	in [0.0, 1.0].  Access as ``grid[row][col]``.  Equivalent to calling
+	:func:`perlin_2d` for every *(x, y)* position in the grid.
+
+	Parameters:
+		x_start: Starting X position.
+		y_start: Starting Y position.
+		x_step: Spacing between columns.
+		y_step: Spacing between rows.
+		x_count: Number of columns (samples along X).
+		y_count: Number of rows (samples along Y).
+		seed: Noise field seed.
+
+	Example:
+		```python
+		# 4x4 noise grid — rows are bars, columns are steps
+		grid = subsequence.sequence_utils.perlin_2d_grid(
+		    x_start = p.bar * 0.1,
+		    y_start = 0.0,
+		    x_step  = 0.1,
+		    y_step  = 0.25,
+		    x_count = 4,
+		    y_count = 4,
+		    seed    = 5,
+		)
+		# e.g. drive density of four voices independently
+		for row, voice in enumerate(["kick", "snare", "hi_hat_closed", "clap"]):
+		    density = sum(grid[row]) / len(grid[row])
+		    p.ghost_fill(voice, density=density, velocity=(20, 50))
+		```
+	"""
+
+	return [
+		[perlin_2d(x_start + xi * x_step, y_start + yi * y_step, seed) for xi in range(x_count)]
+		for yi in range(y_count)
+	]
+
+
+
 def logistic_map (r: float, steps: int, x0: float = 0.5) -> typing.List[float]:
 
 	"""Generate a deterministic chaos sequence using the logistic map.
