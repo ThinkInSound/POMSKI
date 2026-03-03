@@ -888,10 +888,13 @@ class PatternBuilder:
 			grid: The total number of steps in the sequence (usually 16 or 32).
 			bias: The probability distribution shape to generate:
 				- ``"uniform"``    — 1.0 everywhere.
-				- ``"offbeat"``    — 1.0 on 8th note off-beats, 0.3 on 16ths, 0.05 on downbeats.
-				- ``"syncopated"`` — 1.0 on 8th note off-beats, 0.3 on 16th notes, 0.05 on downbeats.
+				- ``"offbeat"``    — 1.0 on 8th note off-beats (&), 0.3 on 16ths (e/a), 0.05 on downbeats.
+				- ``"sixteenths"`` — 1.0 on 16th notes (e/a), 0.3 on 8th off-beats (&), 0.05 on downbeats.
 				- ``"before"``     — 1.0 preceding a beat, 0.25 on other 16ths, 0.05 on beats.
 				- ``"after"``      — 1.0 following a beat, 0.25 on other 16ths, 0.05 on beats.
+				- ``"downbeat"``   — 1.0 on downbeats, 0.15 on 8th off-beats, 0.05 on other 16ths.
+				- ``"upbeat"``     — 1.0 on 8th note off-beats only, 0.05 everywhere else.
+				- ``"e_and_a"``    — 1.0 on all non-downbeat 16th positions, 0.05 on downbeats.
 
 		Returns:
 			A list of floats with length equal to `grid`, where each value
@@ -910,16 +913,16 @@ class PatternBuilder:
 				if pos == 0:
 					weights.append(0.05)
 				elif steps_per_beat > 1 and pos == steps_per_beat // 2:
-					weights.append(0.3)
-				else:
 					weights.append(1.0)
-			elif bias == "syncopated":
+				else:
+					weights.append(0.3)
+			elif bias == "sixteenths":
 				if pos == 0:
 					weights.append(0.05)
 				elif steps_per_beat > 1 and pos == steps_per_beat // 2:
-					weights.append(1.0)
-				else:
 					weights.append(0.3)
+				else:
+					weights.append(1.0)
 			elif bias == "before":
 				if pos == steps_per_beat - 1:
 					weights.append(1.0)
@@ -934,11 +937,28 @@ class PatternBuilder:
 					weights.append(0.05)
 				else:
 					weights.append(0.25)
+			elif bias == "downbeat":
+				if pos == 0:
+					weights.append(1.0)
+				elif steps_per_beat > 1 and pos == steps_per_beat // 2:
+					weights.append(0.15)
+				else:
+					weights.append(0.05)
+			elif bias == "upbeat":
+				if steps_per_beat > 1 and pos == steps_per_beat // 2:
+					weights.append(1.0)
+				else:
+					weights.append(0.05)
+			elif bias == "e_and_a":
+				if pos == 0:
+					weights.append(0.05)
+				else:
+					weights.append(1.0)
 			else:
 				raise ValueError(
 					f"Unknown ghost_fill bias {bias!r}. "
-					f"Use 'uniform', 'offbeat', 'syncopated', 'before', 'after', "
-					f"or a list of floats."
+					f"Use 'uniform', 'offbeat', 'sixteenths', 'before', 'after', "
+					f"'downbeat', 'upbeat', 'e_and_a', or a list of floats."
 				)
 
 		return weights
@@ -978,10 +998,13 @@ class PatternBuilder:
 			bias: Probability distribution shape:
 
 				- ``"uniform"``    — equal probability everywhere
-				- ``"offbeat"``    — prefer sixteenth-note off-beats
-				- ``"syncopated"`` — prefer eighth-note "and" positions
+				- ``"offbeat"``    — prefer 8th-note off-beats (&)
+				- ``"sixteenths"`` — prefer 16th-note subdivisions (e/a)
 				- ``"before"``     — cluster just before beat positions
 				- ``"after"``      — cluster just after beat positions
+				- ``"downbeat"``   — reinforce the beat (inverse of offbeat)
+				- ``"upbeat"``     — strictly 8th-note off-beats only
+				- ``"e_and_a"``    — all non-downbeat 16th positions
 				- Or: a list of floats (one per grid step) for a custom field.
 
 			no_overlap: If True (default), skip where same pitch already exists.
@@ -995,7 +1018,7 @@ class PatternBuilder:
 			p.hit_steps("kick_1", [0, 4, 8, 12], velocity=100)
 			p.hit_steps("snare_1", [4, 12], velocity=95)
 			p.ghost_fill("kick_1", density=0.2, velocity=(30, 45),
-			             bias="offbeat", no_overlap=True)
+			             bias="sixteenths", no_overlap=True)
 			p.ghost_fill("snare_1", density=0.15, velocity=(25, 40),
 			             bias="before")
 			```

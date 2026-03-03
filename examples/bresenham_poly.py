@@ -123,7 +123,7 @@ def drums (p):
 			gf_density *= (0.6 + ghost_wander * 0.4)
 			if gf_density > 0.02:
 				p.ghost_fill("kick_1", density=gf_density,
-					velocity=(28, 45), bias="offbeat", no_overlap=True)
+					velocity=(28, 45), bias="sixteenths", no_overlap=True)
 
 		# Snare: gaining confidence through section
 		snare_vel = round(78 + 17 * ease(t))
@@ -172,7 +172,7 @@ def drums (p):
 
 		gf_density = 0.20 * (0.6 + ghost_wander * 0.4)
 		p.ghost_fill("kick_1", density=gf_density,
-			velocity=(28, 45), bias="offbeat", no_overlap=True)
+			velocity=(28, 45), bias="sixteenths", no_overlap=True)
 
 		# Snare: full, constant
 		p.hit_steps("snare_1", [4, 12], velocity=100)

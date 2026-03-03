@@ -172,11 +172,11 @@ def drums (p):
 		ca_dropout = 1.0 - (0.20 + 0.20 * ghost_wander)
 		p.cellular("kick_1", rule=30, velocity=34, no_overlap=True, dropout=ca_dropout)
 
-		# Kick ghost fill: offbeat bias, enters at 0.15
+		# Kick ghost fill: sixteenths bias, enters at 0.15
 		if t >= 0.15:
 			gf_d = (0.05 + 0.15 * ease(min(1.0, (t - 0.15) / 0.85))) * (0.5 + ghost_wander * 0.5)
 			if gf_d > 0.02:
-				p.ghost_fill("kick_1", density=gf_d, velocity=(22, 42), bias="offbeat", no_overlap=True)
+				p.ghost_fill("kick_1", density=gf_d, velocity=(22, 42), bias="sixteenths", no_overlap=True)
 
 		# Snare: gaining authority
 		snare_vel = round(76 + 20 * ease(t))
@@ -241,7 +241,7 @@ def drums (p):
 		# Maximum kick ghost layering: CA + probability fill
 		p.cellular("kick_1", rule=30, velocity=40, no_overlap=True, dropout=0.26)
 		gf_d = 0.22 * (0.5 + ghost_wander * 0.5)
-		p.ghost_fill("kick_1", density=gf_d, velocity=(28, 48), bias="offbeat", no_overlap=True)
+		p.ghost_fill("kick_1", density=gf_d, velocity=(28, 48), bias="sixteenths", no_overlap=True)
 
 		# Snare: full authority
 		p.hit_steps("snare_1", [4, 12], velocity=108)
@@ -276,7 +276,7 @@ def drums (p):
 			spark_density = 0.12 + 0.22 * (chaos_spark - 0.6) / 0.4
 			spark_vel = round(45 + 35 * (chaos_spark - 0.6) / 0.4)
 			p.ghost_fill("snare_1", density=spark_density,
-				velocity=(spark_vel - 12, spark_vel), bias="syncopated", no_overlap=True)
+				velocity=(spark_vel - 12, spark_vel), bias="offbeat", no_overlap=True)
 
 		# Transition: tom cascade into fracture
 		if (p.section.last_bar
@@ -292,7 +292,7 @@ def drums (p):
 	#  itself mutates: euclidean rhythms with Perlin-driven pulse
 	#  counts instead of four-on-the-floor.  CA Rule 110 (Turing-
 	#  complete) drives hats - intricate, non-repeating, structured.
-	#  Syncopated snare ghosts at high density.  Tom barrage.
+	#  Offbeat snare ghosts at high density.  Tom barrage.
 	#  Everything is algorithmically placed - structured chaos,
 	#  not noise.
 	# ═══════════════════════════════════════════════════════════════
@@ -308,10 +308,10 @@ def drums (p):
 		# Kick CA: Rule 110 - Turing-complete, complex
 		p.cellular("kick_1", rule=110, velocity=44, no_overlap=True, dropout=0.20)
 
-		# Snare anchor + dense syncopated ghosts
+		# Snare anchor + dense offbeat ghosts
 		p.hit_steps("snare_1", [4, 12], velocity=102)
 		p.ghost_fill("snare_1", density=0.28 * (0.5 + ghost_wander * 0.5),
-			velocity=(26, 55), bias="syncopated", no_overlap=True)
+			velocity=(26, 55), bias="offbeat", no_overlap=True)
 
 		# Hats: CA Rule 110 - intricate, unpredictable, structured
 		p.cellular("hi_hat_closed", rule=110, velocity=round(50 + 24 * hat_feel), dropout=0.16)
@@ -404,7 +404,7 @@ def drums (p):
 	# of transcendence.  Void is exempt (silence is sacred).
 	if chaos_spark > 0.92 and section != "void":
 		p.ghost_fill("kick_1", density=0.32, velocity=(34, 55), bias="uniform", no_overlap=True)
-		p.ghost_fill("snare_1", density=0.22, velocity=(28, 48), bias="syncopated", no_overlap=True)
+		p.ghost_fill("snare_1", density=0.22, velocity=(28, 48), bias="offbeat", no_overlap=True)
 		if section != "fracture":  # fracture already has ride
 			p.cellular("ride_1", rule=30, velocity=46, dropout=0.48)
 

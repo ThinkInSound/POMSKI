@@ -2752,15 +2752,15 @@ def test_ghost_fill_no_overlap_respects_anchors () -> None:
 			assert len(kick_notes) == 1
 
 
-def test_ghost_fill_offbeat_bias () -> None:
+def test_ghost_fill_sixteenths_bias () -> None:
 
-	"""Offbeat bias should strongly prefer non-downbeat positions."""
+	"""Sixteenths bias should strongly prefer non-downbeat positions."""
 
 	drum_map = {"hat": 42}
 	pattern, builder = _make_builder(length=4, drum_note_map=drum_map)
 	builder.rng = random.Random(42)
 
-	builder.ghost_fill("hat", density=0.8, velocity=50, bias="offbeat")
+	builder.ghost_fill("hat", density=0.8, velocity=50, bias="sixteenths")
 
 	# Count hits on downbeats vs offbeats
 	step_dur = 4.0 / 16
@@ -2849,7 +2849,7 @@ def test_ghost_fill_deterministic () -> None:
 	def _run (seed: int) -> list:
 		pattern, builder = _make_builder(length=4, drum_note_map=drum_map)
 		builder.rng = random.Random(seed)
-		builder.ghost_fill("snare", density=0.4, velocity=35, bias="offbeat")
+		builder.ghost_fill("snare", density=0.4, velocity=35, bias="sixteenths")
 		return sorted(pattern.steps.keys())
 
 	assert _run(42) == _run(42)
