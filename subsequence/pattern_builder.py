@@ -1070,7 +1070,7 @@ class PatternBuilder:
 
 			self.note(pitch=pitch, beat=i * step_duration, velocity=vel, duration=duration)
 
-	def cellular (
+	def cellular_1d (
 		self,
 		pitch: typing.Union[int, str],
 		rule: int = 30,
@@ -1082,7 +1082,7 @@ class PatternBuilder:
 		rng: typing.Optional[random.Random] = None,
 	) -> None:
 
-		"""Generate an evolving rhythm using a cellular automaton.
+		"""Generate an evolving rhythm using a 1D cellular automaton.
 
 		Uses an elementary CA (1D binary cellular automaton) to produce
 		rhythmic patterns that change organically each bar.  The CA state
@@ -1107,7 +1107,7 @@ class PatternBuilder:
 		Example:
 			```python
 			p.hit_steps("kick_1", [0, 8], velocity=100)
-			p.cellular("kick_1", rule=30, velocity=40, no_overlap=True)
+			p.cellular_1d("kick_1", rule=30, velocity=40, no_overlap=True)
 			```
 		"""
 
@@ -1118,13 +1118,94 @@ class PatternBuilder:
 			rng = self.rng
 
 		steps = self._default_grid
-		sequence = subsequence.sequence_utils.generate_cellular_automaton(
+		sequence = subsequence.sequence_utils.generate_cellular_automaton_1d(
 			steps=steps, rule=rule, generation=generation
 		)
 
 		self._place_rhythm_sequence(
 			sequence, pitch, velocity, duration, dropout, rng, no_overlap=no_overlap
 		)
+
+	cellular = cellular_1d
+
+	def cellular_2d (
+		self,
+		pitches: typing.List[typing.Union[int, str]],
+		rule: str = "B368/S245",
+		generation: typing.Optional[int] = None,
+		velocity: typing.Union[int, typing.List[int]] = 60,
+		duration: float = 0.1,
+		no_overlap: bool = False,
+		dropout: float = 0.0,
+		seed: typing.Union[int, typing.List[typing.List[int]]] = 1,
+		density: float = 0.5,
+		rng: typing.Optional[random.Random] = None,
+	) -> None:
+
+		"""Generate polyphonic patterns using a 2D Life-like cellular automaton.
+
+		Evolves a 2D grid where rows map to pitches or instruments and columns
+		map to time steps.  Live cells in the final generation become note
+		onsets, producing patterns with spatial structure that evolves each bar.
+
+		The default rule B368/S245 (Morley/"Move") produces chaotic, active
+		patterns.  B3/S23 is Conway's Life; B36/S23 is HighLife.
+
+		Parameters:
+			pitches: MIDI note numbers or drum names, one per row.  Row 0
+			         maps to the first pitch.
+			rule: Birth/Survival notation, e.g. ``"B3/S23"`` for Conway's
+			      Life, ``"B368/S245"`` for Morley.
+			generation: CA generation to render.  Defaults to ``self.cycle``
+			    so the grid evolves each bar automatically.
+			velocity: Single MIDI velocity for all rows, or a list with one
+			          value per row.
+			duration: Note duration in beats.
+			no_overlap: If True, skip notes where same pitch already exists.
+			dropout: Probability (0.0–1.0) of skipping each live cell.
+			seed: Initial grid state.  ``1`` places a single live cell at
+			      the centre.  Any other ``int`` uses a seeded RNG with
+			      *density*.  A ``list[list[int]]`` provides an explicit
+			      rows × cols grid.
+			density: Fill probability when *seed* is a random int (0.0–1.0).
+			rng: Random generator for dropout.  Uses ``self.rng`` if None.
+
+		Example:
+			```python
+			pitches = [36, 38, 42, 46]  # kick, snare, hihat, open hihat
+			p.cellular_2d(pitches, rule="B3/S23", seed=7, density=0.3)
+			```
+		"""
+
+		if generation is None:
+			generation = self.cycle
+
+		if rng is None:
+			rng = self.rng
+
+		cols = self._default_grid
+		rows = len(pitches)
+
+		grid = subsequence.sequence_utils.generate_cellular_automaton_2d(
+			rows=rows,
+			cols=cols,
+			rule=rule,
+			generation=generation,
+			seed=seed,
+			density=density,
+		)
+
+		for row_idx, pitch in enumerate(pitches):
+			row_velocity: int
+
+			if isinstance(velocity, list):
+				row_velocity = int(velocity[row_idx % len(velocity)])
+			else:
+				row_velocity = int(velocity)
+
+			self._place_rhythm_sequence(
+				grid[row_idx], pitch, row_velocity, duration, dropout, rng, no_overlap=no_overlap
+			)
 
 	def markov (
 		self,

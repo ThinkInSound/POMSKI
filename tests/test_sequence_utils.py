@@ -499,7 +499,7 @@ def test_perlin_1d_varies () -> None:
 	assert max(values) - min(values) > 0.1
 
 
-# --- generate_cellular_automaton ---
+# --- generate_cellular_automaton_1d ---
 
 
 def test_cellular_automaton_length () -> None:
@@ -507,7 +507,7 @@ def test_cellular_automaton_length () -> None:
 	"""Output length should match the requested step count."""
 
 	for steps in [8, 16, 32]:
-		result = subsequence.sequence_utils.generate_cellular_automaton(steps, rule=30, generation=5)
+		result = subsequence.sequence_utils.generate_cellular_automaton_1d(steps, rule=30, generation=5)
 		assert len(result) == steps
 
 
@@ -515,7 +515,7 @@ def test_cellular_automaton_binary () -> None:
 
 	"""Output should contain only 0s and 1s."""
 
-	result = subsequence.sequence_utils.generate_cellular_automaton(16, rule=30, generation=10)
+	result = subsequence.sequence_utils.generate_cellular_automaton_1d(16, rule=30, generation=10)
 	assert all(v in (0, 1) for v in result)
 
 
@@ -523,7 +523,7 @@ def test_cellular_automaton_generation_zero () -> None:
 
 	"""Generation 0 with default seed should have a single centre cell."""
 
-	result = subsequence.sequence_utils.generate_cellular_automaton(16, rule=30, generation=0)
+	result = subsequence.sequence_utils.generate_cellular_automaton_1d(16, rule=30, generation=0)
 	assert result[8] == 1
 	assert sum(result) == 1
 
@@ -532,9 +532,9 @@ def test_cellular_automaton_evolves () -> None:
 
 	"""Different generations should produce different patterns."""
 
-	gen_0 = subsequence.sequence_utils.generate_cellular_automaton(16, rule=30, generation=0)
-	gen_5 = subsequence.sequence_utils.generate_cellular_automaton(16, rule=30, generation=5)
-	gen_10 = subsequence.sequence_utils.generate_cellular_automaton(16, rule=30, generation=10)
+	gen_0 = subsequence.sequence_utils.generate_cellular_automaton_1d(16, rule=30, generation=0)
+	gen_5 = subsequence.sequence_utils.generate_cellular_automaton_1d(16, rule=30, generation=5)
+	gen_10 = subsequence.sequence_utils.generate_cellular_automaton_1d(16, rule=30, generation=10)
 
 	assert gen_0 != gen_5
 	assert gen_5 != gen_10
@@ -544,8 +544,8 @@ def test_cellular_automaton_deterministic () -> None:
 
 	"""Same parameters should always produce the same output."""
 
-	a = subsequence.sequence_utils.generate_cellular_automaton(16, rule=30, generation=7)
-	b = subsequence.sequence_utils.generate_cellular_automaton(16, rule=30, generation=7)
+	a = subsequence.sequence_utils.generate_cellular_automaton_1d(16, rule=30, generation=7)
+	b = subsequence.sequence_utils.generate_cellular_automaton_1d(16, rule=30, generation=7)
 	assert a == b
 
 
@@ -553,7 +553,7 @@ def test_cellular_automaton_rule_90_symmetry () -> None:
 
 	"""Rule 90 from a single centre cell should produce symmetric patterns (odd grid)."""
 
-	result = subsequence.sequence_utils.generate_cellular_automaton(17, rule=90, generation=3)
+	result = subsequence.sequence_utils.generate_cellular_automaton_1d(17, rule=90, generation=3)
 	assert result == list(reversed(result))
 
 
@@ -561,7 +561,7 @@ def test_cellular_automaton_empty () -> None:
 
 	"""Steps <= 0 should return an empty list."""
 
-	assert subsequence.sequence_utils.generate_cellular_automaton(0, rule=30, generation=5) == []
+	assert subsequence.sequence_utils.generate_cellular_automaton_1d(0, rule=30, generation=5) == []
 
 
 def test_cellular_automaton_custom_seed () -> None:
@@ -569,11 +569,209 @@ def test_cellular_automaton_custom_seed () -> None:
 	"""A custom seed should set the initial state from its bit pattern."""
 
 	# seed=5 = binary 101 → state[0]=1, state[1]=0, state[2]=1
-	result = subsequence.sequence_utils.generate_cellular_automaton(8, rule=30, generation=0, seed=5)
+	result = subsequence.sequence_utils.generate_cellular_automaton_1d(8, rule=30, generation=0, seed=5)
 	assert result[0] == 1
 	assert result[1] == 0
 	assert result[2] == 1
 	assert sum(result) == 2
+
+
+# --- _parse_life_rule ---
+
+
+def test_parse_life_rule_conway () -> None:
+
+	"""B3/S23 (Conway's Life) should parse to correct birth and survival sets."""
+
+	birth, survival = subsequence.sequence_utils._parse_life_rule("B3/S23")
+	assert birth == {3}
+	assert survival == {2, 3}
+
+
+def test_parse_life_rule_morley () -> None:
+
+	"""B368/S245 (Morley) should parse to correct birth and survival sets."""
+
+	birth, survival = subsequence.sequence_utils._parse_life_rule("B368/S245")
+	assert birth == {3, 6, 8}
+	assert survival == {2, 4, 5}
+
+
+def test_parse_life_rule_case_insensitive () -> None:
+
+	"""Rule parsing should be case-insensitive."""
+
+	birth, survival = subsequence.sequence_utils._parse_life_rule("b3/s23")
+	assert birth == {3}
+	assert survival == {2, 3}
+
+
+def test_parse_life_rule_empty_sets () -> None:
+
+	"""B/S should produce empty birth and survival sets."""
+
+	birth, survival = subsequence.sequence_utils._parse_life_rule("B/S")
+	assert birth == set()
+	assert survival == set()
+
+
+def test_parse_life_rule_invalid_format () -> None:
+
+	"""Malformed rule strings should raise ValueError."""
+
+	import pytest
+
+	with pytest.raises(ValueError):
+		subsequence.sequence_utils._parse_life_rule("30")
+
+	with pytest.raises(ValueError):
+		subsequence.sequence_utils._parse_life_rule("S23/B3")
+
+
+# --- generate_cellular_automaton_2d ---
+
+
+def test_2d_ca_dimensions () -> None:
+
+	"""Output grid should be exactly rows × cols."""
+
+	grid = subsequence.sequence_utils.generate_cellular_automaton_2d(rows=4, cols=16)
+	assert len(grid) == 4
+	assert all(len(row) == 16 for row in grid)
+
+
+def test_2d_ca_binary_values () -> None:
+
+	"""All grid cells should be 0 or 1."""
+
+	grid = subsequence.sequence_utils.generate_cellular_automaton_2d(
+		rows=4, cols=16, rule="B3/S23", generation=5, seed=42
+	)
+	assert all(v in (0, 1) for row in grid for v in row)
+
+
+def test_2d_ca_deterministic () -> None:
+
+	"""Same parameters should always produce the same grid."""
+
+	a = subsequence.sequence_utils.generate_cellular_automaton_2d(
+		rows=4, cols=16, rule="B368/S245", generation=10, seed=99
+	)
+	b = subsequence.sequence_utils.generate_cellular_automaton_2d(
+		rows=4, cols=16, rule="B368/S245", generation=10, seed=99
+	)
+	assert a == b
+
+
+def test_2d_ca_seed_centre () -> None:
+
+	"""seed=1 with generation=0 should place a single live cell at centre."""
+
+	grid = subsequence.sequence_utils.generate_cellular_automaton_2d(
+		rows=4, cols=8, generation=0, seed=1
+	)
+	total = sum(v for row in grid for v in row)
+	assert total == 1
+	assert grid[4 // 2][8 // 2] == 1
+
+
+def test_2d_ca_seed_random () -> None:
+
+	"""Integer seed != 1 should produce a roughly density-fraction fill."""
+
+	grid = subsequence.sequence_utils.generate_cellular_automaton_2d(
+		rows=10, cols=20, generation=0, seed=42, density=0.5
+	)
+	total = sum(v for row in grid for v in row)
+	# Expect between 20% and 80% of 200 cells alive (very loose check)
+	assert 40 <= total <= 160
+
+
+def test_2d_ca_seed_explicit () -> None:
+
+	"""Explicit list seed should be used as the starting grid unchanged."""
+
+	initial = [[1, 0, 0, 1], [0, 1, 1, 0]]
+	grid = subsequence.sequence_utils.generate_cellular_automaton_2d(
+		rows=2, cols=4, generation=0, seed=initial
+	)
+	assert grid == initial
+
+
+def test_2d_ca_generation_zero_unchanged () -> None:
+
+	"""generation=0 should return the seed state without any evolution."""
+
+	seed_grid = [[1, 0, 1, 0], [0, 0, 1, 1], [1, 1, 0, 0], [0, 1, 0, 1]]
+	result = subsequence.sequence_utils.generate_cellular_automaton_2d(
+		rows=4, cols=4, generation=0, seed=seed_grid
+	)
+	assert result == seed_grid
+
+
+def test_2d_ca_evolves_from_seed () -> None:
+
+	"""Grid should change after one or more generations."""
+
+	grid_gen0 = subsequence.sequence_utils.generate_cellular_automaton_2d(
+		rows=6, cols=16, rule="B368/S245", generation=0, seed=42, density=0.4
+	)
+	grid_gen5 = subsequence.sequence_utils.generate_cellular_automaton_2d(
+		rows=6, cols=16, rule="B368/S245", generation=5, seed=42, density=0.4
+	)
+	assert grid_gen0 != grid_gen5
+
+
+def test_2d_ca_conway_blinker () -> None:
+
+	"""Conway blinker (period-2 oscillator) should alternate between horizontal and vertical."""
+
+	# Horizontal blinker at centre of a 5×5 grid: row 2, cols 1–3 live.
+	horizontal = [
+		[0, 0, 0, 0, 0],
+		[0, 0, 0, 0, 0],
+		[0, 1, 1, 1, 0],
+		[0, 0, 0, 0, 0],
+		[0, 0, 0, 0, 0],
+	]
+	# After 1 generation it becomes vertical: col 2, rows 1–3 live.
+	expected_vertical = [
+		[0, 0, 0, 0, 0],
+		[0, 0, 1, 0, 0],
+		[0, 0, 1, 0, 0],
+		[0, 0, 1, 0, 0],
+		[0, 0, 0, 0, 0],
+	]
+	result = subsequence.sequence_utils.generate_cellular_automaton_2d(
+		rows=5, cols=5, rule="B3/S23", generation=1, seed=horizontal
+	)
+	assert result == expected_vertical
+
+
+def test_2d_ca_toroidal_wrapping () -> None:
+
+	"""Cells at the edge should wrap to the opposite side."""
+
+	# Live cell at top-left corner: its neighbours wrap around the edges.
+	corner = [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+	# Just verify no index error and grid shape is intact.
+	result = subsequence.sequence_utils.generate_cellular_automaton_2d(
+		rows=4, cols=4, rule="B3/S23", generation=2, seed=corner
+	)
+	assert len(result) == 4
+	assert all(len(row) == 4 for row in result)
+
+
+def test_2d_ca_invalid_rule () -> None:
+
+	"""An invalid rule string should raise ValueError."""
+
+	import pytest
+
+	with pytest.raises(ValueError):
+		subsequence.sequence_utils.generate_cellular_automaton_2d(
+			rows=4, cols=8, rule="invalid"
+		)
 
 
 # --- logistic_map ---

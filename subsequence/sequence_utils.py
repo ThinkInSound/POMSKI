@@ -623,7 +623,7 @@ def logistic_map (r: float, steps: int, x0: float = 0.5) -> typing.List[float]:
 	return result
 
 
-def generate_cellular_automaton (steps: int, rule: int = 30, generation: int = 0, seed: int = 1) -> typing.List[int]:
+def generate_cellular_automaton_1d (steps: int, rule: int = 30, generation: int = 0, seed: int = 1) -> typing.List[int]:
 
 	"""Generate a binary sequence using an elementary cellular automaton.
 
@@ -647,7 +647,7 @@ def generate_cellular_automaton (steps: int, rule: int = 30, generation: int = 0
 
 	Example:
 		```python
-		seq = subsequence.sequence_utils.generate_cellular_automaton(
+		seq = subsequence.sequence_utils.generate_cellular_automaton_1d(
 			16, rule=30, generation=p.cycle
 		)
 		indices = subsequence.sequence_utils.sequence_to_indices(seq)
@@ -678,3 +678,129 @@ def generate_cellular_automaton (steps: int, rule: int = 30, generation: int = 0
 		state = new_state
 
 	return state
+
+
+generate_cellular_automaton = generate_cellular_automaton_1d
+
+
+def _parse_life_rule (rule: str) -> typing.Tuple[typing.Set[int], typing.Set[int]]:
+
+	"""Parse a Life-like rule string in Birth/Survival notation.
+
+	Parameters:
+		rule: Rule string in the form ``"B<digits>/S<digits>"``, e.g.
+		      ``"B3/S23"`` for Conway's Life or ``"B368/S245"`` for Morley.
+
+	Returns:
+		``(birth_set, survival_set)`` — sets of neighbour counts that
+		trigger birth or survival respectively.
+
+	Raises:
+		ValueError: If the rule string is not valid Birth/Survival notation.
+	"""
+
+	rule = rule.strip().upper()
+	parts = rule.split("/")
+
+	if len(parts) != 2:
+		raise ValueError(f"Invalid Life rule: {rule!r} — expected 'B.../S...' format")
+
+	birth_part, survival_part = parts
+
+	if not birth_part.startswith("B") or not survival_part.startswith("S"):
+		raise ValueError(f"Invalid Life rule: {rule!r} — expected 'B.../S...' format")
+
+	try:
+		birth_set: typing.Set[int] = {int(c) for c in birth_part[1:]}
+		survival_set: typing.Set[int] = {int(c) for c in survival_part[1:]}
+	except ValueError:
+		raise ValueError(f"Invalid Life rule: {rule!r} — neighbour counts must be digits 0–8")
+
+	for n in birth_set | survival_set:
+		if n > 8:
+			raise ValueError(f"Invalid Life rule: {rule!r} — neighbour count {n} exceeds maximum of 8")
+
+	return birth_set, survival_set
+
+
+def generate_cellular_automaton_2d (
+	rows: int,
+	cols: int,
+	rule: str = "B368/S245",
+	generation: int = 0,
+	seed: typing.Union[int, typing.List[typing.List[int]]] = 1,
+	density: float = 0.5,
+) -> typing.List[typing.List[int]]:
+
+	"""Generate a 2D cellular automaton grid using Life-like rules.
+
+	Evolves a 2D grid of cells from an initial state using Birth/Survival
+	notation rules.  The resulting grid maps rows to pitches or instruments
+	and columns to time steps, producing polyphonic rhythmic patterns.
+
+	The default rule B368/S245 (Morley/"Move") produces chaotic, active
+	patterns well-suited to generative music.  B3/S23 is Conway's Life.
+
+	Parameters:
+		rows: Number of rows (maps to pitches or instruments).
+		cols: Number of columns (maps to time steps / rhythm grid).
+		rule: Birth/Survival notation, e.g. ``"B3/S23"`` for Conway's Life,
+		      ``"B368/S245"`` for Morley.
+		generation: Number of evolution steps to run from the initial seed.
+		seed: Initial grid state.  ``1`` places a single live cell at the
+		      centre.  Any other ``int`` seeds a :class:`random.Random` and
+		      fills cells with probability *density*.  A
+		      ``list[list[int]]`` provides an explicit starting grid (must be
+		      rows × cols).
+		density: Fill probability when *seed* is a random int (0.0–1.0).
+
+	Returns:
+		2D grid as a list of lists (rows × cols), each cell 0 or 1.
+
+	Example:
+		```python
+		grid = subsequence.sequence_utils.generate_cellular_automaton_2d(
+			rows=4, cols=16, rule="B3/S23", generation=p.cycle, seed=42
+		)
+		for row_idx, pitch in enumerate([60, 62, 64, 67]):
+			hits = [c for c, v in enumerate(grid[row_idx]) if v]
+			p.hit_steps(pitch, hits, velocity=80)
+		```
+	"""
+
+	birth_set, survival_set = _parse_life_rule(rule)
+
+	# Build initial grid.
+	if isinstance(seed, list):
+		grid = [[int(bool(seed[r][c])) for c in range(cols)] for r in range(rows)]
+	elif seed == 1:
+		grid = [[0] * cols for _ in range(rows)]
+		grid[rows // 2][cols // 2] = 1
+	else:
+		rng = random.Random(seed)
+		grid = [[1 if rng.random() < density else 0 for _ in range(cols)] for _ in range(rows)]
+
+	# Evolve for the requested number of generations.
+	for _ in range(generation):
+		new_grid = [[0] * cols for _ in range(rows)]
+
+		for r in range(rows):
+			for c in range(cols):
+				neighbours = 0
+
+				for dr in (-1, 0, 1):
+					for dc in (-1, 0, 1):
+						if dr == 0 and dc == 0:
+							continue
+						neighbours += grid[(r + dr) % rows][(c + dc) % cols]
+
+				alive = grid[r][c]
+
+				if alive:
+					new_grid[r][c] = 1 if neighbours in survival_set else 0
+				else:
+					new_grid[r][c] = 1 if neighbours in birth_set else 0
+
+		grid = new_grid
+
+	return grid

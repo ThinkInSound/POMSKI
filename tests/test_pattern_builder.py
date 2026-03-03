@@ -2887,19 +2887,19 @@ def test_ghost_fill_velocity_callable () -> None:
 		pulse = int(step_idx * 0.25 * subsequence.constants.MIDI_QUARTER_NOTE)
 		assert pattern.steps[pulse].notes[0].velocity == 10 + (step_idx * 5)
 
-# --- cellular ---
+# --- cellular_1d ---
 
 
 def test_cellular_places_notes () -> None:
 
-	"""cellular() should place notes from the CA pattern."""
+	"""cellular_1d() should place notes from the CA pattern."""
 
 	drum_map = {"hat": 42}
 	pattern, builder = _make_builder(length=4, drum_note_map=drum_map)
 	builder.rng = random.Random(42)
 
 	# Use generation 5 where Rule 30 produces multiple active cells
-	builder.cellular("hat", rule=30, generation=5, velocity=50)
+	builder.cellular_1d("hat", rule=30, generation=5, velocity=50)
 
 	total = sum(len(s.notes) for s in pattern.steps.values())
 	assert total > 0
@@ -2914,7 +2914,7 @@ def test_cellular_evolves_across_cycles () -> None:
 	def _run (gen: int) -> list:
 		pattern, builder = _make_builder(length=4, drum_note_map=drum_map)
 		builder.rng = random.Random(42)
-		builder.cellular("hat", rule=30, generation=gen, velocity=50)
+		builder.cellular_1d("hat", rule=30, generation=gen, velocity=50)
 		return sorted(pattern.steps.keys())
 
 	assert _run(5) != _run(10)
@@ -2922,14 +2922,14 @@ def test_cellular_evolves_across_cycles () -> None:
 
 def test_cellular_no_overlap () -> None:
 
-	"""cellular with no_overlap should skip positions where the pitch exists."""
+	"""cellular_1d with no_overlap should skip positions where the pitch exists."""
 
 	drum_map = {"kick": 36}
 	pattern, builder = _make_builder(length=4, drum_note_map=drum_map)
 	builder.rng = random.Random(42)
 
 	builder.hit_steps("kick", [0, 4, 8, 12], velocity=100)
-	builder.cellular("kick", rule=30, generation=5, velocity=40, no_overlap=True)
+	builder.cellular_1d("kick", rule=30, generation=5, velocity=40, no_overlap=True)
 
 	# Anchor positions should have exactly 1 kick
 	step_dur = 4.0 / 16
@@ -2950,12 +2950,12 @@ def test_cellular_defaults_to_cycle () -> None:
 
 	# Set cycle to a specific value
 	builder.cycle = 7
-	builder.cellular("hat", rule=30, velocity=50)
+	builder.cellular_1d("hat", rule=30, velocity=50)
 
 	# Compare with explicit generation=7
 	pattern2, builder2 = _make_builder(length=4, drum_note_map=drum_map)
 	builder2.rng = random.Random(42)
-	builder2.cellular("hat", rule=30, generation=7, velocity=50)
+	builder2.cellular_1d("hat", rule=30, generation=7, velocity=50)
 
 	assert sorted(pattern.steps.keys()) == sorted(pattern2.steps.keys())
 
@@ -2968,16 +2968,165 @@ def test_cellular_dropout () -> None:
 
 	pattern_full, builder_full = _make_builder(length=4, drum_note_map=drum_map)
 	builder_full.rng = random.Random(42)
-	builder_full.cellular("hat", rule=30, generation=10, velocity=50, dropout=0.0)
+	builder_full.cellular_1d("hat", rule=30, generation=10, velocity=50, dropout=0.0)
 
 	pattern_drop, builder_drop = _make_builder(length=4, drum_note_map=drum_map)
 	builder_drop.rng = random.Random(42)
-	builder_drop.cellular("hat", rule=30, generation=10, velocity=50, dropout=0.5)
+	builder_drop.cellular_1d("hat", rule=30, generation=10, velocity=50, dropout=0.5)
 
 	full_count = sum(len(s.notes) for s in pattern_full.steps.values())
 	drop_count = sum(len(s.notes) for s in pattern_drop.steps.values())
 
 	assert drop_count < full_count
+
+
+# --- cellular_2d ---
+
+
+def test_cellular_2d_places_notes () -> None:
+
+	"""cellular_2d() should place notes from live cells in the grid."""
+
+	drum_map = {"kick": 36, "snare": 38, "hat": 42, "open": 46}
+	pattern, builder = _make_builder(length=4, drum_note_map=drum_map)
+	builder.rng = random.Random(42)
+
+	pitches = ["kick", "snare", "hat", "open"]
+	builder.cellular_2d(pitches, rule="B368/S245", generation=5, seed=99, density=0.4)
+
+	total = sum(len(s.notes) for s in pattern.steps.values())
+	assert total > 0
+
+
+def test_cellular_2d_pitch_mapping () -> None:
+
+	"""Each row in the grid should map to the corresponding pitch."""
+
+	drum_map = {"kick": 36, "snare": 38}
+	pattern, builder = _make_builder(length=4, drum_note_map=drum_map)
+	builder.rng = random.Random(42)
+
+	# Explicit seed: only row 0 has live cells (kick only)
+	seed_grid = [[1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+	             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+	builder.cellular_2d(["kick", "snare"], generation=0, seed=seed_grid)
+
+	all_pitches = [n.pitch for step in pattern.steps.values() for n in step.notes]
+	assert 36 in all_pitches      # kick present
+	assert 38 not in all_pitches  # snare absent
+
+
+def test_cellular_2d_velocity_single () -> None:
+
+	"""A single velocity int should apply to all rows."""
+
+	drum_map = {"kick": 36, "hat": 42}
+	pattern, builder = _make_builder(length=4, drum_note_map=drum_map)
+	builder.rng = random.Random(42)
+
+	seed_grid = [[1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+	             [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]]
+	builder.cellular_2d(["kick", "hat"], generation=0, seed=seed_grid, velocity=77)
+
+	all_velocities = [n.velocity for step in pattern.steps.values() for n in step.notes]
+	assert all(v == 77 for v in all_velocities)
+
+
+def test_cellular_2d_velocity_list () -> None:
+
+	"""A velocity list should apply per-row velocities."""
+
+	drum_map = {"kick": 36, "hat": 42}
+	pattern, builder = _make_builder(length=4, drum_note_map=drum_map)
+	builder.rng = random.Random(42)
+
+	# Row 0 (kick): velocity 90. Row 1 (hat): velocity 50.
+	seed_grid = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+	             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+	builder.cellular_2d(["kick", "hat"], generation=0, seed=seed_grid, velocity=[90, 50])
+
+	kick_velocities = [
+		n.velocity for step in pattern.steps.values()
+		for n in step.notes if n.pitch == 36
+	]
+	hat_velocities = [
+		n.velocity for step in pattern.steps.values()
+		for n in step.notes if n.pitch == 42
+	]
+
+	assert all(v == 90 for v in kick_velocities)
+	assert all(v == 50 for v in hat_velocities)
+
+
+def test_cellular_2d_generation_none_uses_cycle () -> None:
+
+	"""When generation is None, it should use self.cycle."""
+
+	drum_map = {"hat": 42, "snare": 38}
+	pattern, builder = _make_builder(length=4, drum_note_map=drum_map)
+	builder.rng = random.Random(42)
+	builder.cycle = 5
+
+	pattern2, builder2 = _make_builder(length=4, drum_note_map=drum_map)
+	builder2.rng = random.Random(42)
+
+	pitches = ["hat", "snare"]
+	builder.cellular_2d(pitches, seed=42, density=0.4)
+	builder2.cellular_2d(pitches, generation=5, seed=42, density=0.4)
+
+	assert sorted(pattern.steps.keys()) == sorted(pattern2.steps.keys())
+
+
+def test_cellular_2d_drum_name_strings () -> None:
+
+	"""Pitches passed as drum name strings resolve to MIDI numbers via drum_note_map."""
+
+	drum_map = {"c4": 60, "g4": 67}
+	pattern, builder = _make_builder(length=4, drum_note_map=drum_map)
+	builder.rng = random.Random(42)
+
+	seed_grid = [[1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+	             [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]]
+	builder.cellular_2d(["c4", "g4"], generation=0, seed=seed_grid)
+
+	all_pitches = {n.pitch for step in pattern.steps.values() for n in step.notes}
+	assert 60 in all_pitches
+	assert 67 in all_pitches
+
+
+def test_cellular_2d_dropout () -> None:
+
+	"""Dropout should reduce the number of placed notes."""
+
+	drum_map = {"hat": 42, "kick": 36}
+	pitches = ["hat", "kick"]
+
+	pattern_full, builder_full = _make_builder(length=4, drum_note_map=drum_map)
+	builder_full.rng = random.Random(42)
+	builder_full.cellular_2d(pitches, seed=7, density=0.6, generation=3, dropout=0.0)
+
+	pattern_drop, builder_drop = _make_builder(length=4, drum_note_map=drum_map)
+	builder_drop.rng = random.Random(42)
+	builder_drop.cellular_2d(pitches, seed=7, density=0.6, generation=3, dropout=0.8)
+
+	full_count = sum(len(s.notes) for s in pattern_full.steps.values())
+	drop_count = sum(len(s.notes) for s in pattern_drop.steps.values())
+
+	assert drop_count < full_count
+
+
+def test_cellular_2d_invalid_rule_raises () -> None:
+
+	"""An invalid rule string should raise ValueError."""
+
+	import pytest
+
+	drum_map = {"kick": 36}
+	_, builder = _make_builder(length=4, drum_note_map=drum_map)
+	builder.rng = random.Random(42)
+
+	with pytest.raises(ValueError):
+		builder.cellular_2d(["kick"], rule="notarule", seed=42)
 
 
 # --- p.markov() ---
