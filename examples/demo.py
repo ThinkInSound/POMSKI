@@ -9,13 +9,14 @@ For the same music built with the Direct Pattern API, see demo_advanced.py.
 
 import subsequence
 import subsequence.constants.instruments.gm_drums as gm_drums
+from aalink import Link
 
 DRUMS_CHANNEL = 9
 BASS_CHANNEL  = 5
 SYNTH_CHANNEL = 0
 
-composition = subsequence.Composition(bpm=120, key="E")
-composition.midi_input(device="LoopBe Internal MIDI 0", clock_follow=True) # change to your own MIDI device
+composition = subsequence.Composition(bpm=120, key="D")
+# composition.midi_input(device="LoopBe Internal MIDI 0", clock_follow=True) # change to your own MIDI device
 composition.live() # now it will follow Live's transport
 composition.harmony(style="dorian_minor", cycle_beats=4, gravity=0.8)
 
