@@ -408,6 +408,31 @@ class Sequencer:
 			self.input_device_name = device_name
 			self.midi_in = midi_in
 
+	def reopen_input (self, device_name: str) -> None:
+		"""Close the current MIDI input port and reopen with a new device."""
+		# Close existing port if open
+		if hasattr(self, 'midi_in') and self.midi_in is not None:
+			try:
+				self.midi_in.close()
+			except Exception:
+				pass
+			self.midi_in = None
+
+		self.input_device_name = device_name
+		self._init_midi_input()
+
+	def reopen_output (self, device_name: str) -> None:
+		"""Close the current MIDI output port and reopen with a new device."""
+		# Close existing port if open
+		if hasattr(self, 'midi_out') and self.midi_out is not None:
+			try:
+				self.midi_out.close()
+			except Exception:
+				pass
+			self.midi_out = None
+
+		self.output_device_name = device_name
+		self._init_midi_output()
 
 	def _on_midi_input (self, message: typing.Any) -> None:
 
@@ -964,7 +989,7 @@ class Sequencer:
 		to_reschedule: typing.List[ScheduledPattern] = []
 
 		async with self.callback_lock:
-            # DEBUG LOGGING
+			# DEBUG LOGGING
 			# logger.info(f"Checking callbacks at pulse {pulse}. Queue head: {self.callback_queue[0] if self.callback_queue else 'Empty'}")
 
 			while self.callback_queue and self.callback_queue[0][0] <= pulse:
@@ -1067,7 +1092,7 @@ class Sequencer:
 
 
 	async def _stop_all_active_notes (self) -> None:
-	
+
 		"""
 		Send note_off for all currently tracked active notes.
 		"""
