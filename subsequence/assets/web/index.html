@@ -14,6 +14,16 @@
   --text:#e2e2e8; --text-dim:#888896; --text-dark:#4a4a56;
   --mono:'JetBrains Mono',monospace; --sans:'Inter',sans-serif; --r:4px;
 }
+body.light {
+  --bg:#f0ede8; --bg-panel:#e8e4de; --bg-input:#ddd9d2; --bg-hover:#d4cfc8; --bg-active:#cbc6be;
+  --border:#b8b3ac; --border-dim:#ccc8c2;
+  --pink:#d63e6a; --pink-dim:#f5c8d5; --purple:#7c52d9; --teal:#1e9e78;
+  --orange:#c97020; --blue:#2e6fcc; --red:#cc2222; --green:#1a8a4a;
+  --text:#2a2520; --text-dim:#6b6560; --text-dark:#9e9890;
+}
+body.light .code-editor { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); }
+body.light .right-panel { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); }
+body.light .topbar { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:12px;overflow:hidden}
 .app{display:flex;flex-direction:column;height:100vh}
@@ -24,7 +34,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .tdiv{width:1px;height:20px;background:var(--border);flex-shrink:0}
 .tc{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 8px;min-width:46px;flex-shrink:0}
 .tc-label{font-family:var(--mono);font-size:8px;color:var(--text-dark);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px}
-.tc-val{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--pink);line-height:1}
+.tc-val{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--pink);line-height:1}.tc-val.clickable{cursor:pointer;border-radius:3px;padding:0 3px;transition:background .15s,color .15s}.tc-val.clickable:hover{background:rgba(255,92,138,.15)}.tc-val.bar-flash{background:var(--teal)!important;color:#111!important}
 .tc-val.sm{font-size:12px;color:var(--text)} .tc-val.chord{font-size:13px;color:var(--purple)} .tc-val.key{font-size:12px;color:var(--teal)}
 
 /* BPM drag control */
@@ -118,8 +128,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .mute-btn{width:24px;height:18px;background:var(--bg-active);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-family:var(--mono);font-size:7px;cursor:pointer;transition:border-color .1s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .mute-btn.muted{background:var(--pink-dim);border-color:var(--pink);color:var(--pink)} .mute-btn:hover{border-color:var(--pink);color:var(--pink)}
 .pat-name{font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pat-steps{display:flex;gap:1px;flex:1;align-items:flex-end;height:14px}
-.step-pip{flex:1;border-radius:1px;min-width:2px}
+.pat-notes{flex:1;display:flex;flex-wrap:wrap;gap:3px;align-items:center;min-width:0}
+.note-pill{font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:10px;color:#fff;opacity:.9;white-space:nowrap;transition:opacity .2s}
+.note-pill.dim{opacity:.35}
 
 /* Prefs */
 .prefs-scroll{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:20px;min-height:0}
@@ -174,7 +185,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     <button class="tap-btn" id="tapBtn">TAP</button>
 
     <div class="tdiv"></div>
-    <div class="tc"><div class="tc-label">Bar</div><div class="tc-val" id="barDisp">&#8212;</div></div>
+    <div class="tc" title="Click to reset bar count"><div class="tc-label">Bar</div><div class="tc-val clickable" id="barDisp">&#8212;</div></div>
     <div class="tc"><div class="tc-label">Beat</div><div class="tc-val sm" id="beatDisp">&#8212;</div></div>
     <div class="tdiv"></div>
     <div class="tc"><div class="tc-label">Chord</div><div class="tc-val chord" id="chordDisp">&#8212;</div></div>
@@ -254,6 +265,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
       <!-- PATTERNS -->
       <div class="panel-view" id="view-patterns">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--border-dim);flex-shrink:0">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--text-dark);letter-spacing:1.5px;text-transform:uppercase">Patterns</span>
+          <button class="refresh-btn" onclick="clearAndRefreshPatterns()">&#8635; Refresh</button>
+        </div>
         <div class="pat-list" id="patList"></div>
       </div>
 
@@ -299,6 +314,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             </div>
             <button class="pref-apply" onclick="applyMidiOut()">Apply Output</button>
             <button class="refresh-btn" style="margin-top:10px" onclick="refreshMidi()">&#8635; Refresh Devices</button>
+          </div>
+
+          <div class="pref-sec">
+            <div class="pref-sec-title">Appearance</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
+              <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">Light mode</span>
+              <div class="toggle-wrap">
+                <div class="toggle" id="lightToggle" onclick="toggleLight()"></div>
+                <span class="toggle-lbl" id="lightToggleLbl">Off</span>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -349,12 +375,16 @@ function handleMsg(msg){
 }
 
 // ── TRANSPORT ────────────────────────────────────────────────────────────────
+let playheadPulse=0, pulsesPerBeat=24;
 function updateTransport(s){
   bpm=parseFloat(s.bpm)||120;
+  playheadPulse=s.playhead_pulse||0;
+  pulsesPerBeat=s.pulses_per_beat||24;
   if(!isDraggingBpm)document.getElementById('bpmDisplay').textContent=bpm.toFixed(1);
   document.getElementById('keyDisp').textContent=s.key||'\u2014';
   document.getElementById('chordDisp').textContent=s.chord||'\u2014';
-  document.getElementById('barDisp').textContent=s.global_bar||'\u2014';
+  lastRawBar=s.global_bar||0;
+  document.getElementById('barDisp').textContent=lastRawBar ? Math.max(1, lastRawBar - barOffset) : '\u2014';
   const beat=s.global_beat||0;
   document.getElementById('beatDisp').textContent=beat;
   if(beat!==lastBeat){lastBeat=beat;flashBeat();}
@@ -378,6 +408,14 @@ document.getElementById('bpmDrag').addEventListener('mousedown',e=>{
   const mv=e2=>{const v=Math.min(240,Math.max(40,bpm0+(dy0-e2.clientY)*.3));document.getElementById('bpmDisplay').textContent=v.toFixed(1);};
   const up=e2=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);isDraggingBpm=false;wsSend({cmd:'set_bpm',value:Math.min(240,Math.max(40,bpm0+(dy0-e2.clientY)*.3))});};
   document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);e.preventDefault();
+});
+let barOffset=0, lastRawBar=0;
+document.getElementById('barDisp').addEventListener('click',()=>{
+  // Store the raw server bar so offset is always relative to that snapshot
+  barOffset=lastRawBar;
+  const el=document.getElementById('barDisp');
+  el.classList.add('bar-flash');
+  setTimeout(()=>el.classList.remove('bar-flash'),300);
 });
 document.getElementById('bpmUp').addEventListener('click',()=>wsSend({cmd:'set_bpm',value:Math.min(240,bpm+1)}));
 document.getElementById('bpmDown').addEventListener('click',()=>wsSend({cmd:'set_bpm',value:Math.max(40,bpm-1)}));
@@ -417,7 +455,7 @@ function goToLog(){document.querySelectorAll('.panel-tab').forEach(t=>t.classLis
 
 // ── RUN CODE ─────────────────────────────────────────────────────────────────
 let allMuted=false;
-let isPlaying=false;
+let isPlaying=true;  // sequence is already running when UI loads
 
 function evalCode(){
   // Send editor code to REPL (Shift+Enter)
@@ -522,6 +560,8 @@ function drawSig(name){
 }
 
 // ── PATTERNS ──────────────────────────────────────────────────────────────────
+const NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function midiToName(n){return NOTE_NAMES[n%12]+(Math.floor(n/12)-1);}
 function patHash(p){
   // Cheap fingerprint: note count + first/last pulse, enough to detect bar changes
   if(!p.notes||!p.notes.length)return '0';
@@ -538,26 +578,54 @@ function updatePatterns(patterns){
     let row=list.querySelector(`[data-name="${p.name}"]`);
     if(!row){
       row=document.createElement('div');row.className='pat-row';row.dataset.name=p.name;
-      row.innerHTML=`<button class="mute-btn" data-name="${p.name}" onclick="toggleMute('${p.name}',this)">&#9679;</button><div class="pat-name">${p.name}</div><div class="pat-steps"></div>`;
+      row.innerHTML=`<button class="mute-btn" data-name="${p.name}" onclick="toggleMute('${p.name}',this)">&#9679;</button><div class="pat-name">${p.name}</div><div class="pat-notes"></div>`;
       list.appendChild(row);
     }
-    // Surgical mute update only - never rebuild the whole row
+    // Surgical mute update
     const btn=row.querySelector('.mute-btn');
     if(btn.classList.contains('muted')!==p.muted){
       row.classList.toggle('muted',p.muted);
       btn.classList.toggle('muted',p.muted);
       btn.textContent=p.muted?'M':'\u25cf';
     }
-    // Rebuild pips only when note content actually changes
-    const stepsEl=row.querySelector('.pat-steps');
-    const hash=patHash(p);
-    if(stepsEl.dataset.hash!==hash){
-      stepsEl.dataset.hash=hash;
-      const steps=16,sm=new Array(steps).fill(0);
-      if(p.notes&&p.length_pulses)p.notes.forEach(n=>{const idx=Math.floor(n.s/p.length_pulses*steps);if(idx>=0&&idx<steps)sm[idx]=Math.max(sm[idx],n.v/127);});
-      stepsEl.innerHTML=sm.map(v=>{const h=Math.max(2,Math.round(v*14)),op=v>0?.3+v*.7:.07;return `<div class="step-pip" style="height:${h}px;background:${color};opacity:${op}"></div>`;}).join('');
+    // Real-time single note pill — find the note playing at current playhead position
+    const notesEl=row.querySelector('.pat-notes');
+    if(!p.notes||!p.notes.length){
+      notesEl.innerHTML='<span style="font-family:var(--mono);font-size:9px;color:var(--text-dark)">—</span>';
+    } else {
+      // Find position within this pattern's loop
+      const loopPulse = p.length_pulses>0 ? playheadPulse % p.length_pulses : 0;
+      // n.d is in beats; convert to pulses. Find notes active at loopPulse.
+      const active = p.notes
+        .filter(n => {
+          const durPulses = Math.max(n.d * pulsesPerBeat, 1);
+          return n.s <= loopPulse && loopPulse < n.s + durPulses;
+        })
+        .sort((a,b) => b.s - a.s);
+      // Fall back to most recent note that started before playhead
+      const prev = p.notes.filter(n=>n.s<=loopPulse).sort((a,b)=>b.s-a.s);
+      const note = active.length ? active[0] : (prev.length ? prev[0] : p.notes[0]);
+      const vel = note ? note.v : 80;
+      const op = 0.4 + vel/127*0.6;
+      const name = note ? midiToName(note.p) : '—';
+      // Update pill text/color without rebuilding if unchanged
+      let pill = notesEl.querySelector('.note-pill');
+      if(!pill){
+        pill=document.createElement('span');
+        pill.className='note-pill';
+        pill.style.background=color;
+        notesEl.innerHTML='';
+        notesEl.appendChild(pill);
+      }
+      if(pill.textContent!==name){pill.textContent=name;}
+      pill.style.opacity=op;
     }
   });
+}
+function clearAndRefreshPatterns(){
+  document.getElementById('patList').innerHTML='';
+  patCol={};colIdx=0;
+  log('Pattern list cleared — will repopulate on next broadcast','dim');
 }
 function toggleMute(name,btn){wsSend({cmd:btn.classList.contains('muted')?'unmute':'mute',pattern:name});}
 
@@ -574,6 +642,19 @@ function toggleMute(name,btn){wsSend({cmd:btn.classList.contains('muted')?'unmut
 log('\u223f POMSKI — a UI for Subsequence','info');
 log('Shift+Enter to run  \u00b7  Ctrl+\u2191\u2193 history','dim');
 log('','');
+function toggleLight(){
+  const on=document.body.classList.toggle('light');
+  document.getElementById('lightToggle').classList.toggle('on',on);
+  document.getElementById('lightToggleLbl').textContent=on?'On':'Off';
+  localStorage.setItem('pomski_light',on?'1':'0');
+}
+// Restore light mode preference
+if(localStorage.getItem('pomski_light')==='1'){
+  document.body.classList.add('light');
+  document.getElementById('lightToggle').classList.add('on');
+  document.getElementById('lightToggleLbl').textContent='On';
+}
+updateRunBtn();
 connect();
 </script>
 </body>
