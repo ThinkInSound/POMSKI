@@ -129,6 +129,19 @@ class WebUI:
                 reply = {"repl_error": result}
             else:
                 reply = {"repl_result": result or "OK"}
+                # Clean up duplicate pending patterns after every successful REPL call —
+                # redefining a pattern appends a new _PendingPattern each time without
+                # removing the old one, so we deduplicate in place keeping the latest.
+                comp = self.composition_ref()
+                if comp is not None and hasattr(comp, '_pending_patterns'):
+                    seen: typing.Set[str] = set()
+                    deduped = []
+                    for p in reversed(comp._pending_patterns):
+                        name = getattr(p.builder_fn, '__name__', None)
+                        if name and name not in seen:
+                            seen.add(name)
+                            deduped.append(p)
+                    comp._pending_patterns[:] = list(reversed(deduped))
 
         except asyncio.TimeoutError:
             reply = {"repl_error": "Timeout - live server did not respond"}
