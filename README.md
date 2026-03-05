@@ -1,11 +1,13 @@
-# Subsequence Plus
+# POMSKI
 
 Write music as Python code. Change it while it's playing.
 
-Subsequence Plus is a MIDI sequencer you control from a Python script — or from a live coding environment where you can rewrite patterns, shift harmonies, and retune the tempo mid-performance without ever stopping playback.
+**POMSKI** — *Python Only MIDI Sequencer Keyboard Interface* — named after Qina, a very good Pomsky dog.
+
+POMSKI is a MIDI sequencer you control from a Python script — or from a live coding environment where you can rewrite patterns, shift harmonies, and retune the tempo mid-performance without ever stopping playback.
 
 ```python
-from subsequence_plus import Composition
+from pomski import Composition
 
 composition = Composition(key="C", bpm=120)
 
@@ -21,19 +23,25 @@ composition.play()
 
 ---
 
+## Origin
+
+POMSKI is a fork of [subsequence](https://github.com/simonholliday/subsequence) by Simon Holliday, extended with a browser-based Web UI, Ableton Link sync, Windows compatibility fixes, and a Max for Live device. The original MIT license and copyright are preserved.
+
+---
+
 ## Installation
 
 You'll need Python 3.10+ and a DAW or hardware synth receiving MIDI.
 
 ```bash
-git clone https://github.com/ThinkInSound/Subsequence-Plus.git
-cd Subsequence-Plus
+git clone https://github.com/ThinkInSound/POMSKI.git
+cd POMSKI
 pip install -e .
 ```
 
 > **Important:** use `git clone`, not the ZIP download. The ZIP is missing files that the installer needs.
 
-**Windows users** — Subsequence Plus works on Windows. See the [Windows section](#windows) below.
+**Windows users** — POMSKI works on Windows. See the [Windows section](#windows) below.
 
 ### Optional extras
 
@@ -60,7 +68,7 @@ def kick(pattern, bar, beat):
 
 ### Harmony
 
-Tell Subsequence Plus what key and chord you're in and it will transpose your patterns automatically:
+Tell POMSKI what key and chord you're in and it will transpose your patterns automatically:
 
 ```python
 composition.harmony(key="D", chord="minor7")
@@ -82,7 +90,7 @@ composition.form([
 
 ## Live coding
 
-The real power of Subsequence Plus is changing things while they play. Start the live coding server before `play()`:
+The real power of POMSKI is changing things while they play. Start the live coding server before `play()`:
 
 ```python
 composition.live()     # starts a server on port 5555
@@ -147,15 +155,15 @@ Then open **http://localhost:8080** in any browser.
 
 ## Ableton Link
 
-Link keeps Subsequence Plus's tempo locked to Ableton Live — and anything else on your network that supports Link (Ableton Live, Reason, Traktor, various iOS apps).
+Link keeps POMSKI's tempo locked to Ableton Live — and anything else on your network that supports Link (Ableton Live, Reason, Traktor, various iOS apps).
 
 ```bash
 pip install aalink
 ```
 
-That's it. If aalink is installed Subsequence Plus will connect to Link automatically when you call `play()`. You'll see the peer count in the Link pill in the Web UI.
+That's it. If aalink is installed POMSKI will connect to Link automatically when you call `play()`. You'll see the peer count in the Link pill in the Web UI.
 
-- Change tempo in Ableton → Subsequence Plus follows
+- Change tempo in Ableton → POMSKI follows
 - Call `composition.set_bpm(140)` → Ableton follows
 - Toggle sync on/off any time from the Prefs tab
 
@@ -163,13 +171,31 @@ That's it. If aalink is installed Subsequence Plus will connect to Link automati
 
 ## Windows
 
-Subsequence Plus runs on Windows with two things to be aware of:
+POMSKI runs on Windows with two things to be aware of:
 
 **1. Use git clone**
 Download via `git clone` rather than the ZIP button on GitHub. The ZIP is missing the `.git` folder and the installer won't work without it.
 
 **2. No extra steps needed for asyncio**
-Older versions of Subsequence Plus crashed on Windows due to a signal handler that Windows doesn't support. This is fixed — it just works.
+Older versions of POMSKI crashed on Windows due to a signal handler that Windows doesn't support. This is fixed — it just works.
+
+---
+
+## Max for Live device
+
+If you use Ableton Live you can add a small MIDI device to any track that shows whether POMSKI is connected and lets you open the Web UI with one click.
+
+The device files are in `tools/m4l/`:
+
+**Setup (one time):**
+1. In Ableton, drag a **Max MIDI Effect** onto a MIDI track
+2. Click the pencil to open it in Max
+3. Select everything in the patch and delete it
+4. Open `subsequence_webui_PASTE.maxpat` in a text editor, copy everything, then go back to Max and choose **Edit → Paste from Clipboard**
+5. Copy `subsequence.js` into the same folder as your saved `.amxd` file
+6. First time only: click the `node.script` object and send it the message `script npm install ws`
+
+The device connects automatically when POMSKI is running and reconnects if it drops. You'll see a green LED when it's live and the current BPM ticking alongside it.
 
 ---
 
