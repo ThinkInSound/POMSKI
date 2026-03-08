@@ -25,7 +25,7 @@ composition.play()
 
 ## Origin
 
-POMSKI is a fork of [subsequence](https://github.com/simonholliday/subsequence) by Simon Holliday, extended with a browser-based Web UI, Ableton Link sync, Windows compatibility fixes, and a Max for Live device. The original MIT license and copyright are preserved.
+POMSKI is a fork of [subsequence](https://github.com/simonholliday/subsequence) by Simon Holliday, extended with a browser-based Web UI, Ableton Link sync, Windows compatibility fixes, and a Max for Live device. The original AGPLv3 license and copyright are preserved.
 
 ---
 
@@ -314,4 +314,4 @@ The device connects automatically when POMSKI is running and reconnects if it dr
 
 ## License
 
-MIT
+AGPL-3.0 — inherited from [subsequence](https://github.com/simonholliday/subsequence). If you run a modified version of POMSKI as a network service, you must make the source available to its users. See the [LICENSE](LICENSE) file for details.
