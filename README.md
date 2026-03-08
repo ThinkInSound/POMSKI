@@ -135,13 +135,13 @@ Then open **http://localhost:8080** in any browser.
 - Link pill — shows Ableton Link status; click to toggle sync on/off
 - Section progress bar
 
-**Log tab** — everything you send to the REPL and every response comes back here in colour. There's also a quick command input at the bottom for one-liners without opening the editor.
+**Log tab** — everything you send to the REPL and every response comes back here in colour. The quick command input at the bottom accepts Python one-liners, or prefix with `cx:` to send a ClyphX Pro action instead (e.g. `cx: 1/MUTE ON`).
 
 **Signals tab** — live scrolling waveforms for any LFOs or values you've registered with the conductor. Useful for checking that modulations are doing what you expect.
 
 **Patterns tab** — every running pattern listed with a mute button and a small 16-step grid showing which steps have notes and how loud they are.
 
-**Prefs tab** — turn Ableton Link on or off, and select your MIDI input/output device if you need to switch without restarting.
+**Prefs tab** — turn Ableton Link on or off, select your MIDI input/output device, and monitor AbletonOSC connection status (track count updates live as tracks are added or removed).
 
 ### Keyboard shortcuts
 
@@ -169,6 +169,103 @@ That's it. If aalink is installed POMSKI will connect to Link automatically when
 
 ---
 
+## AbletonOSC integration
+
+POMSKI can communicate directly with Ableton Live via [AbletonOSC](https://github.com/ideoforms/AbletonOSC), giving you programmatic control over Live's session from Python code or the REPL.
+
+### Setup
+
+1. Install AbletonOSC as a remote script in Ableton (see its README)
+2. Add `LiveBridge` to your script:
+
+```python
+from examples.live_bridge import LiveBridge
+
+composition = Composition(key="C", bpm=120)
+live = LiveBridge(composition)
+
+# ... your patterns ...
+
+composition.web_ui()
+composition.live()
+composition.play()
+```
+
+The bridge connects automatically once `play()` starts. Connection status and track count are shown in the Prefs tab.
+
+### Controlling Live from Python
+
+```python
+# Transport
+live.play()
+live.stop_transport()
+
+# Mixer
+live.track_volume(0, 0.85)   # track index, value 0.0–1.0
+live.track_mute(0, True)
+live.track_send(0, 0, 0.5)   # track, send index, value
+
+# Clips
+live.clip_play(0, 0)         # track, clip slot
+live.clip_stop(0, 0)
+live.scene_play(0)
+
+# Devices
+live.device_param(0, 0, 0, 0.5)   # track, device, param, value 0–1
+
+# Raw OSC (full AbletonOSC API available)
+live.send("/live/song/create_midi_track", -1)
+live.send("/live/track/set/arm", 0, 1)
+```
+
+---
+
+## ClyphX Pro integration
+
+If you have [ClyphX Pro](https://isotonikstudios.com/product/clyphx-pro/) installed, POMSKI can trigger its action strings directly from Python.
+
+```python
+# Arbitrary action strings — uses a hidden X-Clip trigger track
+live.clyphx("BPM 128")
+live.clyphx("1/MUTE ON")
+live.clyphx("1/DEV(1) ON ; 2/ARM ON ; BPM 140")
+live.clyphx("(PSEQ) 1/MUTE ; 2/MUTE ; 3/MUTE")
+
+# Pre-defined X-OSC addresses — faster, bypasses AbletonOSC entirely
+# Requires entries in ClyphX Pro's X-OSC.txt file
+live.clyphx_osc("/MY_ACTION")
+```
+
+From the Web UI quick command box, prefix with `cx:`:
+
+```
+cx: 1/MUTE ON
+cx: BPM 128 ; METRO
+```
+
+### How it works
+
+`live.clyphx()` creates a single hidden MIDI track (`_POMSKI_CLYPHX`) on first call, drops a 1-bar clip in slot 0, renames it to the action string wrapped in ClyphX bracket syntax, and fires it. ClyphX Pro intercepts the launch and executes the action list. The track is muted so it makes no sound.
+
+`live.clyphx_osc()` sends a raw OSC message directly to ClyphX Pro's built-in OSC receiver on port 7005, bypassing AbletonOSC entirely. Use this for performance-critical or frequently-triggered actions that you've pre-mapped in `X-OSC.txt`.
+
+---
+
+## Troubleshooting MIDI output
+
+**LoopBe Internal MIDI — silent muting**
+
+LoopBe has a feedback protection feature that silently mutes the port if it detects a MIDI loop. The port indicator in the system tray turns red. This can happen when Ableton Live and AbletonOSC are running alongside POMSKI.
+
+Fix: right-click the LoopBe icon in the taskbar and reset/unmute the port.
+
+**MIDI activity light blinking but no sound**
+
+Check that your DAW instrument tracks are set to receive from the correct MIDI port — the one POMSKI is sending to. Run `print(composition._sequencer.output_device_name)` in the REPL to confirm which port is in use.
+
+---
+
+
 ## Windows
 
 POMSKI runs on Windows with two things to be aware of:
@@ -178,6 +275,24 @@ Download via `git clone` rather than the ZIP button on GitHub. The ZIP is missin
 
 **2. No extra steps needed for asyncio**
 Older versions of POMSKI crashed on Windows due to a signal handler that Windows doesn't support. This is fixed — it just works.
+
+---
+
+## Max for Live device
+
+If you use Ableton Live you can add a small MIDI device to any track that shows whether POMSKI is connected and lets you open the Web UI with one click.
+
+The device files are in `tools/m4l/`:
+
+**Setup (one time):**
+1. In Ableton, drag a **Max MIDI Effect** onto a MIDI track
+2. Click the pencil to open it in Max
+3. Select everything in the patch and delete it
+4. Open `subsequence_webui_PASTE.maxpat` in a text editor, copy everything, then go back to Max and choose **Edit → Paste from Clipboard**
+5. Copy `subsequence.js` into the same folder as your saved `.amxd` file
+6. First time only: click the `node.script` object and send it the message `script npm install ws`
+
+The device connects automatically when POMSKI is running and reconnects if it drops. You'll see a green LED when it's live and the current BPM ticking alongside it.
 
 ---
 
