@@ -47,12 +47,16 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .tap-btn{height:30px;padding:0 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--r);color:var(--text-dim);font-family:var(--mono);font-size:9px;letter-spacing:2px;cursor:pointer;transition:all .1s;text-transform:uppercase;flex-shrink:0}
 .tap-btn:hover{border-color:var(--pink);color:var(--pink)}
 
-/* Link button (topbar) */
+/* Link button */
 .link-btn{height:30px;padding:0 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--r);color:var(--text-dark);font-family:var(--mono);font-size:9px;letter-spacing:1.5px;cursor:pointer;transition:all .15s;text-transform:uppercase;display:flex;align-items:center;gap:5px;flex-shrink:0}
 .link-dot{width:6px;height:6px;border-radius:50%;background:var(--text-dark);transition:background .2s;flex-shrink:0}
 .link-btn.enabled{border-color:var(--teal);color:var(--teal)} .link-btn.enabled .link-dot{background:var(--teal);box-shadow:0 0 5px var(--teal)}
 .link-btn.na{opacity:.35;cursor:not-allowed}
 .link-peers{font-size:8px;color:inherit}
+
+/* MIDI activity LED */
+.midi-led{width:8px;height:8px;border-radius:50%;background:var(--text-dark);transition:background .05s;flex-shrink:0}
+.midi-led.active{background:var(--pink);box-shadow:0 0 6px var(--pink)}
 
 /* Section strip */
 .sec-strip{flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 10px;min-width:120px}
@@ -72,7 +76,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .main{display:flex;flex:1;overflow:hidden;min-height:0}
 .editor-col{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;border-right:1px solid var(--border-dim)}
 .col-resize{width:4px;background:var(--border-dim);cursor:ew-resize;flex-shrink:0;transition:background .15s} .col-resize:hover{background:var(--purple)}
-.right-panel{width:300px;flex-shrink:0;display:flex;flex-direction:column;background:var(--bg-panel);min-height:0}
+.right-panel{width:300px;flex-shrink:0;display:flex;flex-direction:column;background:var(--bg-panel);min-height:0;overflow:hidden}
 
 /* Buffer tabs */
 .tabs{display:flex;align-items:stretch;background:var(--bg-input);border-bottom:1px solid var(--border-dim);flex-shrink:0;height:32px;overflow-x:auto}
@@ -83,14 +87,26 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .tab-add{padding:0 12px;color:var(--text-dark);cursor:pointer;font-size:16px;display:flex;align-items:center} .tab-add:hover{color:var(--text)}
 
 /* Code editor */
-.editor-wrap{flex:1;min-height:0;background:var(--bg-input)}
+.editor-wrap{flex:1;min-height:0;background:var(--bg-input);transition:box-shadow .4s ease-out}
+.editor-wrap.flash-ok{box-shadow:inset 0 0 0 2px var(--green);transition:box-shadow 0s}
+.editor-wrap.flash-err{box-shadow:inset 0 0 0 2px var(--red);transition:box-shadow 0s}
 .code-editor{width:100%;height:100%;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.7;padding:16px;resize:none;tab-size:4;caret-color:var(--pink)}
 .code-editor::selection{background:rgba(157,111,255,.25)}
-.run-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-panel);border-top:1px solid var(--border-dim);flex-shrink:0}
+.run-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-panel);border-top:1px solid var(--border-dim);flex-shrink:0;flex-wrap:wrap}
 .run-btn{height:28px;padding:0 16px;background:var(--pink);border:none;border-radius:var(--r);color:#fff;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1px;cursor:pointer;transition:opacity .15s;text-transform:uppercase}
 .run-btn:hover{opacity:.85} .run-btn:active{opacity:.7}
 .run-btn.sec{background:transparent;border:1px solid var(--border);color:var(--text-dim)} .run-btn.sec:hover{border-color:var(--text-dim);color:var(--text);opacity:1}
 .run-hint{font-family:var(--mono);font-size:9px;color:var(--text-dark);margin-left:4px}
+
+/* Recording */
+.rec-btn{height:28px;padding:0 12px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--text-dim);font-family:var(--mono);font-size:10px;letter-spacing:1px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.rec-btn:hover{border-color:var(--red);color:var(--red)}
+.rec-btn.recording{border-color:var(--red);color:var(--red);background:rgba(255,79,79,.1)}
+.rec-dot{width:7px;height:7px;border-radius:50%;background:var(--text-dark);flex-shrink:0;transition:background .2s}
+.rec-btn:hover .rec-dot,.rec-btn.recording .rec-dot{background:var(--red)}
+.rec-btn.recording .rec-dot{animation:blink 1s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.rec-slider{width:80px;accent-color:var(--pink);cursor:pointer;flex-shrink:0}
 
 /* Panel tabs */
 .panel-tabs{display:flex;background:var(--bg-input);border-bottom:1px solid var(--border-dim);height:32px;flex-shrink:0}
@@ -110,6 +126,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .log-send{background:transparent;border:none;border-left:1px solid var(--border-dim);color:var(--text-dark);font-family:var(--mono);font-size:8px;letter-spacing:1px;padding:0 10px;cursor:pointer;text-transform:uppercase;transition:color .1s;writing-mode:vertical-lr;transform:rotate(180deg)}
 .log-send:hover{color:var(--pink)}
 
+
 /* Signals */
 .sig-scroll{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;min-height:0}
 .sig-scroll::-webkit-scrollbar{width:4px} .sig-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -117,20 +134,25 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .sig-head{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-bottom:1px solid var(--border-dim)}
 .sig-name{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase}
 .sig-val{font-family:var(--mono);font-size:10px;color:var(--orange)}
+.sig-clear{background:transparent;border:none;color:var(--text-dark);font-size:11px;cursor:pointer;padding:0 2px;line-height:1;transition:color .1s}.sig-clear:hover{color:var(--red)}
 .sig-canvas-wrap{height:48px;position:relative} .sig-canvas{position:absolute;inset:0;width:100%;height:100%}
 .no-sigs{font-family:var(--mono);font-size:10px;color:var(--text-dark);text-align:center;padding:24px 0;letter-spacing:1px}
 
 /* Patterns */
 .pat-list{flex:1;overflow-y:auto;min-height:0}
 .pat-list::-webkit-scrollbar{width:4px} .pat-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.pat-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border-dim);transition:background .1s}
+.pat-row{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid var(--border-dim);transition:background .1s}
 .pat-row:hover{background:var(--bg-hover)} .pat-row.muted{opacity:.4}
-.mute-btn{width:24px;height:18px;background:var(--bg-active);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-family:var(--mono);font-size:7px;cursor:pointer;transition:border-color .1s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.mute-btn.muted{background:var(--pink-dim);border-color:var(--pink);color:var(--pink)} .mute-btn:hover{border-color:var(--pink);color:var(--pink)}
-.pat-name{font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn-group{display:flex;flex-shrink:0}
+.clear-btn,.solo-btn{width:22px;height:18px;background:var(--bg-active);border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:7px;cursor:pointer;transition:border-color .1s,background .1s,color .1s;display:flex;align-items:center;justify-content:center;position:relative}
+.clear-btn{border-radius:3px 0 0 3px;font-size:10px}
+.solo-btn{border-radius:0 3px 3px 0;margin-left:-1px}
+.solo-btn.soloed{background:rgba(255,153,64,.2);border-color:var(--orange);color:var(--orange);z-index:1}
+.clear-btn:hover{border-color:var(--red);color:var(--red);z-index:1}
+.solo-btn:hover{border-color:var(--text-dim);color:var(--text);z-index:1}
+.pat-name{font-family:var(--mono);font-size:10px;color:var(--text);flex-shrink:0;width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pat-notes{flex:1;display:flex;flex-wrap:wrap;gap:3px;align-items:center;min-width:0}
 .note-pill{font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:10px;color:#fff;opacity:.9;white-space:nowrap;transition:opacity .2s}
-.note-pill.dim{opacity:.35}
 
 /* Prefs */
 .prefs-scroll{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:20px;min-height:0}
@@ -158,23 +180,53 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .link-stat-lbl{font-family:var(--mono);font-size:8px;color:var(--text-dark);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
 .link-na{font-family:var(--mono);font-size:10px;color:var(--text-dark);text-align:center;padding:4px 0}
 .refresh-btn{height:24px;padding:0 10px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--text-dark);font-family:var(--mono);font-size:8px;letter-spacing:1px;cursor:pointer;transition:all .1s;text-transform:uppercase;align-self:flex-start}
-.ref-scroll{flex:1;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.refresh-btn:hover{border-color:var(--text-dim);color:var(--text)}
+
+/* Ref */
+.ref-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 10px;display:flex;flex-direction:column;gap:14px;min-height:0;min-width:0}
 .ref-scroll::-webkit-scrollbar{width:4px} .ref-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.ref-section{display:flex;flex-direction:column;gap:5px}
+.ref-section{display:flex;flex-direction:column;gap:5px;min-width:0}
 .ref-title{font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--text-dark);text-transform:uppercase;padding-bottom:5px;border-bottom:1px solid var(--border-dim)}
-.ref-body{display:flex;flex-direction:column;gap:3px;padding-top:2px}
-.ref-item{font-family:var(--mono);font-size:10px;color:var(--text);display:flex;align-items:baseline;gap:6px;line-height:1.5}
+.ref-body{display:flex;flex-direction:column;gap:3px;padding-top:2px;min-width:0}
+.ref-item{font-family:var(--mono);font-size:10px;color:var(--text);display:flex;align-items:baseline;gap:6px;line-height:1.5;min-width:0;max-width:100%}
 .ref-item code{color:var(--text);font-family:var(--mono);font-size:10px}
+.ref-item.ref-indent{overflow-x:auto;max-width:100%;display:block}
+.ref-item.ref-indent code{white-space:pre-wrap;word-break:break-word;display:block}100%{background:transparent}}
 .ref-indent{padding-left:14px}
 .ref-arg{color:var(--orange)}
 .ref-desc{font-family:var(--sans);font-size:9px;color:var(--text-dark);margin-left:4px;flex-shrink:0}
 .ref-tag{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:3px;font-size:8px;font-weight:700;flex-shrink:0}
 .ref-tag.warn{background:rgba(255,153,64,.2);color:var(--orange)}
-.refresh-btn:hover{border-color:var(--text-dim);color:var(--text)}
+
+/* WebMIDI status */
+.webmidi-status{font-family:var(--mono);font-size:9px;color:var(--text-dark);margin-top:4px}
+.webmidi-status.ok{color:var(--green)} .webmidi-status.err{color:var(--red)}
 
 /* Beat flash */
 #flash{position:fixed;top:44px;left:0;right:0;height:1px;background:var(--pink);opacity:0;pointer-events:none;z-index:999;transition:opacity .04s}
 #flash.on{opacity:1}
+/* Live clip launcher */
+.live-header{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border-dim);flex-shrink:0}
+.live-status{font-family:var(--mono);font-size:9px;letter-spacing:1px}
+.live-status.connected{color:var(--green)}
+.live-status.disconnected{color:var(--text-dark)}
+.live-hint{font-family:var(--mono);font-size:8px;color:var(--text-dark);margin-left:auto}
+.live-grid-wrap{flex:1;overflow:auto;padding:8px}
+.live-empty{font-family:var(--mono);font-size:9px;color:var(--text-dark);padding:20px;text-align:center}
+.live-grid{display:grid;gap:2px;width:max-content}
+.live-track-header{font-family:var(--mono);font-size:8px;color:var(--text-dim);letter-spacing:.5px;padding:3px 4px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:64px}
+.live-scene-btn{background:var(--bg-input);border:1px solid var(--border-dim);border-radius:2px;width:18px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:10px;transition:all .1s;flex-shrink:0}
+.live-scene-btn:hover{background:var(--bg-hover);color:var(--text)}
+.live-clip{background:var(--bg-input);border:1px solid var(--border-dim);border-radius:2px;width:64px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:8px;color:var(--text-dim);transition:all .08s;user-select:none;position:relative;overflow:hidden}
+.live-clip:hover{border-color:var(--text-dim)}
+.live-clip.empty{cursor:default;opacity:0.3}
+.live-clip.empty:hover{border-color:var(--border-dim)}
+.live-clip.stopped{background:var(--bg-panel);border-color:var(--border);color:var(--text)}
+.live-clip.stopped:hover{background:var(--bg-hover);border-color:var(--purple)}
+.live-clip.playing{background:#1a3a1a;border-color:var(--green);color:var(--green)}
+.live-clip.playing::before{content:'▶';position:absolute;left:4px;font-size:7px}
+.live-clip.triggered{background:#1a2a1a;border-color:#5a8a5a;color:#7aaa7a;animation:live-pulse .3s ease-in-out infinite alternate}
+@keyframes live-pulse{from{opacity:.6}to{opacity:1}}
 </style>
 </head>
 <body>
@@ -204,7 +256,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     <div class="tc"><div class="tc-label">Key</div><div class="tc-val key" id="keyDisp">&#8212;</div></div>
     <div class="tdiv"></div>
 
-    <!-- Link toggle pill -->
     <button class="link-btn na" id="linkBtn" onclick="toggleLink()">
       <div class="link-dot"></div>LINK<span class="link-peers" id="linkPeers"></span>
     </button>
@@ -217,6 +268,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       </div>
       <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
     </div>
+
+    <!-- MIDI activity LED -->
+    <div class="midi-led" id="midiLed" title="MIDI activity"></div>
 
     <div class="conn-wrap">
       <div class="conn-dot" id="connDot"></div>
@@ -237,13 +291,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       </div>
       <div class="editor-wrap">
         <textarea class="code-editor" id="codeEditor" spellcheck="false"
-          placeholder="# Write live code here&#10;# Shift+Enter or click Run to execute&#10;&#10;composition.set_bpm(130)&#10;composition.mute(&quot;drums&quot;)&#10;composition.target_bpm(140, bars=8, shape=&quot;ease_in_out&quot;)"></textarea>
+          placeholder="# Write live code here&#10;# Shift+Enter or click Run to execute"></textarea>
       </div>
       <div class="run-bar">
         <button class="run-btn" id="runBtn">&#9654; Play</button>
         <button class="run-btn sec" onclick="document.getElementById('codeEditor').value=''">Clear editor</button>
         <button class="run-btn sec" onclick="document.getElementById('logOut').innerHTML=''">Clear log</button>
-        <span class="run-hint">Shift+Enter to eval &nbsp;&middot;&nbsp; Ctrl+&#8593;&#8595; history</span>
+        <!-- Recording -->
+        <input type="range" class="rec-slider" id="recBars" min="1" max="64" value="8" title="Recording length in bars" oninput="document.getElementById('recBarsLbl').textContent=this.value+'b'">
+        <span id="recBarsLbl" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);min-width:24px;text-align:right">8b</span>
+        <button class="rec-btn" id="recBtn" onclick="toggleRecord()">
+          <div class="rec-dot"></div><span id="recBtnLbl">REC</span>
+        </button>
+        <span class="run-hint">Shift+Enter block &nbsp;&middot;&nbsp; Ctrl+Shift+Enter all &nbsp;&middot;&nbsp; Ctrl+&#8593;&#8595; history</span>
       </div>
     </div>
 
@@ -264,7 +324,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="log-out" id="logOut"></div>
         <div class="log-input-row">
           <div class="log-prompt">&gt;&gt;&gt;</div>
-          <textarea class="log-ta" id="logInput" rows="2" placeholder="Quick command&#8230;"></textarea>
+          <textarea class="log-ta" id="logInput" rows="2" placeholder="Quick command&#8230;  or  cx: 1/MUTE ON"></textarea>
           <button class="log-send" onclick="sendQuick()">Send</button>
         </div>
       </div>
@@ -304,7 +364,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </div>
               </div>
               <div class="link-stats" id="linkStats" style="display:none">
-                <div><div class="link-stat-val" id="linkTempo">&#8212;</div><div class="link-stat-lbl">Link BPM</div></div>
+                <div><div class="link-stat-val" id="linkTempo">&#8212;</div>
+              <div class="pref-row" id="oscRow" style="margin-top:8px">
+                <div class="pref-info">
+                  <div class="pref-label">AbletonOSC</div>
+                  <div class="link-card-sub">OSC bridge to Ableton Live · port 11000</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div id="oscDot" style="width:7px;height:7px;border-radius:50%;background:var(--red);transition:background .3s;flex-shrink:0"></div>
+                  <span id="oscLabel" style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--text-dark)">Disconnected</span>
+                </div>
+              </div><div class="link-stat-lbl">Link BPM</div></div>
                 <div><div class="link-stat-val" id="linkPeersCard">0</div><div class="link-stat-lbl">Peers</div></div>
               </div>
               <div class="link-na" id="linkNA" style="display:none">
@@ -329,6 +399,22 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             <button class="refresh-btn" style="margin-top:10px" onclick="refreshMidi()">&#8635; Refresh Devices</button>
           </div>
 
+          <!-- WebMIDI -->
+          <div class="pref-sec">
+            <div class="pref-sec-title">WebMIDI Output (Chrome only)</div>
+            <div class="pref-row">
+              <div class="pref-label">Forward MIDI to browser device</div>
+              <select class="pref-select" id="webMidiOut"><option value="">&#8212; select device &#8212;</option></select>
+            </div>
+            <div class="toggle-wrap" style="margin-top:6px">
+              <div class="toggle" id="webMidiToggle" onclick="toggleWebMidi()"></div>
+              <span class="toggle-lbl" id="webMidiLbl">Off</span>
+            </div>
+            <div class="webmidi-status" id="webMidiStatus">WebMIDI not initialised</div>
+            <button class="refresh-btn" style="margin-top:6px" onclick="initWebMidi()">&#8635; Refresh WebMIDI</button>
+          </div>
+
+          <!-- Appearance -->
           <div class="pref-sec">
             <div class="pref-sec-title">Appearance</div>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
@@ -353,10 +439,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div class="ref-item"><span class="ref-tag warn">!</span> Use the <b>main editor</b> (Shift+Enter) for multi-line code — the quick command box mangles indentation</div>
               <div class="ref-item"><span class="ref-tag warn">!</span> <b>Comments work</b> in the main editor only — <code>#</code> in the quick box causes IndentationError</div>
               <div class="ref-item"><span class="ref-tag warn">!</span> Patterns defined via REPL go to <b>_pending_patterns</b> first — they activate on the next bar, not instantly</div>
-              <div class="ref-item"><span class="ref-tag warn">!</span> Always use the <b>same function name</b> as the slot (ch1, ch2…) when redefining — a new name creates a new pattern</div>
-              <div class="ref-item"><span class="ref-tag warn">!</span> Multi-statement one-liners return <b>OK</b> not a value — split onto separate sends to inspect results</div>
+              <div class="ref-item"><span class="ref-tag warn">!</span> Always use the <b>same function name</b> as the slot when redefining — a new name creates a new pattern</div>
               <div class="ref-item"><span class="ref-tag warn">!</span> <code>print()</code> outputs to the <b>terminal</b>, not the log — use bare expressions to see values here</div>
               <div class="ref-item"><span class="ref-tag warn">!</span> <code>help()</code> is blocked — use <code>inspect.signature(fn)</code> instead</div>
+              <div class="ref-item"><span class="ref-tag warn">!</span> Send decorator + function together as one block from the main editor</div>
             </div>
           </div>
 
@@ -379,125 +465,338 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             <div class="ref-title">Pattern decorator</div>
             <div class="ref-body">
               <div class="ref-item"><code>@composition.pattern(</code></div>
-              <div class="ref-item ref-indent"><code>channel=<span class="ref-arg">1</span>,</code><span class="ref-desc">MIDI channel 1–16</span></div>
+              <div class="ref-item ref-indent"><code>channel=<span class="ref-arg">0</span>,</code><span class="ref-desc">0-based: 0=ch1, 9=drums, 15=ch16</span></div>
               <div class="ref-item ref-indent"><code>length=<span class="ref-arg">4</span>,</code><span class="ref-desc">Loop length in beats</span></div>
               <div class="ref-item ref-indent"><code>unit=<span class="ref-arg">None</span>,</code><span class="ref-desc">Step size override</span></div>
               <div class="ref-item ref-indent"><code>drum_note_map=<span class="ref-arg">None</span></code><span class="ref-desc">Pass gm_drums.GM_DRUM_MAP for drums</span></div>
               <div class="ref-item"><code>)</code></div>
-              <div class="ref-item ref-indent"><code>def <span class="ref-arg">ch1</span>(p):</code><span class="ref-desc">Name must match slot to replace it</span></div>
-              <div class="ref-item"><span class="ref-tag warn">!</span> Send decorator + function together as one block from the main editor</div>
             </div>
           </div>
 
           <div class="ref-section">
             <div class="ref-title">Pattern builder (p) — placing notes</div>
             <div class="ref-body">
-              <div class="ref-item"><code>p.note(<span class="ref-arg">pitch</span>, beat=<span class="ref-arg">0.0</span>, velocity=<span class="ref-arg">100</span>, duration=<span class="ref-arg">0.25</span>)</code><span class="ref-desc">Single note at beat position</span></div>
-              <div class="ref-item"><code>p.hit(<span class="ref-arg">pitch</span>, beats=<span class="ref-arg">[0,1,2]</span>, velocity=<span class="ref-arg">100</span>)</code><span class="ref-desc">Multiple hits at beat positions</span></div>
-              <div class="ref-item"><code>p.hit_steps(<span class="ref-arg">pitch</span>, steps=<span class="ref-arg">[0,4,8]</span>, velocity=<span class="ref-arg">100</span>, probability=<span class="ref-arg">1.0</span>)</code><span class="ref-desc">Hits at grid step indices</span></div>
-              <div class="ref-item"><code>p.sequence(steps=<span class="ref-arg">[0,4,8,12]</span>, pitches=<span class="ref-arg">[60,62,64,65]</span>, velocities=<span class="ref-arg">100</span>, durations=<span class="ref-arg">0.1</span>)</code><span class="ref-desc">Multi-step sequencer</span></div>
-              <div class="ref-item"><code>p.seq(<span class="ref-arg">"60 ~ 62 ~ 64"</span>, velocity=<span class="ref-arg">80</span>)</code><span class="ref-desc">Mini-notation string</span></div>
-              <div class="ref-item"><code>p.seq(<span class="ref-arg">"x ~ x ~"</span>, pitch=<span class="ref-arg">"kick_1"</span>, velocity=<span class="ref-arg">100</span>)</code><span class="ref-desc">Mini-notation with named pitch</span></div>
-              <div class="ref-item"><code>p.fill(<span class="ref-arg">pitch</span>, step=<span class="ref-arg">0.25</span>, velocity=<span class="ref-arg">100</span>)</code><span class="ref-desc">Repeat note every N beats (e.g. 16th notes)</span></div>
-              <div class="ref-item"><code>p.arpeggio(<span class="ref-arg">pitches</span>, step=<span class="ref-arg">0.25</span>, velocity=<span class="ref-arg">100</span>, direction=<span class="ref-arg">"up"</span>)</code><span class="ref-desc">direction: up · down · up_down · random</span></div>
-              <div class="ref-item"><code>p.chord(<span class="ref-arg">chord</span>, root=<span class="ref-arg">60</span>, velocity=<span class="ref-arg">90</span>, sustain=<span class="ref-arg">False</span>, count=<span class="ref-arg">4</span>, legato=<span class="ref-arg">0.9</span>)</code><span class="ref-desc">Chord block at beat 0</span></div>
-              <div class="ref-item"><code>p.strum(<span class="ref-arg">chord</span>, root=<span class="ref-arg">60</span>, offset=<span class="ref-arg">0.05</span>, direction=<span class="ref-arg">"up"</span>)</code><span class="ref-desc">Staggered chord (strum effect)</span></div>
+              <div class="ref-item"><code>p.note(<span class="ref-arg">pitch</span>, beat=<span class="ref-arg">0.0</span>, velocity=<span class="ref-arg">100</span>, duration=<span class="ref-arg">0.25</span>)</code></div>
+              <div class="ref-item"><code>p.hit_steps(<span class="ref-arg">pitch</span>, steps=<span class="ref-arg">[0,4,8]</span>, velocity=<span class="ref-arg">100</span>)</code><span class="ref-desc">16-step grid indices</span></div>
+              <div class="ref-item"><code>p.sequence(steps=<span class="ref-arg">[0,4,8,12]</span>, pitches=<span class="ref-arg">[60,62,64,65]</span>)</code></div>
+              <div class="ref-item"><code>p.seq(<span class="ref-arg">"60 ~ 62 ~ 64"</span>, velocity=<span class="ref-arg">80</span>)</code><span class="ref-desc">Mini-notation</span></div>
+              <div class="ref-item"><code>p.arpeggio(<span class="ref-arg">pitches</span>, step=<span class="ref-arg">0.25</span>, direction=<span class="ref-arg">"up"</span>)</code></div>
+              <div class="ref-item"><code>p.chord(<span class="ref-arg">chord</span>, root=<span class="ref-arg">60</span>, velocity=<span class="ref-arg">90</span>)</code></div>
+              <div class="ref-item"><code>p.strum(<span class="ref-arg">chord</span>, root=<span class="ref-arg">60</span>, offset=<span class="ref-arg">0.05</span>)</code></div>
             </div>
           </div>
 
           <div class="ref-section">
             <div class="ref-title">Pattern builder (p) — transforms</div>
             <div class="ref-body">
-              <div class="ref-item"><span class="ref-tag warn">!</span> Call these <b>after</b> placing notes — they operate on existing notes</div>
-              <div class="ref-item"><code>p.legato(<span class="ref-arg">0.9</span>)</code><span class="ref-desc">Stretch notes to fill gap to next note (1.0 = full legato)</span></div>
-              <div class="ref-item"><code>p.staccato(<span class="ref-arg">0.25</span>)</code><span class="ref-desc">Set all durations to fixed proportion of a beat</span></div>
-              <div class="ref-item"><code>p.swing(<span class="ref-arg">57.0</span>, grid=<span class="ref-arg">0.25</span>, strength=<span class="ref-arg">1.0</span>)</code><span class="ref-desc">50=straight · 57=shuffle · 67=triplet</span></div>
-              <div class="ref-item"><code>p.groove(<span class="ref-arg">template</span>, strength=<span class="ref-arg">1.0</span>)</code><span class="ref-desc">Apply a Groove template</span></div>
-              <div class="ref-item"><code>p.velocity_shape(low=<span class="ref-arg">60</span>, high=<span class="ref-arg">100</span>)</code><span class="ref-desc">Organic velocity variation across notes</span></div>
-              <div class="ref-item"><code>p.randomize(timing=<span class="ref-arg">0.03</span>, velocity=<span class="ref-arg">0.0</span>)</code><span class="ref-desc">Micro-timing and velocity humanisation</span></div>
-              <div class="ref-item"><code>p.dropout(<span class="ref-arg">0.2</span>)</code><span class="ref-desc">Randomly remove 20% of notes</span></div>
-              <div class="ref-item"><code>p.transpose(<span class="ref-arg">semitones</span>)</code><span class="ref-desc">Shift all pitches up or down</span></div>
-              <div class="ref-item"><code>p.invert(pivot=<span class="ref-arg">60</span>)</code><span class="ref-desc">Mirror pitches around pivot note</span></div>
-              <div class="ref-item"><code>p.reverse()</code><span class="ref-desc">Flip pattern backwards in time</span></div>
-              <div class="ref-item"><code>p.double_time()</code><span class="ref-desc">Compress into first half (2× speed)</span></div>
-              <div class="ref-item"><code>p.half_time()</code><span class="ref-desc">Expand to double length (½ speed)</span></div>
-              <div class="ref-item"><code>p.shift(<span class="ref-arg">steps</span>)</code><span class="ref-desc">Rotate pattern left or right by N grid steps</span></div>
-              <div class="ref-item"><code>p.quantize(<span class="ref-arg">"C"</span>, mode=<span class="ref-arg">"dorian"</span>)</code><span class="ref-desc">Snap pitches to nearest scale degree</span></div>
-              <div class="ref-item"><code>p.every(<span class="ref-arg">4</span>, lambda p: p.reverse())</code><span class="ref-desc">Apply transform every Nth cycle</span></div>
+              <div class="ref-item"><span class="ref-tag warn">!</span> Call these <b>after</b> placing notes</div>
+              <div class="ref-item"><code>p.legato(<span class="ref-arg">0.9</span>)</code> &nbsp; <code>p.staccato(<span class="ref-arg">0.25</span>)</code></div>
+              <div class="ref-item"><code>p.swing(<span class="ref-arg">57.0</span>, grid=<span class="ref-arg">0.25</span>)</code><span class="ref-desc">50=straight · 67=triplet</span></div>
+              <div class="ref-item"><code>p.velocity_shape(low=<span class="ref-arg">60</span>, high=<span class="ref-arg">100</span>)</code></div>
+              <div class="ref-item"><code>p.randomize(timing=<span class="ref-arg">0.03</span>)</code><span class="ref-desc">Humanise</span></div>
+              <div class="ref-item"><code>p.dropout(<span class="ref-arg">0.2</span>)</code><span class="ref-desc">Remove 20% of notes randomly</span></div>
+              <div class="ref-item"><code>p.transpose(<span class="ref-arg">n</span>)</code> &nbsp; <code>p.reverse()</code> &nbsp; <code>p.invert()</code></div>
+              <div class="ref-item"><code>p.double_time()</code> &nbsp; <code>p.half_time()</code></div>
+              <div class="ref-item"><code>p.shift(<span class="ref-arg">steps</span>)</code> &nbsp; <code>p.quantize(<span class="ref-arg">"C"</span>, <span class="ref-arg">"dorian"</span>)</code></div>
+              <div class="ref-item"><code>p.every(<span class="ref-arg">4</span>, lambda p: p.reverse())</code></div>
             </div>
           </div>
 
           <div class="ref-section">
             <div class="ref-title">Pattern builder (p) — context</div>
             <div class="ref-body">
-              <div class="ref-item"><code>p.cycle</code><span class="ref-desc">How many times this pattern has rebuilt (int)</span></div>
+              <div class="ref-item"><code>p.cycle</code><span class="ref-desc">Rebuild count (int)</span></div>
               <div class="ref-item"><code>p.bar</code><span class="ref-desc">Global bar count</span></div>
-              <div class="ref-item"><code>p.grid</code><span class="ref-desc">Number of grid slots (e.g. 16)</span></div>
-              <div class="ref-item"><code>p.signal(<span class="ref-arg">"name"</span>)</code><span class="ref-desc">Read a conductor LFO value (0.0–1.0)</span></div>
-              <div class="ref-item"><code>p.param(<span class="ref-arg">"name"</span>, default=<span class="ref-arg">None</span>)</code><span class="ref-desc">Read a tweak value set via composition.tweak()</span></div>
-              <div class="ref-item"><code>p.set_length(<span class="ref-arg">8.0</span>)</code><span class="ref-desc">Change loop length dynamically</span></div>
-              <div class="ref-item"><code>p.rng</code><span class="ref-desc">Seeded random instance (use for reproducible randomness)</span></div>
+              <div class="ref-item"><code>p.grid</code><span class="ref-desc">Number of grid slots</span></div>
+              <div class="ref-item"><code>p.signal(<span class="ref-arg">"name"</span>)</code><span class="ref-desc">Conductor LFO value 0–1</span></div>
+              <div class="ref-item"><code>p.rng</code><span class="ref-desc">Seeded random instance</span></div>
             </div>
           </div>
 
           <div class="ref-section">
-            <div class="ref-title">chord argument (needs harmony active)</div>
+            <div class="ref-title">chord argument</div>
             <div class="ref-body">
-              <div class="ref-item"><code>def <span class="ref-arg">my_pat</span>(p, chord):</code><span class="ref-desc">Add chord as 2nd arg to receive current chord</span></div>
-              <div class="ref-item"><code>chord.root_note(<span class="ref-arg">40</span>)</code><span class="ref-desc">Root pitch starting from MIDI note 40</span></div>
-              <div class="ref-item"><code>chord.tones(root=<span class="ref-arg">60</span>, count=<span class="ref-arg">4</span>)</code><span class="ref-desc">List of chord tone pitches</span></div>
-              <div class="ref-item"><code>composition.harmony(style=<span class="ref-arg">"dorian_minor"</span>, cycle_beats=<span class="ref-arg">4</span>, gravity=<span class="ref-arg">0.8</span>)</code><span class="ref-desc">Enable harmony engine</span></div>
+              <div class="ref-item"><code>def <span class="ref-arg">my_pat</span>(p, chord):</code><span class="ref-desc">Add chord as 2nd arg</span></div>
+              <div class="ref-item"><code>chord.root_note(<span class="ref-arg">40</span>)</code></div>
+              <div class="ref-item"><code>chord.tones(root=<span class="ref-arg">60</span>, count=<span class="ref-arg">4</span>)</code></div>
+              <div class="ref-item"><code>composition.harmony(style=<span class="ref-arg">"dorian_minor"</span>, cycle_beats=<span class="ref-arg">4</span>)</code></div>
             </div>
           </div>
 
           <div class="ref-section">
             <div class="ref-title">Mini-notation</div>
             <div class="ref-body">
-              <div class="ref-item"><code>60 62 64</code><span class="ref-desc">MIDI note numbers distributed across pattern</span></div>
-              <div class="ref-item"><code>x</code><span class="ref-desc">Hit (used with pitch= for drums)</span></div>
-              <div class="ref-item"><code>~ &nbsp;.</code><span class="ref-desc">Rest</span></div>
-              <div class="ref-item"><code>_</code><span class="ref-desc">Sustain / extend previous note</span></div>
-              <div class="ref-item"><code>[x x]</code><span class="ref-desc">Subdivide one step into equal parts</span></div>
-              <div class="ref-item"><code>x?0.6</code><span class="ref-desc">Probability suffix — fires 60% of the time</span></div>
-              <div class="ref-item"><code>f"&#123;pitch&#125; _ _ _"</code><span class="ref-desc">f-string for dynamic pitches</span></div>
+              <div class="ref-item"><code>60 62 64</code><span class="ref-desc">MIDI note numbers</span></div>
+              <div class="ref-item"><code>x</code><span class="ref-desc">Hit (use with pitch= for drums)</span></div>
+              <div class="ref-item"><code>~ .</code><span class="ref-desc">Rest</span> &nbsp; <code>_</code><span class="ref-desc">Sustain</span></div>
+              <div class="ref-item"><code>[x x]</code><span class="ref-desc">Subdivide step</span></div>
+              <div class="ref-item"><code>x?0.6</code><span class="ref-desc">60% probability</span></div>
             </div>
           </div>
 
           <div class="ref-section">
             <div class="ref-title">Conductor (LFOs)</div>
             <div class="ref-body">
-              <div class="ref-item"><code>composition.conductor.lfo(</code></div>
-              <div class="ref-item ref-indent"><code><span class="ref-arg">"name"</span>,</code><span class="ref-desc">Key in composition.data</span></div>
-              <div class="ref-item ref-indent"><code>shape=<span class="ref-arg">"sine"</span>,</code><span class="ref-desc">sine · triangle · square · saw</span></div>
-              <div class="ref-item ref-indent"><code>cycle_beats=<span class="ref-arg">16.0</span>,</code><span class="ref-desc">Full cycle length in beats</span></div>
-              <div class="ref-item ref-indent"><code>min_val=<span class="ref-arg">0.0</span>,</code></div>
-              <div class="ref-item ref-indent"><code>max_val=<span class="ref-arg">1.0</span></code></div>
-              <div class="ref-item"><code>)</code></div>
-              <div class="ref-item" style="margin-top:6px"><code>composition.data.get(<span class="ref-arg">"name"</span>, <span class="ref-arg">0.5</span>)</code><span class="ref-desc">Read safely with fallback</span></div>
+              <div class="ref-item"><code>composition.conductor.lfo(<span class="ref-arg">"name"</span>, shape=<span class="ref-arg">"sine"</span>, cycle_beats=<span class="ref-arg">16</span>, min_val=<span class="ref-arg">0</span>, max_val=<span class="ref-arg">1</span>)</code></div>
+              <div class="ref-item"><code>composition.data.get(<span class="ref-arg">"name"</span>, <span class="ref-arg">0.5</span>)</code><span class="ref-desc">Read with fallback</span></div>
             </div>
           </div>
 
           <div class="ref-section">
-            <div class="ref-title">A minor scale pitches</div>
+            <div class="ref-title">Algorithmic palette — Rhythm</div>
             <div class="ref-body">
-              <div class="ref-item"><code>[57, 59, 60, 62, 64, 65, 67, 69]</code></div>
-              <div class="ref-item ref-indent"><span class="ref-desc">A3 B3 C4 D4 E4 F4 G4 A4</span></div>
-              <div class="ref-item" style="margin-top:4px"><code>scale[int(lfo * (len(scale)-1))]</code><span class="ref-desc">LFO → scale degree</span></div>
+              <div class="ref-item"><code><span class="ref-arg"># Euclidean rhythm — Toussaint/Bjorklund (5 hits over 16 steps)</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def ch1(p):
+    for i,v in enumerate([1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,0]):
+        if v: p.note(60, beat=i*0.25)</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Markov chain — probabilistic pitch transitions</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def ch1(p):
+    chain = {60:[62,64,65], 62:[60,64], 64:[62,65,67], 65:[64,67], 67:[65,69], 69:[67,65]}
+    state = 60
+    for i in range(16):
+        p.note(state, beat=i*0.25)
+        state = p.rng.choice(chain.get(state, [60]))</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># L-system — recursive string rewriting</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def lsys(p):
+    def expand(s, rules, n):
+        for _ in range(n): s = ''.join(rules.get(c,c) for c in s)
+        return s
+    seq = expand('F', {'F':'F+F-F-F+F'}, 3)
+    beat = 0
+    for c in seq[:32]:
+        if c == 'F': p.note(60, beat=beat*0.25); beat += 1
+        elif c == '+': beat += 1</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Sieve of Eratosthenes — prime positions as hits</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def prime_pat(p):
+    def primes(n):
+        s=[1]*n; s[0]=s[1]=0
+        for i in range(2,int(n**.5)+1):
+            if s[i]:
+                for j in range(i*i,n,i): s[j]=0
+        return [i for i,v in enumerate(s) if v]
+    for b in [x for x in primes(32) if x &lt; 16]:
+        p.note(60, beat=b*0.25)</code></div>
             </div>
           </div>
 
           <div class="ref-section">
-            <div class="ref-title">Drums (channel 10)</div>
+            <div class="ref-title">Algorithmic palette — Cellular &amp; Chaos</div>
             <div class="ref-body">
-              <div class="ref-item"><code>import subsequence.constants.instruments.gm_drums as gm_drums</code></div>
-              <div class="ref-item" style="margin-top:4px"><code>@composition.pattern(channel=10, length=4,</code></div>
-              <div class="ref-item ref-indent"><code>drum_note_map=gm_drums.GM_DRUM_MAP)</code></div>
-              <div class="ref-item ref-indent"><code>def ch10(p):</code></div>
-              <div class="ref-item ref-indent"><code>&nbsp;&nbsp;&nbsp;&nbsp;p.seq(<span class="ref-arg">"x ~ x ~"</span>, pitch=<span class="ref-arg">"kick_1"</span>, velocity=100)</code></div>
-              <div class="ref-item ref-indent"><code>&nbsp;&nbsp;&nbsp;&nbsp;p.seq(<span class="ref-arg">"~ x ~ x"</span>, pitch=<span class="ref-arg">"snare_1"</span>, velocity=90)</code></div>
-              <div class="ref-item ref-indent"><code>&nbsp;&nbsp;&nbsp;&nbsp;p.seq(<span class="ref-arg">"[x x] [x x] [x x] [x x]"</span>, pitch=<span class="ref-arg">"hi_hat_closed"</span>, velocity=70)</code></div>
+              <div class="ref-item"><code><span class="ref-arg"># 1D Cellular automaton — Rule 30 / 110</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def cellular(p):
+    def ca(rule_num, width=16):
+        rule = [(rule_num >> i) &amp; 1 for i in range(8)]
+        row = [0]*width; row[width//2] = 1
+        for _ in range(4):
+            row = [rule[(row[(i-1)%width]&lt;&lt;2)|(row[i]&lt;&lt;1)|row[(i+1)%width]]
+                   for i in range(width)]
+        return row
+    for i,v in enumerate(ca(30)):
+        if v: p.note(60+i, beat=i*0.25)</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Lorenz attractor — chaotic pitch sequencing</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def lorenz_pat(p):
+    def lorenz(n, s=10, r=28, b=2.667, dt=0.01):
+        x,y,z = 0.1,0,0; pts=[]
+        for _ in range(n):
+            x,y,z = x+dt*s*(y-x), y+dt*(x*(r-z)-y), z+dt*(x*y-b*z)
+            pts.append(x)
+        return pts
+    xs = lorenz(16)
+    lo,hi = min(xs),max(xs)
+    for i,x in enumerate(xs):
+        p.note(int(48+24*(x-lo)/(hi-lo)), beat=i*0.25)</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Logistic map — r&lt;3 stable · 3–3.57 doubling · &gt;3.57 chaos</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def logistic_pat(p):
+    x = 0.5
+    for i in range(16):
+        x = 3.9*x*(1-x)
+        p.note(int(48+24*x), beat=i*0.25, velocity=int(60+60*x))</code></div>
             </div>
           </div>
+
+          <div class="ref-section">
+            <div class="ref-title">Algorithmic palette — Biology &amp; Physics</div>
+            <div class="ref-body">
+              <div class="ref-item"><code><span class="ref-arg"># Reaction-diffusion — Gray-Scott (Turing patterns as velocity)</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def gray_scott_pat(p):
+    n,f,k = 16,0.055,0.062
+    u,v = [1.0]*n,[0.0]*n
+    for i in range(n//4, n//4+2): v[i] = 1.0
+    for _ in range(200):
+        u2=u[:]
+        for i in range(n):
+            uvv=u[i]*v[i]*v[i]
+            u2[i]=u[i]+0.2*(u[(i-1)%n]-2*u[i]+u[(i+1)%n])-uvv+f*(1-u[i])
+            v[i] =v[i]+0.1*(v[(i-1)%n]-2*v[i]+v[(i+1)%n])+uvv-(f+k)*v[i]
+        u=u2
+    lo,hi=min(v),max(v)
+    for i,vel in enumerate(v):
+        p.note(60, beat=i*0.25, velocity=int(40+80*(vel-lo)/(hi-lo)))</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Game of Life — Conway CA columns → beats</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def gol_pat(p):
+    import random
+    def step(g):
+        R,C=len(g),len(g[0])
+        def nb(r,c): return sum(g[(r+dr)%R][(c+dc)%C] for dr in[-1,0,1] for dc in[-1,0,1] if (dr,dc)!=(0,0))
+        return [[1 if (g[r][c] and nb(r,c) in[2,3]) or (not g[r][c] and nb(r,c)==3) else 0 for c in range(C)] for r in range(R)]
+    g=[[random.randint(0,1) for _ in range(16)] for _ in range(4)]
+    for _ in range(8): g=step(g)
+    for i,v in enumerate(g[0]):
+        if v: p.note(60, beat=i*0.25)</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Fibonacci / golden ratio — irrational beat spacing</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def golden(p):
+    phi = (1+5**0.5)/2
+    for b in sorted((i*phi)%4 for i in range(12)):
+        p.note(60, beat=round(b,3))</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Brownian motion — random walk melody</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def brownian(p):
+    import random
+    note = 60
+    for i in range(16):
+        p.note(max(36,min(84,note)), beat=i*0.25)
+        note += random.choice([-2,-1,0,1,2])</code></div>
+            </div>
+          </div>
+
+          <div class="ref-section">
+            <div class="ref-title">Algorithmic palette — Advanced</div>
+            <div class="ref-body">
+              <div class="ref-item"><code><span class="ref-arg"># Interference — two overlapping rhythmic cycles</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def interference(p):
+    hits = set()
+    for k in range(12): hits.add(round(k/3, 3))
+    for k in range(16): hits.add(round(k/4, 3))
+    for b in sorted(hits):
+        if b &lt; 4: p.note(60, beat=b)</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Spectral synthesis — harmonics to pitch contour</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def spectral(p):
+    import math
+    harmonics = [1, 0.5, 0.3, 0.1]
+    def wave(t): return sum(a*math.sin(2*math.pi*(i+1)*t) for i,a in enumerate(harmonics))
+    vals = [wave(i/16) for i in range(16)]
+    lo,hi = min(vals),max(vals)
+    for i,v in enumerate(vals):
+        p.note(int(48+24*(v-lo)/(hi-lo)), beat=i*0.25)</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Combined — Euclidean gates + Lorenz pitch</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def ch1(p):
+    gates=[1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,0]
+    x,y,z=0.1,0,0; xs=[]
+    for _ in range(16):
+        x,y,z=x+0.01*10*(y-x),y+0.01*(x*(28-z)-y),z+0.01*(x*y-2.667*z)
+        xs.append(x)
+    lo,hi=min(xs),max(xs)
+    for i,(gate,x) in enumerate(zip(gates,xs)):
+        if gate: p.note(int(48+24*(x-lo)/(hi-lo)), beat=i*0.25)</code></div>
+            </div>
+          </div>
+
+          <div class="ref-section">
+            <div class="ref-title">AbletonOSC — Transport &amp; Song</div>
+            <div class="ref-body">
+              <div class="ref-item"><code>live.play()</code><span class="ref-desc">Start Live transport</span></div>
+              <div class="ref-item"><code>live.stop_transport()</code><span class="ref-desc">Stop Live transport</span></div>
+              <div class="ref-item"><code>live.send("/live/song/get/tempo")</code><span class="ref-desc">Query current BPM</span></div>
+              <div class="ref-item"><code>live.send("/live/song/set/tempo", 120.0)</code><span class="ref-desc">Set tempo directly</span></div>
+              <div class="ref-item"><code>live.tracks</code><span class="ref-desc">List of track names</span></div>
+              <div class="ref-item"><code>live.connected</code><span class="ref-desc">OSC connection state</span></div>
+            </div>
+          </div>
+
+          <div class="ref-section">
+            <div class="ref-title">AbletonOSC — Mixer</div>
+            <div class="ref-body">
+              <div class="ref-item"><code>live.track_volume(<span class="ref-arg">track</span>, <span class="ref-arg">0.85</span>)</code><span class="ref-desc">Volume 0.0–1.0</span></div>
+              <div class="ref-item"><code>live.track_pan(<span class="ref-arg">track</span>, <span class="ref-arg">0.0</span>)</code><span class="ref-desc">Pan −1.0 to 1.0</span></div>
+              <div class="ref-item"><code>live.track_mute(<span class="ref-arg">track</span>, <span class="ref-arg">True</span>)</code><span class="ref-desc">Mute/unmute</span></div>
+              <div class="ref-item"><code>live.track_send(<span class="ref-arg">track</span>, <span class="ref-arg">send</span>, <span class="ref-arg">0.5</span>)</code><span class="ref-desc">Send level 0.0–1.0</span></div>
+              <div class="ref-item"><code>live.track_stop(<span class="ref-arg">track</span>)</code><span class="ref-desc">Stop all clips on track</span></div>
+            </div>
+          </div>
+
+          <div class="ref-section">
+            <div class="ref-title">AbletonOSC — Clips &amp; Devices</div>
+            <div class="ref-body">
+              <div class="ref-item"><code>live.clip_play(<span class="ref-arg">track</span>, <span class="ref-arg">clip</span>)</code><span class="ref-desc">Launch clip slot</span></div>
+              <div class="ref-item"><code>live.clip_stop(<span class="ref-arg">track</span>, <span class="ref-arg">clip</span>)</code><span class="ref-desc">Stop clip slot</span></div>
+              <div class="ref-item"><code>live.scene_play(<span class="ref-arg">scene</span>)</code><span class="ref-desc">Fire entire scene row</span></div>
+              <div class="ref-item"><code>live.device_param(<span class="ref-arg">track</span>, <span class="ref-arg">device</span>, <span class="ref-arg">param</span>, <span class="ref-arg">0.5</span>)</code><span class="ref-desc">Normalised 0–1</span></div>
+              <div class="ref-item"><code>live.send("/live/track/set/arm", <span class="ref-arg">track</span>, 1)</code><span class="ref-desc">Arm track for recording</span></div>
+              <div class="ref-item"><code>live.send("/live/song/create_midi_track", -1)</code><span class="ref-desc">Add MIDI track at end</span></div>
+            </div>
+          </div>
+
+          <div class="ref-section">
+            <div class="ref-title">ClyphX Pro — Global Actions</div>
+            <div class="ref-body">
+              <div class="ref-item"><code>live.clyphx("BPM <span class="ref-arg">120</span>")</code><span class="ref-desc">Set tempo</span></div>
+              <div class="ref-item"><code>live.clyphx("METRO")</code><span class="ref-desc">Toggle metronome</span></div>
+              <div class="ref-item"><code>live.clyphx("SETPLAY")</code><span class="ref-desc">Toggle playback</span></div>
+              <div class="ref-item"><code>live.clyphx("REC")</code><span class="ref-desc">Toggle arrangement record</span></div>
+              <div class="ref-item"><code>live.clyphx("SREC")</code><span class="ref-desc">Toggle session record</span></div>
+              <div class="ref-item"><code>live.clyphx("GQ <span class="ref-arg">1 BAR</span>")</code><span class="ref-desc">Set global quantisation</span></div>
+              <div class="ref-item"><code>live.clyphx("UNDO")</code><span class="ref-desc">Undo last operation</span></div>
+            </div>
+          </div>
+
+          <div class="ref-section">
+            <div class="ref-title">ClyphX Pro — Track Actions</div>
+            <div class="ref-body">
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/MUTE")</code><span class="ref-desc">Toggle mute on track 1</span></div>
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/MUTE ON")</code><span class="ref-desc">Mute on explicitly</span></div>
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/ARM")</code><span class="ref-desc">Toggle arm</span></div>
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/SOLO")</code><span class="ref-desc">Toggle solo</span></div>
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/VOL <span class="ref-arg">85</span>")</code><span class="ref-desc">Set volume (0–127)</span></div>
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/PAN &lt;")</code><span class="ref-desc">Nudge pan left</span></div>
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/SEND A <span class="ref-arg">64</span>")</code><span class="ref-desc">Set send A level</span></div>
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1-4</span>/MUTE ON")</code><span class="ref-desc">Mute tracks 1 through 4</span></div>
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/DEV(<span class="ref-arg">1</span>) ON")</code><span class="ref-desc">Enable device 1 on track</span></div>
+            </div>
+          </div>
+
+          <div class="ref-section">
+            <div class="ref-title">ClyphX Pro — Clip Actions</div>
+            <div class="ref-body">
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/CLIP(<span class="ref-arg">1</span>) PLAY")</code><span class="ref-desc">Play clip 1 on track 1</span></div>
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/CLIP(<span class="ref-arg">1</span>) STOP")</code><span class="ref-desc">Stop clip</span></div>
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/CLIP(<span class="ref-arg">1</span>) SEMI &gt;")</code><span class="ref-desc">Pitch up 1 semitone</span></div>
+              <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/CLIP(<span class="ref-arg">1</span>) LOOP *2")</code><span class="ref-desc">Double loop length</span></div>
+            </div>
+          </div>
+
+          <div class="ref-section">
+            <div class="ref-title">ClyphX Pro — Multi-action</div>
+            <div class="ref-body">
+              <div class="ref-item"><span class="ref-tag warn">!</span> Separate actions with <code> ; </code> (spaces matter)</div>
+              <div class="ref-item"><span class="ref-tag warn">!</span> From quick command box, prefix with <code>cx:</code> — e.g. <code>cx: 1/MUTE ON ; BPM 128</code></div>
+              <div class="ref-item"><code>live.clyphx("1/MUTE ON ; 2/MUTE OFF ; BPM 128")</code></div>
+              <div class="ref-item"><code>live.clyphx("(PSEQ) 1/MUTE ; 2/MUTE ; 3/MUTE")</code><span class="ref-desc">Step through each fire</span></div>
+            </div>
+          </div>
+
 
         </div>
       </div>
@@ -512,6 +811,11 @@ let ws=null, bpm=120, lastBeat=-1;
 let cmdHist=[], cmdIdx=-1;
 let bufs=['','',''], activeTab=0;
 let sigHist={}, sigCvs={}, sigRAF={}, patCol={}, colIdx=0, linkAvail=false;
+let lastRawBar=0, barOffset=0;
+let isRecording=false, recCountdown=null;
+let isDraggingBpm=false;
+let soloedPattern=null;
+let webMidiOutput=null, webMidiActive=false;
 const COLORS=['#ff5c8a','#9d6fff','#3fc8a0','#ff9940','#5ea8ff','#f5c842'];
 
 // ── BUFFER TABS ──────────────────────────────────────────────────────────────
@@ -527,28 +831,40 @@ function connect(){
   ws.onerror=()=>setOnline(false);
   ws.onmessage=e=>{try{handleMsg(JSON.parse(e.data));}catch(_){}};
 }
-function setOnline(on){document.getElementById('connDot').className='conn-dot'+(on?' on':'');document.getElementById('connLabel').textContent=on?'LIVE':'OFFLINE';}
+function setOnline(on){document.getElementById('connDot').className='conn-dot'+(on?' on':'');document.getElementById('connLabel').textContent=on?'ONLINE':'OFFLINE';}
 function wsSend(o){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(o));}
 
 // ── MESSAGE DISPATCH ─────────────────────────────────────────────────────────
+let playheadPulse=0, pulsesPerBeat=24;
 function handleMsg(msg){
   if(msg.repl_result!==undefined||msg.repl_error!==undefined){
-    if(msg.repl_error)log(msg.repl_error,'err');
-    else if(msg.repl_result==='OK')log('=> OK','ok');
+    const ew=document.querySelector('.editor-wrap');
+    ew.classList.remove('flash-ok','flash-err');
+    void ew.offsetWidth;
+    if(msg.repl_error){log(msg.repl_error,'err');ew.classList.add('flash-err');}
+    else if(msg.repl_result==='OK'){log('=> OK','ok');ew.classList.add('flash-ok');}
     else log('=> '+msg.repl_result,'info');
+    setTimeout(()=>ew.classList.remove('flash-ok','flash-err'),500);
     return;
   }
   if(msg.link_state){updateLink(msg.link_state);return;}
   if(msg.midi_devices){fillMidi(msg.midi_devices);return;}
+  if(msg.record_state){
+    if(msg.record_state==='recording')log('⏺ Recording → '+msg.filename,'info');
+    else if(msg.record_state==='saved')log('✓ Saved: '+msg.filename,'ok');
+    else log('✗ Record error: '+msg.filename,'err');
+    return;
+  }
+  if(msg.midi){handleMidiEvent(msg.midi);return;}
   // state broadcast
   updateTransport(msg);
   if(msg.link)updateLink(msg.link);
+  if(msg.live)updateLive(msg.live);
   updateSignals(msg.signals||{});
   updatePatterns(msg.patterns||[]);
 }
 
 // ── TRANSPORT ────────────────────────────────────────────────────────────────
-let playheadPulse=0, pulsesPerBeat=24;
 function updateTransport(s){
   bpm=parseFloat(s.bpm)||120;
   playheadPulse=s.playhead_pulse||0;
@@ -557,7 +873,7 @@ function updateTransport(s){
   document.getElementById('keyDisp').textContent=s.key||'\u2014';
   document.getElementById('chordDisp').textContent=s.chord||'\u2014';
   lastRawBar=s.global_bar||0;
-  document.getElementById('barDisp').textContent=lastRawBar ? Math.max(1, lastRawBar - barOffset) : '\u2014';
+  document.getElementById('barDisp').textContent=lastRawBar?Math.max(1,lastRawBar-barOffset):'\u2014';
   const beat=s.global_beat||0;
   document.getElementById('beatDisp').textContent=beat;
   if(beat!==lastBeat){lastBeat=beat;flashBeat();}
@@ -574,21 +890,18 @@ function updateTransport(s){
 }
 function flashBeat(){const el=document.getElementById('flash');el.classList.add('on');setTimeout(()=>el.classList.remove('on'),80);}
 
-// ── BPM DRAG ─────────────────────────────────────────────────────────────────
-let dy0,bpm0,isDraggingBpm=false;
+// ── BPM ──────────────────────────────────────────────────────────────────────
+let dy0,bpm0;
 document.getElementById('bpmDrag').addEventListener('mousedown',e=>{
   dy0=e.clientY;bpm0=bpm;isDraggingBpm=true;
   const mv=e2=>{const v=Math.min(240,Math.max(40,bpm0+(dy0-e2.clientY)*.3));document.getElementById('bpmDisplay').textContent=v.toFixed(1);};
   const up=e2=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);isDraggingBpm=false;wsSend({cmd:'set_bpm',value:Math.min(240,Math.max(40,bpm0+(dy0-e2.clientY)*.3))});};
   document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);e.preventDefault();
 });
-let barOffset=0, lastRawBar=0;
 document.getElementById('barDisp').addEventListener('click',()=>{
-  // Store the raw server bar so offset is always relative to that snapshot
   barOffset=lastRawBar;
   const el=document.getElementById('barDisp');
-  el.classList.add('bar-flash');
-  setTimeout(()=>el.classList.remove('bar-flash'),300);
+  el.classList.add('bar-flash');setTimeout(()=>el.classList.remove('bar-flash'),300);
 });
 document.getElementById('bpmUp').addEventListener('click',()=>wsSend({cmd:'set_bpm',value:Math.min(240,bpm+1)}));
 document.getElementById('bpmDown').addEventListener('click',()=>wsSend({cmd:'set_bpm',value:Math.max(40,bpm-1)}));
@@ -602,12 +915,10 @@ document.getElementById('tapBtn').addEventListener('click',()=>{
 function toggleLink(){if(!linkAvail)return;wsSend({cmd:'link_toggle'});}
 function updateLink(l){
   linkAvail=l.available;
-  // topbar pill
   const btn=document.getElementById('linkBtn'),peers=document.getElementById('linkPeers');
   btn.classList.toggle('na',!l.available);
   btn.classList.toggle('enabled',l.available&&l.enabled);
   peers.textContent=l.available&&l.peers>0?' '+l.peers:'';
-  // prefs card
   const tog=document.getElementById('linkToggle'),lbl=document.getElementById('linkToggleLbl');
   const stats=document.getElementById('linkStats'),na=document.getElementById('linkNA');
   if(!l.available){tog.classList.remove('on');lbl.textContent='Unavailable';stats.style.display='none';na.style.display='block';}
@@ -626,56 +937,135 @@ function applyMidiIn(){const d=document.getElementById('midiIn').value;if(!d)ret
 function applyMidiOut(){const d=document.getElementById('midiOut').value;if(!d)return;wsSend({cmd:'set_midi_output',device:d});log('Setting MIDI output: '+d,'info');goToLog();}
 function goToLog(){document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel-view').forEach(v=>v.classList.remove('active'));document.querySelector('[data-panel="log"]').classList.add('active');document.getElementById('view-log').classList.add('active');}
 
-// ── RUN CODE ─────────────────────────────────────────────────────────────────
-let allMuted=false;
-let isPlaying=true;  // sequence is already running when UI loads
-
-function evalCode(){
-  // Send editor code to REPL (Shift+Enter)
-  bufs[activeTab]=document.getElementById('codeEditor').value;
-  const code=bufs[activeTab].trim();if(!code)return;
-  log('>>> '+code.split('\n')[0]+(code.includes('\n')?' \u2026':''),'cmd');
-  cmdHist.unshift(code);cmdIdx=-1;
-  wsSend({cmd:'repl',code});
+// ── WEBMIDI ───────────────────────────────────────────────────────────────────
+function initWebMidi(){
+  if(!navigator.requestMIDIAccess){document.getElementById('webMidiStatus').textContent='WebMIDI not supported (use Chrome)';document.getElementById('webMidiStatus').className='webmidi-status err';return;}
+  navigator.requestMIDIAccess().then(access=>{
+    const sel=document.getElementById('webMidiOut');
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— select device —</option>';
+    access.outputs.forEach((out,id)=>{const o=document.createElement('option');o.value=id;o.textContent=out.name;if(id===cur)o.selected=true;sel.appendChild(o);});
+    document.getElementById('webMidiStatus').textContent='WebMIDI ready — '+access.outputs.size+' output(s)';
+    document.getElementById('webMidiStatus').className='webmidi-status ok';
+    access.onstatechange=()=>initWebMidi();
+    window._midiAccess=access;
+  }).catch(e=>{document.getElementById('webMidiStatus').textContent='Access denied: '+e.message;document.getElementById('webMidiStatus').className='webmidi-status err';});
 }
-
-function updateRunBtn(){
-  const btn=document.getElementById('runBtn');
-  if(isPlaying){
-    btn.innerHTML='&#9646;&#9646; Pause';
-    btn.classList.remove('playing');
-  } else {
-    btn.innerHTML='&#9654; Play';
-    btn.classList.add('playing');
+function toggleWebMidi(){
+  const sel=document.getElementById('webMidiOut');
+  const tog=document.getElementById('webMidiToggle');
+  const lbl=document.getElementById('webMidiLbl');
+  if(!window._midiAccess){log('Init WebMIDI first (Prefs)','err');return;}
+  if(webMidiActive){webMidiOutput=null;webMidiActive=false;tog.classList.remove('on');lbl.textContent='Off';}
+  else{
+    const out=window._midiAccess.outputs.get(sel.value);
+    if(!out){log('Select a WebMIDI output device first','err');return;}
+    webMidiOutput=out;webMidiActive=true;tog.classList.add('on');lbl.textContent='On';
+    log('WebMIDI → '+out.name,'ok');
   }
 }
+function handleMidiEvent(e){
+  // Flash MIDI LED
+  const led=document.getElementById('midiLed');
+  if(e.type==='note_on'&&e.vel>0){led.classList.add('active');setTimeout(()=>led.classList.remove('active'),80);}
+  // Forward to WebMIDI if active
+  if(!webMidiActive||!webMidiOutput)return;
+  try{
+    if(e.type==='note_on')webMidiOutput.send([0x90|e.ch,e.note,e.vel]);
+    else if(e.type==='note_off')webMidiOutput.send([0x80|e.ch,e.note,e.vel]);
+    else if(e.type==='control_change')webMidiOutput.send([0xb0|e.ch,e.ctrl,e.val]);
+  }catch(_){}
+}
 
+// ── RECORDING ─────────────────────────────────────────────────────────────────
+function toggleRecord(){isRecording?stopRecord():startRecord();}
+function startRecord(){
+  const bars=parseInt(document.getElementById('recBars').value);
+  isRecording=true;
+  const btn=document.getElementById('recBtn'),lbl=document.getElementById('recBtnLbl');
+  btn.classList.add('recording');lbl.textContent=bars+'b';
+  wsSend({cmd:'record_start'});
+  let startBar=null;
+  recCountdown=setInterval(()=>{
+    try{
+      const rawBar=lastRawBar||0;
+      if(startBar===null){startBar=rawBar;return;}
+      const remaining=Math.max(0,bars-(rawBar-startBar));
+      lbl.textContent=remaining+'b';
+      if(remaining<=0){clearInterval(recCountdown);recCountdown=null;stopRecord();}
+    }catch(e){console.error('rec countdown:',e);}
+  },200);
+}
+function stopRecord(){
+  isRecording=false;
+  if(recCountdown){clearInterval(recCountdown);recCountdown=null;}
+  document.getElementById('recBtn').classList.remove('recording');
+  document.getElementById('recBtnLbl').textContent='REC';
+  wsSend({cmd:'record_stop'});
+}
+
+// ── RUN CODE ──────────────────────────────────────────────────────────────────
+let allMuted=false, isPlaying=true;
+
+function getBlock(){
+  const ta=document.getElementById('codeEditor');
+  const val=ta.value, pos=ta.selectionStart;
+  // Scan backwards to find block start (double newline or beginning)
+  let s=pos;
+  while(s>0){if(val[s-1]==='\n'&&val[s-2]==='\n')break;s--;}
+  while(s<val.length&&val[s]==='\n')s++;
+  // Scan forwards to find block end (double newline or end)
+  let e=pos;
+  while(e<val.length){if(val[e]==='\n'&&val[e+1]==='\n')break;e++;}
+  // Select the block so the user can see what ran
+  ta.setSelectionRange(s,e);
+  return val.slice(s,e).trim();
+}
+
+function evalCode(code){
+  bufs[activeTab]=document.getElementById('codeEditor').value;
+  if(code===undefined)code=bufs[activeTab].trim();
+  if(!code)return;
+  log('>>> '+code.split('\n')[0]+(code.includes('\n')?' \u2026':''),'cmd');
+  cmdHist.unshift(code);if(cmdHist.length>200)cmdHist.length=200;cmdIdx=-1;
+  wsSend({cmd:'repl',code});
+}
+function updateRunBtn(){
+  const btn=document.getElementById('runBtn');
+  btn.innerHTML=isPlaying?'&#9646;&#9646; Pause':'&#9654; Play';
+}
 document.getElementById('runBtn').addEventListener('click',()=>{
   const names=[...document.querySelectorAll('.pat-row')].map(r=>r.dataset.name);
   if(!names.length){log('No patterns running','dim');return;}
-  if(isPlaying){
-    // Pause = mute all via direct WS (no REPL, no play() call)
-    names.forEach(n=>wsSend({cmd:'mute',pattern:n}));
-    log('>>> pause','cmd');
-    isPlaying=false;
-    allMuted=true;
-  } else {
-    // Resume = unmute all via direct WS
-    names.forEach(n=>wsSend({cmd:'unmute',pattern:n}));
-    log('>>> resume','cmd');
-    isPlaying=true;
-    allMuted=false;
-  }
+  if(isPlaying){names.forEach(n=>wsSend({cmd:'mute',pattern:n}));log('>>> pause','cmd');isPlaying=false;}
+  else{names.forEach(n=>wsSend({cmd:'unmute',pattern:n}));log('>>> resume','cmd');isPlaying=true;}
   updateRunBtn();
 });
-
 document.getElementById('codeEditor').addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&e.shiftKey){e.preventDefault();evalCode();}
+  if(e.key==='Enter'&&e.shiftKey&&!e.ctrlKey){e.preventDefault();evalCode(getBlock());}
+  if(e.key==='Enter'&&e.shiftKey&&e.ctrlKey){e.preventDefault();evalCode();}
   if(e.key==='Tab'){e.preventDefault();const s=e.target,v=s.value;s.value=v.slice(0,s.selectionStart)+'    '+v.slice(s.selectionEnd);}
 });
 
 // ── QUICK INPUT ───────────────────────────────────────────────────────────────
-function sendQuick(){const ta=document.getElementById('logInput'),code=ta.value.trim();if(!code)return;log('>>> '+code,'cmd');cmdHist.unshift(code);cmdIdx=-1;wsSend({cmd:'repl',code});ta.value='';}
+function sendQuick(){
+  const ta=document.getElementById('logInput');
+  const code=ta.value.trim();
+  if(!code) return;
+  if(code.toLowerCase().startsWith('cx:')){
+    const script=code.slice(3).trim();
+    if(!script) return;
+    if(!_liveConnected){log('ClyphX: AbletonOSC not connected','err');return;}
+    log('CX >>> '+script,'cmd');
+    cmdHist.unshift(code);if(cmdHist.length>200)cmdHist.length=200;cmdIdx=-1;
+    wsSend({cmd:'clyphx',script});
+  } else {
+    log('>>> '+code,'cmd');
+    cmdHist.unshift(code);if(cmdHist.length>200)cmdHist.length=200;cmdIdx=-1;
+    wsSend({cmd:'repl',code});
+  }
+  ta.value='';
+}
 document.getElementById('logInput').addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.shiftKey){e.preventDefault();sendQuick();}
   if(e.key==='ArrowUp'&&e.ctrlKey){e.preventDefault();if(cmdIdx<cmdHist.length-1){cmdIdx++;e.target.value=cmdHist[cmdIdx];}}
@@ -696,15 +1086,18 @@ document.querySelectorAll('.panel-tab').forEach(tab=>{
 });
 
 // ── SIGNALS ───────────────────────────────────────────────────────────────────
+function clearSignal(name){wsSend({cmd:'clear_signal',name});if(sigRAF[name]){cancelAnimationFrame(sigRAF[name]);delete sigRAF[name];}delete sigHist[name];delete sigCvs[name];const b=document.getElementById('sb-'+name);if(b)b.remove();}
 function updateSignals(signals){
-  const names=Object.keys(signals),scroll=document.getElementById('sigScroll');
-  document.getElementById('noSigs').style.display=names.length?'none':'block';
+  const names=new Set(Object.keys(signals)),scroll=document.getElementById('sigScroll');
+  // Remove blocks for signals that no longer exist
+  [...scroll.querySelectorAll('.sig-block')].forEach(b=>{if(!names.has(b.dataset.name)){const n=b.dataset.name;if(sigRAF[n]){cancelAnimationFrame(sigRAF[n]);delete sigRAF[n];}delete sigHist[n];delete sigCvs[n];b.remove();}});
+  document.getElementById('noSigs').style.display=names.size?'none':'block';
   names.forEach(name=>{
     if(!sigHist[name])sigHist[name]=new Float32Array(HIST_LEN);
     sigHist[name].copyWithin(0,1);sigHist[name][HIST_LEN-1]=signals[name];
     if(!sigCvs[name]){
-      const b=document.createElement('div');b.className='sig-block';
-      b.innerHTML=`<div class="sig-head"><span class="sig-name">${name}</span><span class="sig-val" id="sv-${name}">0.000</span></div><div class="sig-canvas-wrap"><canvas class="sig-canvas" id="sc-${name}"></canvas></div>`;
+      const b=document.createElement('div');b.className='sig-block';b.dataset.name=name;b.id='sb-'+name;
+      b.innerHTML=`<div class="sig-head"><span class="sig-name">${name}</span><span class="sig-val" id="sv-${name}">0.000</span><button class="sig-clear" title="Remove signal" onclick="clearSignal('${name}')">✕</button></div><div class="sig-canvas-wrap"><canvas class="sig-canvas" id="sc-${name}"></canvas></div>`;
       scroll.appendChild(b);sigCvs[name]=document.getElementById(`sc-${name}`);drawSig(name);
     }
     document.getElementById(`sv-${name}`).textContent=signals[name].toFixed(3);
@@ -735,72 +1128,76 @@ function drawSig(name){
 // ── PATTERNS ──────────────────────────────────────────────────────────────────
 const NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 function midiToName(n){return NOTE_NAMES[n%12]+(Math.floor(n/12)-1);}
-function patHash(p){
-  // Cheap fingerprint: note count + first/last pulse, enough to detect bar changes
-  if(!p.notes||!p.notes.length)return '0';
-  return p.notes.length+'|'+p.notes[0].s+'|'+p.notes[p.notes.length-1].s+'|'+p.length_pulses;
-}
 function updatePatterns(patterns){
   const list=document.getElementById('patList');
-  const existing=new Set([...list.querySelectorAll('.pat-row')].map(r=>r.dataset.name));
   const incoming=new Set(patterns.map(p=>p.name));
-  existing.forEach(n=>{if(!incoming.has(n))list.querySelector(`[data-name="${n}"]`)?.remove();});
+  [...list.querySelectorAll('.pat-row')].forEach(r=>{if(!incoming.has(r.dataset.name))r.remove();});
   patterns.forEach(p=>{
     if(!patCol[p.name])patCol[p.name]=COLORS[colIdx++%COLORS.length];
     const color=patCol[p.name];
     let row=list.querySelector(`[data-name="${p.name}"]`);
     if(!row){
       row=document.createElement('div');row.className='pat-row';row.dataset.name=p.name;
-      row.innerHTML=`<button class="mute-btn" data-name="${p.name}" onclick="toggleMute('${p.name}',this)">&#9679;</button><div class="pat-name">${p.name}</div><div class="pat-notes"></div>`;
+      row.innerHTML=`
+        <div class="btn-group">
+          <button class="clear-btn" title="Clear pattern" onclick="clearPattern('${p.name}')">✕</button>
+          <button class="solo-btn" title="Solo" onclick="toggleSolo('${p.name}',this)">S</button>
+        </div>
+        <div class="pat-name">${p.name}</div>
+        <div class="pat-notes"></div>`;
       list.appendChild(row);
     }
-    // Surgical mute update
-    const btn=row.querySelector('.mute-btn');
-    if(btn.classList.contains('muted')!==p.muted){
-      row.classList.toggle('muted',p.muted);
-      btn.classList.toggle('muted',p.muted);
-      btn.textContent=p.muted?'M':'\u25cf';
-    }
-    // Real-time single note pill — find the note playing at current playhead position
+    // Note pills — all unique pitches in the pattern
     const notesEl=row.querySelector('.pat-notes');
     if(!p.notes||!p.notes.length){
       notesEl.innerHTML='<span style="font-family:var(--mono);font-size:9px;color:var(--text-dark)">—</span>';
-    } else {
-      // Find position within this pattern's loop
-      const loopPulse = p.length_pulses>0 ? playheadPulse % p.length_pulses : 0;
-      // n.d is in beats; convert to pulses. Find notes active at loopPulse.
-      const active = p.notes
-        .filter(n => {
-          const durPulses = Math.max(n.d * pulsesPerBeat, 1);
-          return n.s <= loopPulse && loopPulse < n.s + durPulses;
-        })
-        .sort((a,b) => b.s - a.s);
-      // Fall back to most recent note that started before playhead
-      const prev = p.notes.filter(n=>n.s<=loopPulse).sort((a,b)=>b.s-a.s);
-      const note = active.length ? active[0] : (prev.length ? prev[0] : p.notes[0]);
-      const vel = note ? note.v : 80;
-      const op = 0.4 + vel/127*0.6;
-      const name = note ? midiToName(note.p) : '—';
-      // Update pill text/color without rebuilding if unchanged
-      let pill = notesEl.querySelector('.note-pill');
-      if(!pill){
-        pill=document.createElement('span');
-        pill.className='note-pill';
-        pill.style.background=color;
+    }else{
+      const loopPulse=p.length_pulses>0?playheadPulse%p.length_pulses:0;
+      const activeNow=new Set(p.notes.filter(n=>{const d=Math.max(n.d*pulsesPerBeat,1);return n.s<=loopPulse&&loopPulse<n.s+d;}).map(n=>n.p));
+      // collect unique pitches in order of first appearance
+      const seen=new Set(); const pitches=[];
+      p.notes.forEach(n=>{if(!seen.has(n.p)){seen.add(n.p);pitches.push({p:n.p,v:n.v});}});
+      // rebuild pills only if pitch set changed
+      const key=pitches.map(x=>x.p).join(',');
+      if(notesEl.dataset.key!==key){
+        notesEl.dataset.key=key;
         notesEl.innerHTML='';
-        notesEl.appendChild(pill);
+        pitches.forEach(({p:pitch,v:vel})=>{
+          const pill=document.createElement('span');
+          pill.className='note-pill';pill.dataset.pitch=pitch;
+          pill.style.background=color;
+          pill.style.opacity=0.4+vel/127*0.6;
+          pill.textContent=midiToName(pitch);
+          notesEl.appendChild(pill);
+        });
       }
-      if(pill.textContent!==name){pill.textContent=name;}
-      pill.style.opacity=op;
+      // update active highlight
+      notesEl.querySelectorAll('.note-pill').forEach(pill=>{
+        const pitch=parseInt(pill.dataset.pitch);
+        pill.style.outline=activeNow.has(pitch)?'1.5px solid #fff':'none';
+        pill.style.opacity=activeNow.has(pitch)?'1':(0.4+0.4*0.6)+'';
+      });
     }
   });
 }
-function clearAndRefreshPatterns(){
-  document.getElementById('patList').innerHTML='';
-  patCol={};colIdx=0;
-  log('Pattern list cleared — will repopulate on next broadcast','dim');
+function clearAndRefreshPatterns(){document.getElementById('patList').innerHTML='';patCol={};colIdx=0;log('Pattern list cleared','dim');}
+function clearPattern(name){wsSend({cmd:'clear_pattern',pattern:name});clearAndRefreshPatterns();}
+function toggleSolo(name,btn){
+  const list=document.getElementById('patList');
+  const allNames=[...list.querySelectorAll('.pat-row')].map(r=>r.dataset.name);
+  if(soloedPattern===name){
+    // unsolo — restore all
+    soloedPattern=null;
+    btn.classList.remove('soloed');
+    allNames.forEach(n=>wsSend({cmd:'unmute',pattern:n}));
+  }else{
+    // solo this one
+    soloedPattern=name;
+    list.querySelectorAll('.solo-btn').forEach(b=>b.classList.remove('soloed'));
+    btn.classList.add('soloed');
+    allNames.forEach(n=>wsSend({cmd:n===name?'unmute':'mute',pattern:n}));
+  }
 }
-function toggleMute(name,btn){wsSend({cmd:btn.classList.contains('muted')?'unmute':'mute',pattern:name});}
 
 // ── COL RESIZE ────────────────────────────────────────────────────────────────
 (function(){
@@ -811,22 +1208,44 @@ function toggleMute(name,btn){wsSend({cmd:btn.classList.contains('muted')?'unmut
   document.addEventListener('mouseup',()=>{if(drag){drag=false;document.body.style.cursor='';}});
 })();
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
-log('\u223f POMSKI — a UI for Subsequence','info');
-log('Shift+Enter to run  \u00b7  Ctrl+\u2191\u2193 history','dim');
-log('','');
+// ── LIGHT MODE ────────────────────────────────────────────────────────────────
 function toggleLight(){
   const on=document.body.classList.toggle('light');
   document.getElementById('lightToggle').classList.toggle('on',on);
   document.getElementById('lightToggleLbl').textContent=on?'On':'Off';
   localStorage.setItem('pomski_light',on?'1':'0');
 }
-// Restore light mode preference
 if(localStorage.getItem('pomski_light')==='1'){
   document.body.classList.add('light');
   document.getElementById('lightToggle').classList.add('on');
   document.getElementById('lightToggleLbl').textContent='On';
 }
+
+// ── LIVE CLIP LAUNCHER ────────────────────────────────────────────────────────
+let _liveConnected = false;
+let _liveTracks = [], _liveScenes = [];
+
+function updateLive(live){
+  _liveConnected = live.connected;
+  _liveTracks    = live.tracks  || [];
+  _liveScenes    = live.scenes  || [];
+  const dot   = document.getElementById('oscDot');
+  const label = document.getElementById('oscLabel');
+  if(dot)   dot.style.background   = _liveConnected ? 'var(--green)' : 'var(--red)';
+  if(label){
+    label.style.color   = _liveConnected ? 'var(--green)' : 'var(--text-dark)';
+    label.textContent   = _liveConnected
+      ? `Connected · ${_liveTracks.length} tracks`
+      : 'Disconnected';
+  }
+
+}
+
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+log('\u223f POMSKI \u2014 a UI for Subsequence','info');
+log('Shift+Enter to run  \u00b7  Ctrl+\u2191\u2193 history','dim');
+log('','');
 updateRunBtn();
 connect();
 </script>
