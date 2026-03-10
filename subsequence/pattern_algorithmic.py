@@ -9,6 +9,7 @@ import typing
 
 import subsequence.constants
 import subsequence.constants.velocity
+import subsequence.intervals
 import subsequence.melodic_state
 import subsequence.pattern
 import subsequence.sequence_utils
@@ -1266,3 +1267,133 @@ class PatternAlgorithmicMixin:
 		for i, v in enumerate(vals):
 			pitch = low + int((v - lo) / span * (high - low))
 			self.note(pitch, beat=i * beat_step, velocity=velocity, duration=duration)
+
+	# ── Music21 integration ───────────────────────────────────────────────────
+
+	def quantize_m21 (self, key: str, scale_name: str = "MajorScale") -> None:
+
+		"""Snap all notes to the nearest pitch in any Music21 scale type.
+
+		Extends ``p.quantize()`` with access to Music21's full scale library,
+		including exotic and non-Western scales not available in the built-in
+		mode map.
+
+		Requires ``music21`` to be installed (``pip install music21``).
+
+		Parameters:
+			key: Root note name (e.g. ``"C"``, ``"F#"``, ``"Bb"``).
+			scale_name: Any Music21 concrete scale class name.  Common values:
+
+				- ``"MajorScale"`` / ``"MinorScale"``
+				- ``"HarmonicMinorScale"`` / ``"MelodicMinorScale"``
+				- ``"DorianScale"``, ``"PhrygianScale"``, ``"LydianScale"``,
+				  ``"MixolydianScale"``, ``"LocrianScale"``
+				- ``"OctatonicScale"`` (alternating half/whole steps)
+				- ``"WholeToneScale"``
+				- ``"RagAsawari"``, ``"RagMarwa"`` (Indian ragas)
+				- ``"SieveScale"`` (Xenakis-style)
+
+		Example:
+			```python
+			@composition.pattern(channel=0, length=4)
+			def melody (p):
+			    p.brownian(start=60, steps=16)
+			    p.quantize_m21("D", "RagAsawari")
+			```
+		"""
+
+		try:
+			import music21.scale as m21scale
+			import music21.pitch as m21pitch
+		except ImportError:
+			raise ImportError(
+				"music21 is required for quantize_m21(). "
+				"Install it with: pip install music21"
+			)
+
+		scale_cls = getattr(m21scale, scale_name, None)
+		if scale_cls is None:
+			raise ValueError(
+				f"Unknown Music21 scale: '{scale_name}'. "
+				"Check music21.scale module for valid class names."
+			)
+
+		tonic = m21pitch.Pitch(key)
+		sc = scale_cls(tonic)
+		# Get one octave of pitches and extract pitch classes (0–11)
+		pitches = sc.getPitches(f"{key}1", f"{key}2")
+		scale_pcs = sorted(set(p.pitchClass for p in pitches))
+
+		for step in self._pattern.steps.values():
+			for note in step.notes:
+				note.pitch = subsequence.intervals.quantize_pitch(note.pitch, scale_pcs)
+
+	def from_midi (
+		self,
+		filepath: str,
+		track: int = 0,
+		channel: typing.Optional[int] = None,
+		pitch_offset: int = 0,
+		velocity: typing.Optional[int] = None,
+		duration: float = 0.25,
+	) -> None:
+
+		"""Load notes from a MIDI file into the pattern.
+
+		Reads a ``.mid`` file, extracts note_on events from the specified
+		track (and optionally a specific MIDI channel), and places them as
+		pattern notes.  Timing is normalised to the pattern's ``length`` so
+		the clip loops cleanly regardless of the source file's length.
+
+		Parameters:
+			filepath: Absolute or relative path to a ``.mid`` file.
+			track: Zero-based track index to read from (default 0).
+			channel: If given, only notes on this MIDI channel are loaded
+			         (0-indexed, matching POMSKI convention).  ``None`` reads
+			         all channels.
+			pitch_offset: Semitone shift applied to every loaded note.
+			velocity: Override velocity for all loaded notes.  ``None``
+			          preserves the original file velocities.
+			duration: Note duration in beats (default 0.25).
+
+		Example:
+			```python
+			@composition.pattern(channel=0, length=4)
+			def riff (p):
+			    p.from_midi("riff.mid", pitch_offset=-12)
+			    p.quantize("C", "dorian")
+			```
+		"""
+
+		try:
+			import mido
+		except ImportError:
+			raise ImportError("mido is required for from_midi() — it should already be installed.")
+
+		mid = mido.MidiFile(filepath)
+		ticks_per_beat = mid.ticks_per_beat or 480
+		pattern_beats = self._pattern.length
+
+		if track >= len(mid.tracks):
+			raise ValueError(f"Track {track} not found — file has {len(mid.tracks)} track(s).")
+
+		# Collect absolute-tick note_on events from the chosen track.
+		events: typing.List[typing.Tuple[float, int, int]] = []  # (beat, pitch, velocity)
+		abs_tick = 0
+		for msg in mid.tracks[track]:
+			abs_tick += msg.time
+			if msg.type == 'note_on' and msg.velocity > 0:
+				if channel is None or msg.channel == channel:
+					beat = abs_tick / ticks_per_beat
+					events.append((beat, msg.note, msg.velocity))
+
+		if not events:
+			return
+
+		# Normalise so the first note lands on beat 0, then wrap to pattern length.
+		offset = events[0][0]
+		for beat, pitch, vel in events:
+			wrapped_beat = (beat - offset) % pattern_beats
+			note_pitch = max(0, min(127, pitch + pitch_offset))
+			note_vel = velocity if velocity is not None else vel
+			self.note(note_pitch, beat=wrapped_beat, velocity=note_vel, duration=duration)
