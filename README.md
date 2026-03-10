@@ -7,13 +7,14 @@ Write music as Python code. Change it while it's playing.
 POMSKI is a MIDI sequencer you control from a Python script — or from a live coding environment where you can rewrite patterns, shift harmonies, and retune the tempo mid-performance without ever stopping playback.
 
 ```python
-from pomski import Composition
+import subsequence
+import subsequence.constants.instruments.gm_drums as gm_drums
 
-composition = Composition(key="C", bpm=120)
+composition = subsequence.Composition(key="C", bpm=120)
 
-@composition.pattern(channel=1, length=4)
+@composition.pattern(channel=0, length=4)
 def bass(p):
-    p.note(36, beat=0, velocity=100, duration=1)
+    p.note(36, beat=0, velocity=100, duration=0.5)
     p.note(43, beat=2, velocity=80,  duration=0.5)
 
 composition.web_ui()   # open the browser dashboard
@@ -48,6 +49,7 @@ pip install -e .
 ```bash
 pip install aalink              # Ableton Link tempo sync
 pip install mido python-rtmidi  # MIDI device selection in the Web UI
+pip install music21             # Exotic scale support (p.quantize_m21)
 ```
 
 ---
@@ -56,23 +58,43 @@ pip install mido python-rtmidi  # MIDI device selection in the Web UI
 
 ### Patterns
 
-A pattern is a function that gets called every time its loop comes around. Return notes by calling `pattern.note()`:
+A pattern is a function that gets called every time its loop comes around. Place notes by calling methods on `p`, the pattern builder:
 
 ```python
-@composition.pattern(channel=1, length=2)
+@composition.pattern(channel=0, length=2)
 def kick(p):
     p.note(36, beat=0, velocity=110, duration=0.1)
 ```
 
-`beats` sets the loop length. `bar` and `beat` tell you where you are in the composition so you can vary things over time.
+`length` sets the loop length in beats. Inside the pattern, `p.bar` tells you the current global bar and `p.cycle` tells you how many times this pattern has looped — use them to vary things over time.
+
+### MIDI channels
+
+POMSKI channels are **0-indexed**: `channel=0` = MIDI channel 1, `channel=9` = MIDI channel 10 (drums). The template assigns slots `ch1`–`ch16` to channels `0`–`15` respectively.
+
+### Drums
+
+Use `drum_note_map=gm_drums.GM_DRUM_MAP` on the decorator to address drums by name. Channel 9 is the standard GM drums channel.
+
+```python
+import subsequence.constants.instruments.gm_drums as gm_drums
+
+@composition.pattern(channel=9, length=4, drum_note_map=gm_drums.GM_DRUM_MAP)
+def drums(p):
+    p.hit_steps("kick_1",       [0, 3, 8, 12], velocity=110)
+    p.hit_steps("snare_1",      [4, 12],        velocity=100)
+    p.hit_steps("hi_hat_closed", range(16),     velocity=70)
+```
 
 ### Harmony
 
-Tell POMSKI what key and chord you're in and it will transpose your patterns automatically:
+Tell POMSKI what harmonic style to use and it will manage chord progressions automatically:
 
 ```python
-composition.harmony(key="D", chord="minor7")
+composition.harmony(style="functional_major", cycle_beats=4, gravity=0.8)
 ```
+
+Available styles include `"functional_major"`, `"aeolian_minor"`, `"dorian"`, `"lydian"`, and others. `cycle_beats` sets how often the chord changes. `gravity` (0–1) controls how strongly chords pull toward the tonic.
 
 ### Sections
 
@@ -107,7 +129,7 @@ composition.set_bpm(140)
 composition.mute("bass")
 
 # redefine a pattern entirely
-@composition.pattern(channel=1, length=4)
+@composition.pattern(channel=0, length=4)
 def bass(p):
     p.note(33, beat=0, velocity=90, duration=2)
 ```
@@ -137,18 +159,21 @@ Then open **http://localhost:8080** in any browser.
 
 **Log tab** — everything you send to the REPL and every response comes back here in colour. The quick command input at the bottom accepts Python one-liners, or prefix with `cx:` to send a ClyphX Pro action instead (e.g. `cx: 1/MUTE ON`).
 
-**Signals tab** — live scrolling waveforms for any LFOs or values you've registered with the conductor. Useful for checking that modulations are doing what you expect.
+**Signals tab** — live scrolling waveforms for any LFOs or values you've written to `composition.data`. Each signal has a ✕ button to remove it. Useful for checking that modulations are doing what you expect.
 
-**Patterns tab** — every running pattern listed with a mute button and a small 16-step grid showing which steps have notes and how loud they are.
+**Patterns tab** — every running pattern listed with a mute button, a clear (×) button, and a small 16-step grid showing which steps have notes and how loud they are.
 
-**Prefs tab** — turn Ableton Link on or off, select your MIDI input/output device, and monitor AbletonOSC connection status (track count updates live as tracks are added or removed).
+**Refs tab** — copy-ready code examples for every algorithmic method, plus a button to open the full tutorial in a new window.
+
+**Prefs tab** — turn Ableton Link on or off, select your MIDI input/output device, record a MIDI session to file, and monitor AbletonOSC connection status.
 
 ### Keyboard shortcuts
 
 | Keys | What it does |
 |---|---|
-| `Shift+Enter` | Send editor code to the live coding server |
-| `Ctrl+↑` / `Ctrl+↓` | Step through previous commands |
+| `Shift+Enter` | Send the current code block to the live coding server |
+| `Ctrl+Shift+Enter` | Send the entire editor contents |
+| `Ctrl+↑` / `Ctrl+↓` | Step through previous commands (last 200) |
 | `Tab` | Indent (4 spaces) |
 
 ---
@@ -179,10 +204,11 @@ POMSKI can communicate directly with Ableton Live via [AbletonOSC](https://githu
 2. Add `LiveBridge` to your script:
 
 ```python
-from examples.live_bridge import LiveBridge
+from live_bridge import LiveBridge
 
-composition = Composition(key="C", bpm=120)
+composition = subsequence.Composition(key="C", bpm=120)
 live = LiveBridge(composition)
+composition._live_bridge = live   # exposes Live state to the web UI
 
 # ... your patterns ...
 
@@ -197,25 +223,40 @@ The bridge connects automatically once `play()` starts. Connection status and tr
 
 ```python
 # Transport
-live.play()
-live.stop_transport()
+live.scene_play(0)
+live.track_stop(0)
 
 # Mixer
-live.track_volume(0, 0.85)   # track index, value 0.0–1.0
+live.track_volume(0, 0.85)       # track index, value 0.0–1.0
 live.track_mute(0, True)
-live.track_send(0, 0, 0.5)   # track, send index, value
 
 # Clips
-live.clip_play(0, 0)         # track, clip slot
+live.clip_play(0, 0)             # track, clip slot
 live.clip_stop(0, 0)
-live.scene_play(0)
 
 # Devices
-live.device_param(0, 0, 0, 0.5)   # track, device, param, value 0–1
+live.device_param(0, 0, 3, 0.5) # track, device, param, value 0–1
 
-# Raw OSC (full AbletonOSC API available)
-live.send("/live/song/create_midi_track", -1)
-live.send("/live/track/set/arm", 0, 1)
+# Tempo
+live.set_tempo(128.0)
+
+# Subscribe to a Live value — pushes to composition.data automatically
+live.watch("track/0/volume")     # → composition.data["live_track_0_volume"]
+
+# Inspect the session
+live.tracks                      # list of track names
+live.scenes                      # list of scene names
+live.connected                   # True if bridge is active
+```
+
+### Reading Live state inside patterns
+
+```python
+# After calling live.watch("track/0/volume"):
+@composition.pattern(channel=0, length=4)
+def melody(p):
+    vol = p.data.get("live_track_0_volume", 0.8)
+    p.seq("60 _ 63 65", velocity=int(vol * 127))
 ```
 
 ---
@@ -265,7 +306,6 @@ Check that your DAW instrument tracks are set to receive from the correct MIDI p
 
 ---
 
-
 ## Windows
 
 POMSKI runs on Windows with two things to be aware of:
@@ -278,25 +318,26 @@ Older versions of POMSKI crashed on Windows due to a signal handler that Windows
 
 ---
 
-## Max for Live device (still in testing)
+## Max for Live device (Coming Soon)
 
 If you use Ableton Live you can add a small MIDI device to any track that shows whether POMSKI is connected and lets you open the Web UI with one click.
 
-The device files are in `tools/m4l/`:
+The device files are in the project root:
+- `subsequence_webui.amxd` — the Max for Live device
+- `subsequence_webui.maxpat` — the Max patch source
+- `subsequence.js` — the node.script WebSocket connector
 
 **Setup (one time):**
-1. In Ableton, drag a **Max MIDI Effect** onto a MIDI track
-2. Click the pencil to open it in Max
-3. Select everything in the patch and delete it
-4. Open `subsequence_webui_PASTE.maxpat` in a text editor, copy everything, then go back to Max and choose **Edit → Paste from Clipboard**
-5. Copy `subsequence.js` into the same folder as your saved `.amxd` file
-6. First time only: click the `node.script` object and send it the message `script npm install ws`
+1. In Ableton, drag `subsequence_webui.amxd` onto any MIDI track
+2. First time only: click the `node.script` object inside the device and send it the message `script npm install ws`
 
 The device connects automatically when POMSKI is running and reconnects if it drops. You'll see a green LED when it's live and the current BPM ticking alongside it.
 
 ---
 
 ## API quick reference
+
+### Composition
 
 | Call | What it does |
 |---|---|
@@ -306,9 +347,56 @@ The device connects automatically when POMSKI is running and reconnects if it dr
 | `composition.unmute("name")` | Bring a pattern back |
 | `composition.web_ui()` | Start the browser dashboard (port 8080) |
 | `composition.live()` | Start the live coding server (port 5555) |
+| `composition.harmony(style, cycle_beats, gravity)` | Set harmonic style and progression speed |
 | `composition.form_next()` | Jump to the next section now |
 | `composition.form_jump("chorus")` | Jump to a named section |
-| `composition.harmony(key, chord)` | Change key and chord |
+| `composition.data` | Shared dict for cross-pattern state and Live values |
+
+### Pattern builder (p.)
+
+| Call | What it does |
+|---|---|
+| `p.note(pitch, beat, velocity, duration)` | Place a single note |
+| `p.hit_steps(pitch, steps, velocity)` | Place hits at 16th-note grid positions (0–15) |
+| `p.seq("60 _ 62 64", velocity)` | Sonic Pi-style string notation; `_` = rest |
+| `p.sequence(steps, pitches, velocity)` | Pair grid positions with a pitch list |
+| `p.euclidean(pitch, pulses, steps)` | Euclidean rhythm distribution |
+| `p.brownian(start, steps, step_size, pitch_range)` | Random-walk melody |
+| `p.lorenz(steps, pitch_range)` | Lorenz attractor → pitch |
+| `p.game_of_life(pitch, cols, rows, generations)` | Conway CA → rhythm |
+| `p.logistic(steps, r, pitch_range)` | Logistic map chaos |
+| `p.gray_scott(pitch, n, f, k)` | Reaction-diffusion → velocity |
+| `p.golden_ratio(pitch, count)` | φ-spaced note distribution |
+| `p.spectral(harmonics, steps, pitch_range)` | Sum-of-harmonics contour |
+| `p.markov(graph, steps, start)` | Markov chain melody |
+| `p.from_midi(filepath, track)` | Load notes from a .mid file |
+| `p.quantize(key, mode)` | Snap notes to a named scale |
+| `p.quantize_m21(key, scale_name)` | Snap notes to any Music21 scale |
+| `p.randomize(timing, velocity)` | Add human-feel micro-variation |
+| `p.dropout(probability)` | Randomly remove notes each cycle |
+| `p.transpose(semitones)` | Shift all notes up/down |
+| `p.shift(steps)` | Shift timing by 16th-note steps |
+| `p.reverse()` | Flip the pattern backwards |
+| `p.velocity_shape(low, high)` | Rescale velocities to a range |
+| `p.thin(density, strategy)` | Remove notes by position bias |
+
+### Pattern attributes
+
+| Attribute | Description |
+|---|---|
+| `p.cycle` | Integer — how many times this pattern has looped |
+| `p.bar` | Global bar number at the time this pattern fired |
+| `p.rng` | Seeded `random.Random` instance for reproducible randomness |
+| `p.data` | Direct reference to `composition.data` |
+| `p.section` | Current `SectionInfo` (name, bar, bars) or `None` |
+
+---
+
+## Tutorial
+
+A full interactive tutorial covering philosophy, API reference, step-by-step composition walkthrough, Python primer, and performance tips is included.
+
+Open **http://localhost:8080/tutorial.html** while POMSKI is running, or open `docs/tutorial.html` directly in any browser.
 
 ---
 
