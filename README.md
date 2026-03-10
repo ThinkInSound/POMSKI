@@ -278,7 +278,7 @@ Older versions of POMSKI crashed on Windows due to a signal handler that Windows
 
 ---
 
-## Max for Live device
+## Max for Live device (still in testing)
 
 If you use Ableton Live you can add a small MIDI device to any track that shows whether POMSKI is connected and lets you open the Web UI with one click.
 
