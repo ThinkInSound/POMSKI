@@ -20,7 +20,7 @@ def bass(p):
 
 ## Origin
 
-POMSKI is a fork of [subsequence](https://github.com/simonholliday/subsequence) by Simon Holliday, extended with a browser-based Web UI, Ableton Link sync, Windows compatibility fixes, and a Max for Live device. The original AGPLv3 license and copyright are preserved.
+POMSKI is a fork of [subsequence](https://github.com/simonholliday/subsequence) by Simon Holliday, extended with a browser-based Web UI, Ableton Link sync, AbletonOSC, ClyphX, Music21 libraries, and a soon-to-release Max for Live device. The original AGPLv3 license and copyright are preserved.
 
 ---
 
