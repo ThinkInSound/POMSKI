@@ -15,8 +15,8 @@
   --mono:'JetBrains Mono',monospace; --sans:'Inter',sans-serif; --r:4px;
 }
 body.light {
-  --bg:#f0ede8; --bg-panel:#e8e4de; --bg-input:#ddd9d2; --bg-hover:#d4cfc8; --bg-active:#cbc6be;
-  --border:#b8b3ac; --border-dim:#ccc8c2;
+  --bg:#e2ddd5; --bg-panel:#d8d3ca; --bg-input:#cec9c0; --bg-hover:#c5c0b7; --bg-active:#bcb7ae;
+  --border:#a09890; --border-dim:#b8b3aa;
   --pink:#d63e6a; --pink-dim:#f5c8d5; --purple:#7c52d9; --teal:#1e9e78;
   --orange:#c97020; --blue:#2e6fcc; --red:#cc2222; --green:#1a8a4a;
   --text:#2a2520; --text-dim:#6b6560; --text-dark:#9e9890;
@@ -433,6 +433,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <div class="panel-view" id="view-ref">
         <div class="ref-scroll">
 
+          <div style="padding:10px 12px 2px;flex-shrink:0">
+            <button onclick="window.open('/tutorial.html','_blank')" style="width:100%;padding:8px 12px;background:transparent;border:1px solid var(--teal);border-radius:4px;color:var(--teal);font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s" onmouseover="this.style.background='rgba(63,200,160,.12)'" onmouseout="this.style.background='transparent'">Open Full Tutorial ↗</button>
+          </div>
+
           <div class="ref-section">
             <div class="ref-title">REPL quirks</div>
             <div class="ref-body">
@@ -797,6 +801,36 @@ def ch1(p):
             </div>
           </div>
 
+          <div class="ref-section">
+            <div class="ref-title">External API feeds</div>
+            <div class="ref-body">
+              <div class="ref-item"><span class="ref-tag">i</span> <code>feeds</code> is pre-loaded — start polling any HTTP endpoint on-the-fly</div>
+              <div class="ref-item"><code>feeds.add(<span class="ref-arg">"key"</span>, <span class="ref-arg">"https://..."</span>, interval=<span class="ref-arg">30</span>, extract=<span class="ref-arg">lambda r: r["field"]</span>)</code></div>
+              <div class="ref-item ref-indent"><span class="ref-desc">Polls every <em>interval</em> seconds. <code>extract</code> maps JSON → value. Omit to store raw JSON.</span></div>
+              <div class="ref-item"><code>feeds.stop(<span class="ref-arg">"key"</span>)</code><span class="ref-desc">Cancel a feed</span></div>
+              <div class="ref-item"><code>feeds.stop_all()</code><span class="ref-desc">Cancel every feed</span></div>
+              <div class="ref-item"><code>feeds</code><span class="ref-desc">Show active feeds and current values</span></div>
+              <div class="ref-item"><code>composition.data.get(<span class="ref-arg">"feed_key"</span>, <span class="ref-arg">0</span>)</code><span class="ref-desc">Read in patterns</span></div>
+
+              <div class="ref-item" style="margin-top:6px"><code><span class="ref-arg"># Live ISS latitude → pitch (updates every 5s)</span></code></div>
+              <div class="ref-item ref-indent"><code>feeds.add("iss", "http://api.open-notify.org/iss-now.json",
+    interval=5, extract=lambda r: float(r["iss_position"]["latitude"]))</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Read the value inside a pattern</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)
+def ch1(p):
+    lat = composition.data.get("feed_iss", 0)
+    pitch = int(48 + (float(lat) + 90) / 180 * 36)
+    p.note(pitch, beat=0)</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># POST request with custom headers</span></code></div>
+              <div class="ref-item ref-indent"><code>feeds.add("custom", "https://api.example.com/data",
+    method="POST", body={"q": "all"},
+    headers={"Authorization": "Bearer TOKEN"},
+    extract=lambda r: r["value"])</code></div>
+            </div>
+          </div>
+
 
         </div>
       </div>
@@ -1044,7 +1078,7 @@ document.getElementById('runBtn').addEventListener('click',()=>{
 document.getElementById('codeEditor').addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.shiftKey&&!e.ctrlKey){e.preventDefault();evalCode(getBlock());}
   if(e.key==='Enter'&&e.shiftKey&&e.ctrlKey){e.preventDefault();evalCode();}
-  if(e.key==='Tab'){e.preventDefault();const s=e.target,v=s.value;s.value=v.slice(0,s.selectionStart)+'    '+v.slice(s.selectionEnd);}
+  if(e.key==='Tab'){e.preventDefault();const s=e.target,v=s.value,pos=s.selectionStart;s.value=v.slice(0,pos)+'    '+v.slice(s.selectionEnd);s.selectionStart=s.selectionEnd=pos+4;}
 });
 
 // ── QUICK INPUT ───────────────────────────────────────────────────────────────
