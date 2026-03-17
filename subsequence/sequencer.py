@@ -18,6 +18,16 @@ import subsequence.midi_utils
 logger = logging.getLogger(__name__)
 
 
+def _fire_and_log(coro: typing.Coroutine) -> asyncio.Task:
+	"""Create a fire-and-forget task that logs exceptions instead of silently dropping them."""
+	task = asyncio.create_task(coro)
+	task.add_done_callback(
+		lambda t: logger.error("Unhandled exception in background task: %s", t.exception())
+		if not t.cancelled() and t.exception() is not None else None
+	)
+	return task
+
+
 @typing.runtime_checkable
 class PatternLike (typing.Protocol):
 
@@ -281,6 +291,9 @@ class Sequencer:
 			logger.info(f"Saved {filename}")
 		except Exception as e:
 			logger.error(f"Failed to save MIDI recording: {e}")
+			return
+
+		self.recorded_events.clear()
 
 	def disable_spin_wait (self) -> None:
 
@@ -798,9 +811,9 @@ class Sequencer:
 				return
 
 			for cb in self.callbacks:
-				asyncio.create_task(cb(self.current_bar))
+				_fire_and_log(cb(self.current_bar))
 
-			asyncio.create_task(self.events.emit_async("bar", self.current_bar))
+			_fire_and_log(self.events.emit_async("bar", self.current_bar))
 
 
 	def _check_beat_change (self, pulse: int, pulses_per_beat: int) -> None:
@@ -811,7 +824,7 @@ class Sequencer:
 
 		if beat_in_bar != self.current_beat:
 			self.current_beat = beat_in_bar
-			asyncio.create_task(self.events.emit_async("beat", self.current_beat))
+			_fire_and_log(self.events.emit_async("beat", self.current_beat))
 
 
 	async def _advance_pulse (self) -> None:
@@ -1044,7 +1057,7 @@ class Sequencer:
 			scheduled_pattern.next_reschedule_pulse = scheduled_pattern.cycle_start_pulse + new_length_pulses - new_lookahead_pulses
 
 			await self.schedule_pattern(scheduled_pattern.pattern, scheduled_pattern.cycle_start_pulse)
-			asyncio.create_task(self.events.emit_async("pattern_reschedule", scheduled_pattern.pattern, scheduled_pattern.cycle_start_pulse))
+			_fire_and_log(self.events.emit_async("pattern_reschedule", scheduled_pattern.pattern, scheduled_pattern.cycle_start_pulse))
 
 		async with self.pattern_lock:
 			for scheduled_pattern in to_reschedule:
