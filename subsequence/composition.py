@@ -1594,6 +1594,8 @@ class Composition:
                     slot_match._wants_chord = _fn_has_parameter(fn, "chord")
                     slot_match.length = beat_length
                     slot_match._default_grid = default_grid
+                    if drum_note_map is not None:
+                        slot_match._drum_note_map = drum_note_map
                     logger.info(f"Hot-swapped pattern: {fn.__name__}")
                     return fn
 
@@ -1631,6 +1633,10 @@ class Composition:
                             old = _self._running_patterns.get(_n)
                             if old is not None:
                                 old._deactivated = True
+                                # Inherit drum map from the slot being replaced so
+                                # auto-assign doesn't silently wipe a channel's drum map.
+                                if pat._drum_note_map is None and getattr(old, '_drum_note_map', None) is not None:
+                                    pat._drum_note_map = old._drum_note_map
                             _self._running_patterns[_n] = pat
                             await _self._sequencer.schedule_pattern_repeating(pat, start_pulse=_self._sequencer.pulse_count)
                             print(f"[LIVE] Scheduled '{_n}' OK", flush=True)
