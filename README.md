@@ -14,9 +14,6 @@ def bass(p):
     p.note(36, beat=0, velocity=100, duration=0.5)
     p.note(43, beat=2, velocity=80,  duration=0.5)
 
-composition.web_ui()   # open the browser dashboard
-composition.live()     # start the live coding server
-composition.play()
 ```
 
 ---
