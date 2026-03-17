@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POMSKI — Tutorial</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1c1c1e;
+  --bg-panel: #252528;
+  --bg-input: #1a1a1c;
+  --bg-hover: #2e2e32;
+  --bg-code: #161618;
+  --border: #3a3a3e;
+  --border-dim: #2a2a2e;
+  --pink: #ff5c8a;
+  --pink-dim: #7a1a35;
+  --purple: #9d6fff;
+  --teal: #3fc8a0;
+  --orange: #ff9940;
+  --blue: #5ea8ff;
+  --red: #ff4f4f;
+  --green: #4cdb8c;
+  --yellow: #ffd060;
+  --text: #e2e2e8;
+  --text-dim: #888896;
+  --text-dark: #4a4a56;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Inter', sans-serif;
+  --r: 6px;
+  --content-width: 860px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 24px;
+  height: 44px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+nav::-webkit-scrollbar { display: none; }
+.nav-logo {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pink);
+  letter-spacing: 1px;
+  margin-right: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+nav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 0 12px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+nav a:hover { color: var(--text); border-color: var(--border); }
+nav a.active { color: var(--pink); border-color: var(--pink); }
+
+/* ── LAYOUT ── */
+.container {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0 24px 120px;
+}
+
+/* ── HERO ── */
+.hero {
+  padding: 80px 0 60px;
+  border-bottom: 1px solid var(--border-dim);
+  margin-bottom: 64px;
+}
+.hero-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-family: var(--mono);
+  font-size: 48px;
+  font-weight: 600;
+  color: var(--pink);
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin-bottom: 16px;
+}
+.hero-sub {
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--text-dim);
+  max-width: 580px;
+  line-height: 1.6;
+}
+
+/* ── SECTIONS ── */
+.section {
+  padding: 64px 0;
+  border-bottom: 1px solid var(--border-dim);
+}
+.section:last-child { border-bottom: none; }
+
+.section-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  margin-bottom: 10px;
+}
+h2 {
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 24px;
+  line-height: 1.2;
+}
+h3 {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--teal);
+  margin: 36px 0 12px;
+}
+h3:first-child { margin-top: 0; }
+h4 {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--purple);
+  margin: 24px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+p { margin-bottom: 16px; color: var(--text); }
+p:last-child { margin-bottom: 0; }
+
+strong { color: var(--text); font-weight: 500; }
+em { color: var(--text-dim); font-style: italic; }
+
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+ul, ol {
+  padding-left: 24px;
+  margin-bottom: 16px;
+}
+li { margin-bottom: 6px; color: var(--text); }
+li:last-child { margin-bottom: 0; }
+
+/* ── CALLOUT BOXES ── */
+.callout {
+  border-left: 3px solid var(--teal);
+  background: rgba(63, 200, 160, 0.06);
+  padding: 14px 18px;
+  border-radius: 0 var(--r) var(--r) 0;
+  margin: 24px 0;
+}
+.callout.warn {
+  border-color: var(--orange);
+  background: rgba(255, 153, 64, 0.06);
+}
+.callout.info {
+  border-color: var(--purple);
+  background: rgba(157, 111, 255, 0.06);
+}
+.callout.tip {
+  border-color: var(--pink);
+  background: rgba(255, 92, 138, 0.06);
+}
+.callout-title {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  color: var(--teal);
+}
+.callout.warn .callout-title { color: var(--orange); }
+.callout.info .callout-title { color: var(--purple); }
+.callout.tip .callout-title { color: var(--pink); }
+.callout p { margin: 0; font-size: 13px; }
+
+/* ── CODE ── */
+code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--bg-code);
+  color: var(--orange);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border-dim);
+}
+
+.code-block {
+  position: relative;
+  margin: 20px 0;
+}
+.code-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  padding: 6px 14px;
+  border-radius: var(--r) var(--r) 0 0;
+  display: inline-block;
+}
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px 22px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  tab-size: 4;
+}
+.code-label + pre {
+  border-radius: 0 var(--r) var(--r) var(--r);
+}
+pre .kw  { color: var(--purple); }
+pre .fn  { color: var(--blue); }
+pre .str { color: var(--green); }
+pre .num { color: var(--orange); }
+pre .cm  { color: var(--text-dark); font-style: italic; }
+pre .dec { color: var(--pink); }
+pre .sig { color: var(--teal); }
+pre .var { color: var(--text); }
+
+/* copy button */
+.code-block { position: relative; }
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dark);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: color .1s, border-color .1s;
+  z-index: 1;
+}
+.copy-btn:hover { color: var(--text); border-color: var(--border); }
+.copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+/* ── METHOD TABLE ── */
+.method-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 13px;
+}
+.method-table th {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.method-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-dim);
+  vertical-align: top;
+}
+.method-table tr:last-child td { border-bottom: none; }
+.method-table tr:hover td { background: rgba(255,255,255,0.02); }
+.method-table .m-name {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--blue);
+  white-space: nowrap;
+}
+.method-table .m-desc { color: var(--text-dim); line-height: 1.5; }
+
+/* ── STEP GUIDE ── */
+.step {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+.step-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--pink);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.step-body h3 { margin-top: 0; }
+.step-body { flex: 1; }
+
+/* ── PYTHON PRIMER CARDS ── */
+.concept-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+@media (max-width: 640px) { .concept-grid { grid-template-columns: 1fr; } }
+.concept-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+}
+.concept-card h4 { margin: 0 0 8px; }
+.concept-card pre {
+  margin: 8px 0 0;
+  border: none;
+  background: var(--bg-code);
+  padding: 12px;
+  font-size: 11.5px;
+}
+
+/* ── SCALE TABLE ── */
+.scale-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 16px 0;
+}
+@media (max-width: 640px) { .scale-grid { grid-template-columns: 1fr 1fr; } }
+.scale-pill {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--teal);
+  background: rgba(63, 200, 160, 0.08);
+  border: 1px solid rgba(63, 200, 160, 0.2);
+  padding: 6px 10px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border-dim);
+  padding: 40px 0;
+  margin-top: 80px;
+  color: var(--text-dark);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">POMSKI</span>
+  <a href="#why">Why</a>
+  <a href="#setup">Setup</a>
+  <a href="#python">Python</a>
+  <a href="#model">Model</a>
+  <a href="#first">First Pattern</a>
+  <a href="#api">API</a>
+  <a href="#building">Building a Track</a>
+  <a href="#evolving">Evolution</a>
+  <a href="#signals">Signals</a>
+  <a href="#algorithmic">Algorithmic</a>
+  <a href="#live">Ableton</a>
+  <a href="#performance">Performance</a>
+  <a href="#apifeeds">API Feeds</a>
+</nav>
+
+<div class="container">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Complete Tutorial</div>
+  <h1>Live-Code<br>Your Music.</h1>
+  <p class="hero-sub">
+    POMSKI is a Python-based live-coding environment for real-time MIDI composition.
+    Write and rewrite patterns while the music plays — no stopping, no rendering, no waiting.
+  </p>
+</div>
+
+<!-- ─────────────────────────── WHY ─────────────────────────── -->
+<section class="section" id="why">
+  <div class="section-tag">01 — Philosophy</div>
+  <h2>Why live-code music?</h2>
+
+  <p>
+    Most music software asks you to <strong>build first, then listen</strong>. You place notes on a grid,
+    render an audio file, press play, realise something is wrong, go back to the grid.
+    The feedback loop is slow, and the act of composition is disconnected from the act of listening.
+  </p>
+
+  <p>
+    POMSKI inverts this. You write a few lines of Python, press <code>Shift+Enter</code>, and the change
+    takes effect on the <em>very next bar</em> — while everything else keeps playing. The music is always
+    running. You are always inside it.
+  </p>
+
+  <h3>The live-coding philosophy</h3>
+
+  <p>
+    Live coding is a practice borrowed from computer science performance art (the Algorave scene, SuperCollider,
+    TidalCycles). Its central insight is that <strong>code is notation</strong> — a precise, expressive
+    language for describing musical pattern. Unlike a piano roll, code can describe not just a specific
+    sequence of notes but the <em>rules that generate</em> a sequence: mathematical systems, probability,
+    chaos, feedback loops.
+  </p>
+
+  <div class="callout info">
+    <div class="callout-title">The key shift</div>
+    <p>In a DAW you compose a <em>performance</em>. In POMSKI you <em>perform</em> a composition.
+    The score and the concert are the same event.</p>
+  </div>
+
+  <h3>What POMSKI adds to this</h3>
+
+  <ul>
+    <li><strong>MIDI-native</strong> — POMSKI speaks directly to your instruments and DAW via MIDI. No audio engine to worry about.</li>
+    <li><strong>Browser UI</strong> — a visual dashboard at <code>http://localhost:8080</code> lets you see patterns, mute channels, monitor signals, and run REPL commands without touching the terminal.</li>
+    <li><strong>Ableton Live bridge</strong> — two-way communication with Live. Trigger clips, read track volumes, fire scenes — all from code.</li>
+    <li><strong>Designed for performers</strong> — every hot-swap takes effect on the next bar boundary. Nothing clicks, stutters, or loses sync.</li>
+  </ul>
+
+  <h3>Who is this for?</h3>
+
+  <ul>
+    <li>Producers who want to break out of the static session view and improvise structurally</li>
+    <li>Electronic musicians tired of loop-based thinking who want generative variation without Max/MSP complexity</li>
+    <li>Composers exploring algorithmic systems (cellular automata, chaos theory, Euclidean rhythms) without a PhD in DSP</li>
+    <li>Performers who want a live tool that is completely transparent — every sound is a line of readable code</li>
+  </ul>
+
+  <div class="callout tip">
+    <div class="callout-title">You do not need to be a programmer</div>
+    <p>You need to understand about 8 Python concepts. All of them are explained in the
+    <a href="#python">Python Primer</a> section. If you can write a grocery list, you can write a POMSKI pattern.</p>
+  </div>
+</section>
+
+<!-- ─────────────────────────── SETUP ─────────────────────────── -->
+<section class="section" id="setup">
+  <div class="section-tag">02 — Getting Started</div>
+  <h2>Setup &amp; first run</h2>
+
+  <h3>Prerequisites</h3>
+  <ul>
+    <li>Python 3.10 or newer</li>
+    <li>A MIDI output device or virtual MIDI port (e.g. <strong>loopMIDI</strong> on Windows, <strong>IAC Driver</strong> on macOS)</li>
+    <li>A DAW or synthesizer listening on that MIDI port</li>
+    <li>Optional: <a href="https://github.com/AbletonOSC/AbletonOSC" target="_blank">AbletonOSC</a> for the Ableton Live bridge</li>
+  </ul>
+
+  <div class="callout warn">
+    <div class="callout-title">LoopBe internal MIDI (Windows)</div>
+    <p>If using LoopBe as your virtual MIDI port, its feedback protection will silently mute output if
+    it detects a loop. Check the LoopBe tray icon if MIDI goes silent unexpectedly.</p>
+  </div>
+
+  <h3>Running the template</h3>
+
+  <div class="code-block">
+    <div class="code-label">Terminal</div>
+    <pre><span class="cm"># From the project directory:</span>
+<span class="var">python</span> examples/pomski_template.py</pre>
+  </div>
+
+  <p>You will see startup messages. Then open your browser to <strong>http://localhost:8080</strong>.</p>
+
+  <h3>The web UI layout</h3>
+
+  <ul>
+    <li><strong>Top bar</strong> — BPM (drag to change), bar counter, beat, current key and chord, TAP tempo button</li>
+    <li><strong>Editor panel (left)</strong> — write and send code to the live REPL. <code>Shift+Enter</code> sends the current block. <code>Ctrl+Shift+Enter</code> sends the whole editor. <code>Ctrl+↑/↓</code> scrolls command history.</li>
+    <li><strong>Log panel (below editor)</strong> — shows sent commands, REPL results, and errors</li>
+    <li><strong>Patterns tab</strong> — visual grid of all 16 active pattern slots. Click the × to clear a slot.</li>
+    <li><strong>Signals tab</strong> — live scrolling graphs of all active modulators (LFOs, Perlin noise, etc.)</li>
+    <li><strong>Refs tab</strong> — copy-ready code examples for every algorithmic method</li>
+    <li><strong>Prefs tab</strong> — MIDI device selection, record button, theme toggle</li>
+  </ul>
+
+  <div class="callout">
+    <div class="callout-title">Quick test</div>
+    <p>Copy this into the editor and press <code>Shift+Enter</code>. You should hear a metronome-like kick on MIDI channel 1.</p>
+  </div>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">note</span>(<span class="num">60</span>, <span class="var">beat</span>=<span class="num">0</span>)</pre>
+  </div>
+</section>
+
+<!-- ─────────────────────────── PYTHON PRIMER ─────────────────────────── -->
+<section class="section" id="python">
+  <div class="section-tag">03 — Python Primer</div>
+  <h2>Python for musicians</h2>
+
+  <p>
+    You need exactly eight Python concepts to use POMSKI. Nothing else is required.
+  </p>
+
+  <div class="concept-grid">
+
+    <div class="concept-card">
+      <h4>Variables</h4>
+      <p style="font-size:12px;color:var(--text-dim)">Store a value and reuse it by name.</p>
+      <pre><span class="var">root</span> = <span class="num">60</span>           <span class="cm"># middle C</span>
+<span class="var">speed</span> = <span class="num">0.25</span>       <span class="cm"># quarter note</span>
+<span class="var">scale</span> = <span class="str">"dorian"</span></pre>
+    </div>
+
+    <div class="concept-card">
+      <h4>Functions (def)</h4>
+      <p style="font-size:12px;color:var(--text-dim)">A named block of code that runs when called.</p>
+      <pre><span class="kw">def</span> <span class="fn">greet</span>():
+    <span class="fn">print</span>(<span class="str">"hello"</span>)
+
+<span class="fn">greet</span>()  <span class="cm"># runs it</span></pre>
+    </div>
+
+    <div class="concept-card">
+      <h4>The @ Decorator</h4>
+      <p style="font-size:12px;color:var(--text-dim)">Wraps a function with extra behaviour. This is how POMSKI registers patterns.</p>
+      <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    ...  <span class="cm"># your pattern here</span></pre>
+    </div>
+
+    <div class="concept-card">
+      <h4>For Loops</h4>
+      <p style="font-size:12px;color:var(--text-dim)">Repeat an action a set number of times.</p>
+      <pre><span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="num">4</span>):
+    <span class="cm"># runs 4 times: i=0,1,2,3</span>
+    <span class="var">p</span>.<span class="fn">note</span>(<span class="num">60</span>, <span class="var">beat</span>=<span class="var">i</span>)</pre>
+    </div>
+
+    <div class="concept-card">
+      <h4>Lists</h4>
+      <p style="font-size:12px;color:var(--text-dim)">An ordered collection of values. Access items by index (starting at 0).</p>
+      <pre><span class="var">notes</span> = [<span class="num">60</span>, <span class="num">63</span>, <span class="num">67</span>, <span class="num">70</span>]
+<span class="var">notes</span>[<span class="num">0</span>]  <span class="cm"># → 60 (first)</span>
+<span class="var">notes</span>[<span class="num">2</span>]  <span class="cm"># → 67 (third)</span></pre>
+    </div>
+
+    <div class="concept-card">
+      <h4>Modulo %</h4>
+      <p style="font-size:12px;color:var(--text-dim)">Returns the remainder after division. Essential for cycling through lists.</p>
+      <pre><span class="num">7</span> % <span class="num">4</span>  <span class="cm"># → 3</span>
+<span class="num">8</span> % <span class="num">4</span>  <span class="cm"># → 0  (wraps back)</span>
+<span class="cm"># Cycle through a list:</span>
+<span class="var">notes</span>[<span class="var">p</span>.<span class="var">cycle</span> % <span class="fn">len</span>(<span class="var">notes</span>)]</pre>
+    </div>
+
+    <div class="concept-card">
+      <h4>Conditionals (if)</h4>
+      <p style="font-size:12px;color:var(--text-dim)">Run code only when a condition is true.</p>
+      <pre><span class="kw">if</span> <span class="var">p</span>.<span class="var">cycle</span> % <span class="num">4</span> == <span class="num">0</span>:
+    <span class="cm"># runs every 4 loops</span>
+    <span class="var">p</span>.<span class="fn">note</span>(<span class="num">72</span>, <span class="var">beat</span>=<span class="num">0</span>)</pre>
+    </div>
+
+    <div class="concept-card">
+      <h4>Enumerate</h4>
+      <p style="font-size:12px;color:var(--text-dim)">Loop through a list and get both the index and the value.</p>
+      <pre><span class="var">pitches</span> = [<span class="num">60</span>, <span class="num">64</span>, <span class="num">67</span>]
+<span class="kw">for</span> <span class="var">i</span>, <span class="var">pitch</span> <span class="kw">in</span> <span class="fn">enumerate</span>(<span class="var">pitches</span>):
+    <span class="var">p</span>.<span class="fn">note</span>(<span class="var">pitch</span>, <span class="var">beat</span>=<span class="var">i</span>)</pre>
+    </div>
+
+  </div>
+
+  <h3>The p object</h3>
+
+  <p>
+    Inside every pattern function, <code>p</code> is your <strong>pattern builder</strong>. It is passed in automatically —
+    you never create it yourself. Every method you call on it (<code>p.note()</code>, <code>p.euclidean()</code>, etc.)
+    adds events to the current loop cycle of that pattern.
+  </p>
+
+  <p>
+    <code>p</code> has a few useful read-only attributes:
+  </p>
+
+  <table class="method-table">
+    <tr><th>Attribute</th><th>Type</th><th>Description</th></tr>
+    <tr><td class="m-name">p.cycle</td><td><code>int</code></td><td class="m-desc">How many times this pattern has looped since it was defined. Starts at 0. Use it for evolving patterns over time.</td></tr>
+    <tr><td class="m-name">p.bar</td><td><code>int</code></td><td class="m-desc">The global bar number at the time this pattern fired.</td></tr>
+    <tr><td class="m-name">p.rng</td><td><code>Random</code></td><td class="m-desc">A seeded random number generator. Use <code>p.rng.random()</code>, <code>p.rng.choice(list)</code>, <code>p.rng.randint(a,b)</code>. Reproducible — same seed every time the pattern restarts.</td></tr>
+    <tr><td class="m-name">p.section</td><td><code>SectionInfo</code></td><td class="m-desc">Current form section (name, bar within section, total bars). <code>None</code> if no form is defined.</td></tr>
+    <tr><td class="m-name">p.data</td><td><code>dict</code></td><td class="m-desc">Direct reference to <code>composition.data</code>. Use it to read Live values, signals, or cross-pattern state.</td></tr>
+  </table>
+
+  <div class="callout warn">
+    <div class="callout-title">p.cycle is an integer, not a function</div>
+    <p><code>p.cycle</code> is a number. Do <strong>not</strong> write <code>p.cycle([60, 63])</code> —
+    that will throw a TypeError. To cycle through a list, write <code>my_list[p.cycle % len(my_list)]</code>.</p>
+  </div>
+
+  <h3>MIDI pitch numbers</h3>
+  <p>
+    POMSKI uses raw MIDI pitch numbers (0–127). Middle C is 60. Each semitone is +1 or −1.
+    An octave is 12 semitones. Common reference points:
+  </p>
+  <table class="method-table">
+    <tr><th>Note</th><th>MIDI#</th><th>Note</th><th>MIDI#</th><th>Note</th><th>MIDI#</th></tr>
+    <tr><td class="m-name">C3</td><td>48</td><td class="m-name">C4 (middle C)</td><td>60</td><td class="m-name">C5</td><td>72</td></tr>
+    <tr><td class="m-name">D3</td><td>50</td><td class="m-name">D4</td><td>62</td><td class="m-name">G4</td><td>67</td></tr>
+    <tr><td class="m-name">E3</td><td>52</td><td class="m-name">E4</td><td>64</td><td class="m-name">A4</td><td>69</td></tr>
+    <tr><td class="m-name">F3</td><td>53</td><td class="m-name">F4</td><td>65</td><td class="m-name">Bb4</td><td>70</td></tr>
+  </table>
+</section>
+
+<!-- ─────────────────────────── MODEL ─────────────────────────── -->
+<section class="section" id="model">
+  <div class="section-tag">04 — Core Model</div>
+  <h2>How POMSKI works</h2>
+
+  <h3>The composition object</h3>
+  <p>
+    Everything lives inside a <code>composition</code>. It holds the clock, the key, the harmony, and all
+    the running patterns. You start it at the bottom of your script with <code>composition.play()</code>,
+    which blocks forever and runs the event loop.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="var">composition</span> = <span class="var">subsequence</span>.<span class="fn">Composition</span>(<span class="var">key</span>=<span class="str">"C"</span>, <span class="var">bpm</span>=<span class="num">120</span>)
+<span class="var">composition</span>.<span class="fn">harmony</span>(<span class="var">style</span>=<span class="str">"functional_major"</span>, <span class="var">cycle_beats</span>=<span class="num">4</span>)
+<span class="var">composition</span>.<span class="fn">web_ui</span>()    <span class="cm"># start the browser dashboard</span>
+<span class="var">composition</span>.<span class="fn">live</span>()      <span class="cm"># start the REPL server on port 5555</span>
+<span class="var">composition</span>.<span class="fn">play</span>()      <span class="cm"># always last — starts the clock</span></pre>
+  </div>
+
+  <h3>Pattern slots</h3>
+  <p>
+    The template defines 16 slots — <code>ch1</code> through <code>ch16</code> — one per MIDI channel.
+    Each slot is a silent placeholder. To make a slot play, you <strong>redefine it by name</strong>
+    from the browser editor. The scheduler detects the same function name and swaps the new pattern
+    in at the next bar boundary without interrupting playback.
+  </p>
+
+  <h3>Channels</h3>
+  <p>
+    POMSKI channels are <strong>0-indexed</strong>. MIDI channel 1 = <code>channel=0</code>,
+    channel 10 (drums) = <code>channel=9</code>. This is a common source of confusion — the template
+    assigns slots in order, so <code>ch1</code> is <code>channel=0</code>, <code>ch10</code> is
+    <code>channel=9</code>.
+  </p>
+
+  <div class="callout">
+    <div class="callout-title">Auto-assign</div>
+    <p>If you use a <em>new</em> function name (one not already in the 16 slots), POMSKI automatically
+    steals the first empty slot and puts your pattern there. You can use any name you like.</p>
+  </div>
+
+  <h3>Pattern length</h3>
+  <p>
+    <code>length</code> is in beats. <code>length=4</code> is one 4/4 bar.
+    <code>length=8</code> is two bars. <code>length=0.5</code> is a half-bar (2 beats).
+    Patterns of different lengths run simultaneously and loop independently — a 3-beat and a 4-beat
+    pattern will phase against each other like a polyrhythm.
+  </p>
+
+  <h3>The hot-swap mechanism</h3>
+  <p>
+    When you send a redefined pattern from the browser, the live server executes the decorator.
+    If a pattern with that name is already running, POMSKI replaces its builder function on the
+    existing slot at the next bar boundary. The channel, MIDI routing, and sync all remain intact.
+    Nothing restarts. Nothing skips.
+  </p>
+</section>
+
+<!-- ─────────────────────────── FIRST PATTERN ─────────────────────────── -->
+<section class="section" id="first">
+  <div class="section-tag">05 — First Steps</div>
+  <h2>Your first pattern</h2>
+
+  <h3>A single note</h3>
+  <p>The simplest possible pattern. One note on beat 0, looping every 4 beats.</p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">note</span>(<span class="num">60</span>, <span class="var">beat</span>=<span class="num">0</span>)</pre>
+  </div>
+
+  <h3>Adding notes</h3>
+  <p>Beat positions are in beats from the start of the pattern. Beat 0 = the downbeat.
+  Beat 0.5 = the "and" of beat 1. Beat 1 = beat 2 of the bar.</p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">note</span>(<span class="num">60</span>, <span class="var">beat</span>=<span class="num">0</span>,   <span class="var">velocity</span>=<span class="num">100</span>, <span class="var">duration</span>=<span class="num">0.4</span>)
+    <span class="var">p</span>.<span class="fn">note</span>(<span class="num">64</span>, <span class="var">beat</span>=<span class="num">1</span>,   <span class="var">velocity</span>=<span class="num">80</span>,  <span class="var">duration</span>=<span class="num">0.4</span>)
+    <span class="var">p</span>.<span class="fn">note</span>(<span class="num">67</span>, <span class="var">beat</span>=<span class="num">2</span>,   <span class="var">velocity</span>=<span class="num">80</span>,  <span class="var">duration</span>=<span class="num">0.4</span>)
+    <span class="var">p</span>.<span class="fn">note</span>(<span class="num">60</span>, <span class="var">beat</span>=<span class="num">3</span>,   <span class="var">velocity</span>=<span class="num">60</span>,  <span class="var">duration</span>=<span class="num">0.4</span>)</pre>
+  </div>
+
+  <h3>A drum pattern</h3>
+  <p>Drums go on <code>channel=9</code> (MIDI channel 10). Use <code>drum_note_map=gm_drums.GM_DRUM_MAP</code>
+  to use drum names instead of numbers.</p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">9</span>, <span class="var">length</span>=<span class="num">4</span>, <span class="var">drum_note_map</span>=<span class="var">gm_drums</span>.<span class="var">GM_DRUM_MAP</span>)
+<span class="kw">def</span> <span class="fn">ch10</span>(<span class="var">p</span>):
+    <span class="cm"># hit_steps places hits at 16th-note grid positions (0–15)</span>
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"kick_1"</span>,       [<span class="num">0</span>, <span class="num">3</span>, <span class="num">8</span>, <span class="num">12</span>], <span class="var">velocity</span>=<span class="num">110</span>)
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"snare_1"</span>,      [<span class="num">4</span>, <span class="num">12</span>],       <span class="var">velocity</span>=<span class="num">100</span>)
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"hi_hat_closed"</span>, <span class="fn">range</span>(<span class="num">16</span>),     <span class="var">velocity</span>=<span class="num">70</span>)
+    <span class="var">p</span>.<span class="fn">velocity_shape</span>(<span class="var">low</span>=<span class="num">55</span>, <span class="var">high</span>=<span class="num">90</span>)  <span class="cm"># humanise velocity</span></pre>
+  </div>
+
+  <h3>The seq() shorthand</h3>
+  <p>Write a melody in Sonic Pi style — space-separated pitch numbers with <code>_</code> for rests.</p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">1</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch2</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 _ 63 _ 65 67 _ 63"</span>, <span class="var">velocity</span>=<span class="num">80</span>)
+    <span class="cm"># plays: C4, rest, Eb4, rest, F4, G4, rest, Eb4</span>
+    <span class="cm"># each token is one eighth note (length/8 = 0.5 beats)</span></pre>
+  </div>
+
+  <h3>Clearing a pattern</h3>
+  <p>To silence a slot without stopping playback, click the × button on that slot in the
+  Patterns tab, or send a blank definition:</p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="kw">pass</span>  <span class="cm"># empty body = silence</span></pre>
+  </div>
+</section>
+
+<!-- ─────────────────────────── API ─────────────────────────── -->
+<section class="section" id="api">
+  <div class="section-tag">06 — API Reference</div>
+  <h2>The p. method reference</h2>
+
+  <h3>Placing notes</h3>
+  <table class="method-table">
+    <tr><th>Method</th><th>Description</th></tr>
+    <tr>
+      <td class="m-name">p.note(pitch, beat, velocity, duration)</td>
+      <td class="m-desc">Place a single note. <code>pitch</code>: MIDI 0–127. <code>beat</code>: position in beats from start of pattern. <code>velocity</code>: 0–127 (default 100). <code>duration</code>: length in beats (default 0.5).</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.hit_steps(pitch, steps, velocity)</td>
+      <td class="m-desc">Place hits at 16th-note grid positions. <code>steps</code> is a list of indices 0–15. With <code>drum_note_map</code>, <code>pitch</code> can be a drum name string like <code>"kick_1"</code>.</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.sequence(steps, pitches, velocities, durations)</td>
+      <td class="m-desc">Pair a list of grid positions with a list of pitches. Positions are 16th-note indices; pitch list cycles if shorter than steps list. Parameters are <code>velocities</code> and <code>durations</code> (plural) — pass a single int/float or a list.</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.seq(notation, velocity)</td>
+      <td class="m-desc">Sonic Pi style: space-separated numbers, <code>_</code> for rests. All tokens are equal duration (pattern length / token count). Example: <code>"60 _ 62 64"</code>. Note: <code>p.seq()</code> has no <code>duration</code> parameter — note length is set automatically.</td>
+    </tr>
+  </table>
+
+  <h3>Rhythmic tools</h3>
+  <table class="method-table">
+    <tr><th>Method</th><th>Description</th></tr>
+    <tr>
+      <td class="m-name">p.euclidean(pitch, pulses, velocity, duration)</td>
+      <td class="m-desc">Distribute <code>pulses</code> hits as evenly as possible across the pattern's grid (Björklund algorithm). The grid size is derived automatically from the pattern's <code>length</code>. Classic for polyrhythmic layering.</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.bresenham(pitch, pulses, velocity, duration)</td>
+      <td class="m-desc">Alternate even distribution using the Bresenham line algorithm — creates slightly different accent patterns than Euclidean. Grid size is derived automatically from pattern length.</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.hit_steps() with range()</td>
+      <td class="m-desc">For quick straight 8ths or 16ths: <code>range(0, 16, 2)</code> = every other step (8th notes). <code>range(16)</code> = all 16 steps.</td>
+    </tr>
+  </table>
+
+  <h3>Modifiers — call these after placing notes</h3>
+  <table class="method-table">
+    <tr><th>Method</th><th>Description</th></tr>
+    <tr>
+      <td class="m-name">p.randomize(timing, velocity)</td>
+      <td class="m-desc">Add human-feel micro-timing and velocity variation. <code>timing=0.02</code> means ±2% of a beat. <code>velocity=0.05</code> means ±5% velocity.</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.dropout(probability)</td>
+      <td class="m-desc">Randomly remove notes. <code>p.dropout(0.2)</code> = 20% chance each note is silenced on this cycle. Adds natural variation without changing the underlying pattern.</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.quantize(key, mode)</td>
+      <td class="m-desc">Snap all notes to the nearest pitch in a scale. Key is a note name (<code>"C"</code>, <code>"F#"</code>, <code>"Bb"</code>). Mode is a scale name (<code>"ionian"</code>, <code>"dorian"</code>, <code>"minor"</code>, <code>"harmonic_minor"</code>, etc.).</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.quantize_m21(key, scale_name)</td>
+      <td class="m-desc">Like <code>p.quantize()</code> but unlocks Music21's full scale library. Use for ragas, octatonic, whole-tone, and other exotic scales. Requires <code>pip install music21</code>.</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.transpose(semitones)</td>
+      <td class="m-desc">Shift all notes up or down by a fixed number of semitones. Combine with <code>p.cycle</code> for automatic transposition.</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.shift(steps)</td>
+      <td class="m-desc">Move all notes forward or backward in time by <code>steps</code> 16th-note positions. Useful for polyrhythmic offset against other patterns.</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.reverse()</td>
+      <td class="m-desc">Flip the pattern backwards in time.</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.velocity_shape(low, high)</td>
+      <td class="m-desc">Re-scale all velocities to fit within a <code>low–high</code> range, preserving relative dynamics. Great for humanising step-sequenced drum patterns.</td>
+    </tr>
+    <tr>
+      <td class="m-name">p.thin(pitch, strategy, amount)</td>
+      <td class="m-desc">Remove notes for a specific pitch or drum name based on rhythmic position. <code>amount=0.5</code> removes roughly half; <code>amount=1.0</code> removes all qualifying notes. Strategies: <code>"strength"</code> (default — weakest positions drop first), <code>"sixteenths"</code>, <code>"offbeat"</code>, <code>"e_and_a"</code>, <code>"downbeat"</code>, <code>"upbeat"</code>, <code>"uniform"</code>. Unlike <code>p.dropout()</code>, targets one instrument and respects rhythmic position.</td>
+    </tr>
+  </table>
+
+  <h3>Loading from files</h3>
+  <table class="method-table">
+    <tr><th>Method</th><th>Description</th></tr>
+    <tr>
+      <td class="m-name">p.from_midi(filepath, track, channel, pitch_offset, velocity, duration)</td>
+      <td class="m-desc">Read notes from a <code>.mid</code> file and place them in the pattern. Timing is normalised to beat 0 and wrapped to pattern length. <code>track</code> is the zero-based track index. <code>pitch_offset</code> transposes all loaded notes.</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ─────────────────────────── BUILDING A TRACK ─────────────────────────── -->
+<section class="section" id="building">
+  <div class="section-tag">07 — Walkthrough</div>
+  <h2>Building a track from scratch</h2>
+
+  <p>Here is a complete step-by-step process for building a live track in POMSKI, starting from silence.
+  Each step is sent as a separate block from the editor — the previous patterns keep playing while you add new ones.</p>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h3>Lay the drums</h3>
+      <p>Start with rhythm. Keep it simple — kick and hi-hat first. Add the snare in a moment.</p>
+      <div class="code-block">
+        <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">9</span>, <span class="var">length</span>=<span class="num">4</span>, <span class="var">drum_note_map</span>=<span class="var">gm_drums</span>.<span class="var">GM_DRUM_MAP</span>)
+<span class="kw">def</span> <span class="fn">ch10</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"kick_1"</span>,       [<span class="num">0</span>, <span class="num">8</span>],       <span class="var">velocity</span>=<span class="num">110</span>)
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"hi_hat_closed"</span>, <span class="fn">range</span>(<span class="num">16</span>),   <span class="var">velocity</span>=<span class="num">65</span>)
+    <span class="var">p</span>.<span class="fn">velocity_shape</span>(<span class="var">low</span>=<span class="num">50</span>, <span class="var">high</span>=<span class="num">80</span>)</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h3>Add a bass line</h3>
+      <p>A repeating root note with a rhythmic pattern. Low octave, short duration for punch.</p>
+      <div class="code-block">
+        <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">1</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch2</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="num">36</span>, [<span class="num">0</span>, <span class="num">3</span>, <span class="num">8</span>, <span class="num">11</span>, <span class="num">14</span>], <span class="var">velocity</span>=<span class="num">100</span>)  <span class="cm"># C2</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h3>Layer a melody</h3>
+      <p>A simple ascending figure using <code>p.seq()</code>. The <code>_</code> rests give it breathing room.</p>
+      <div class="code-block">
+        <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 _ 63 65 _ 67 _ 65"</span>, <span class="var">velocity</span>=<span class="num">80</span>)
+    <span class="var">p</span>.<span class="fn">randomize</span>(<span class="var">timing</span>=<span class="num">0.01</span>, <span class="var">velocity</span>=<span class="num">0.04</span>)</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <h3>Evolve the drums</h3>
+      <p>Redefine ch10 with more elements. The existing kick and hi-hat keep playing until the bar ends, then this replaces them.</p>
+      <div class="code-block">
+        <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">9</span>, <span class="var">length</span>=<span class="num">4</span>, <span class="var">drum_note_map</span>=<span class="var">gm_drums</span>.<span class="var">GM_DRUM_MAP</span>)
+<span class="kw">def</span> <span class="fn">ch10</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"kick_1"</span>,       [<span class="num">0</span>, <span class="num">3</span>, <span class="num">8</span>, <span class="num">12</span>], <span class="var">velocity</span>=<span class="num">110</span>)
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"snare_1"</span>,      [<span class="num">4</span>, <span class="num">12</span>],       <span class="var">velocity</span>=<span class="num">100</span>)
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"hi_hat_closed"</span>, <span class="fn">range</span>(<span class="num">16</span>),   <span class="var">velocity</span>=<span class="num">70</span>)
+    <span class="var">p</span>.<span class="fn">velocity_shape</span>(<span class="var">low</span>=<span class="num">55</span>, <span class="var">high</span>=<span class="num">90</span>)</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <h3>Add variation with p.cycle</h3>
+      <p>Make the melody change every 4 loops — play one phrase for 4 bars, then another.</p>
+      <div class="code-block">
+        <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">phrases</span> = [
+        <span class="str">"60 _ 63 65 _ 67 _ 65"</span>,
+        <span class="str">"67 _ 65 63 _ 60 _ 63"</span>,
+        <span class="str">"65 67 _ 70 _ 67 65 _"</span>,
+    ]
+    <span class="var">phrase</span> = <span class="var">phrases</span>[(<span class="var">p</span>.<span class="var">cycle</span> // <span class="num">4</span>) % <span class="fn">len</span>(<span class="var">phrases</span>)]
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="var">phrase</span>, <span class="var">velocity</span>=<span class="num">80</span>)
+    <span class="var">p</span>.<span class="fn">randomize</span>(<span class="var">timing</span>=<span class="num">0.01</span>)</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-body">
+      <h3>Mute and unmute for arrangement</h3>
+      <p>Use the Patterns tab mute buttons, or type these into the Quick Command box at the bottom of the log panel:</p>
+      <div class="code-block">
+        <pre><span class="var">composition</span>.<span class="fn">mute</span>(<span class="str">"ch10"</span>)    <span class="cm"># silence drums</span>
+<span class="var">composition</span>.<span class="fn">unmute</span>(<span class="str">"ch10"</span>)  <span class="cm"># bring them back</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────── EVOLVING ─────────────────────────── -->
+<section class="section" id="evolving">
+  <div class="section-tag">08 — Patterns that Change</div>
+  <h2>Making patterns evolve over time</h2>
+
+  <h3>Using p.cycle for structure</h3>
+  <p>
+    <code>p.cycle</code> increments every time the pattern loops. Use integer division (<code>//</code>) to
+    create larger structural boundaries — every N loops, something changes.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="cm"># Changes key every 8 loops (every 8 bars)</span>
+    <span class="var">keys</span> = [<span class="str">"C"</span>, <span class="str">"F"</span>, <span class="str">"G"</span>, <span class="str">"Am"</span>]
+    <span class="var">key</span> = <span class="var">keys</span>[(<span class="var">p</span>.<span class="var">cycle</span> // <span class="num">8</span>) % <span class="fn">len</span>(<span class="var">keys</span>)]
+
+    <span class="cm"># Every other loop, add an extra note</span>
+    <span class="kw">if</span> <span class="var">p</span>.<span class="var">cycle</span> % <span class="num">2</span> == <span class="num">0</span>:
+        <span class="var">p</span>.<span class="fn">note</span>(<span class="num">72</span>, <span class="var">beat</span>=<span class="num">3.5</span>)
+
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 _ 63 65"</span>, <span class="var">velocity</span>=<span class="num">80</span>)
+    <span class="var">p</span>.<span class="fn">quantize</span>(<span class="var">key</span>, <span class="str">"dorian"</span>)</pre>
+  </div>
+
+  <h3>Randomness with p.rng</h3>
+  <p>
+    <code>p.rng</code> is a seeded random number generator local to your pattern.
+    Use it instead of Python's <code>random</code> module — it ensures reproducible
+    behaviour if you restart a pattern with the same name.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">scale</span> = [<span class="num">60</span>, <span class="num">62</span>, <span class="num">63</span>, <span class="num">65</span>, <span class="num">67</span>, <span class="num">70</span>, <span class="num">72</span>]
+    <span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="num">8</span>):
+        <span class="kw">if</span> <span class="var">p</span>.<span class="var">rng</span>.<span class="fn">random</span>() &gt; <span class="num">0.3</span>:  <span class="cm"># 70% chance of playing</span>
+            <span class="var">pitch</span> = <span class="var">p</span>.<span class="var">rng</span>.<span class="fn">choice</span>(<span class="var">scale</span>)
+            <span class="var">p</span>.<span class="fn">note</span>(<span class="var">pitch</span>, <span class="var">beat</span>=<span class="var">i</span> * <span class="num">0.5</span>)</pre>
+  </div>
+
+  <h3>Dropout for sparse texture</h3>
+  <p>Apply <code>p.dropout()</code> after placing notes for probabilistic thinning — the underlying
+  pattern stays intact but notes randomly vanish each cycle, keeping things interesting.</p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 62 63 65 67 65 63 62"</span>, <span class="var">velocity</span>=<span class="num">80</span>)
+    <span class="var">p</span>.<span class="fn">dropout</span>(<span class="num">0.25</span>)  <span class="cm"># 25% of notes vanish each cycle</span></pre>
+  </div>
+</section>
+
+<!-- ─────────────────────────── SIGNALS ─────────────────────────── -->
+<section class="section" id="signals">
+  <div class="section-tag">09 — Signals &amp; Modulation</div>
+  <h2>Signals and modulators</h2>
+
+  <p>
+    POMSKI has a signal system for continuously varying values — LFOs, envelopes, Perlin noise curves.
+    Signals appear as scrolling graphs in the Signals tab of the UI and can drive any numeric
+    parameter inside a pattern.
+  </p>
+
+  <h3>LFOs via the conductor</h3>
+  <p>
+    Create a named LFO with <code>composition.conductor.lfo()</code>, then read its current value
+    inside any pattern with <code>p.signal(name)</code>. The value (0.0–1.0 by default) can drive
+    velocity, pitch offset, or any other numeric parameter.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="cm"># Create an LFO (send this once from the editor or add it to the template)</span>
+<span class="cm"># cycle_beats = how many beats for one full sweep (16 = 4 bars at 4/4)</span>
+<span class="var">composition</span>.<span class="var">conductor</span>.<span class="fn">lfo</span>(<span class="str">"vol_lfo"</span>, <span class="var">cycle_beats</span>=<span class="num">16</span>, <span class="var">min_val</span>=<span class="num">0.2</span>, <span class="var">max_val</span>=<span class="num">1.0</span>)</pre>
+  </div>
+
+  <div class="code-block">
+    <pre><span class="cm"># Read it inside a pattern with p.signal()</span>
+<span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">vol</span> = <span class="var">p</span>.<span class="fn">signal</span>(<span class="str">"vol_lfo"</span>)          <span class="cm"># returns 0.2–1.0, sweeping over 16 beats</span>
+    <span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="num">8</span>):
+        <span class="var">p</span>.<span class="fn">note</span>(<span class="num">60</span>, <span class="var">beat</span>=<span class="var">i</span> * <span class="num">0.5</span>, <span class="var">velocity</span>=<span class="fn">int</span>(<span class="var">vol</span> * <span class="num">100</span>))</pre>
+  </div>
+
+  <h3>Perlin noise for organic modulation</h3>
+  <p>
+    <code>perlin_1d</code> generates smooth, organic noise — much more musical than pure random.
+    Import it and write values to <code>composition.data</code> to visualise them.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="kw">from</span> <span class="var">subsequence</span>.<span class="var">sequence_utils</span> <span class="kw">import</span> <span class="fn">perlin_1d</span>
+
+<span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="cm"># perlin_1d(x, seed) → float 0.0–1.0</span>
+    <span class="cm"># Multiplying p.cycle by a small number controls how fast it moves</span>
+    <span class="var">noise</span> = <span class="fn">perlin_1d</span>(<span class="var">p</span>.<span class="var">cycle</span> * <span class="num">0.07</span>, <span class="var">seed</span>=<span class="num">42</span>)
+
+    <span class="cm"># Write to composition.data — shows up in Signals tab</span>
+    <span class="var">composition</span>.<span class="var">data</span>[<span class="str">"pitch_wander"</span>] = <span class="var">noise</span>
+
+    <span class="cm"># Map 0–1 noise to a pitch range</span>
+    <span class="var">base_pitch</span> = <span class="num">48</span> + <span class="fn">int</span>(<span class="var">noise</span> * <span class="num">24</span>)  <span class="cm"># C3 to C5</span>
+    <span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="num">8</span>):
+        <span class="var">p</span>.<span class="fn">note</span>(<span class="var">base_pitch</span> + <span class="var">i</span>, <span class="var">beat</span>=<span class="var">i</span> * <span class="num">0.5</span>)
+    <span class="var">p</span>.<span class="fn">quantize</span>(<span class="str">"C"</span>, <span class="str">"dorian"</span>)</pre>
+  </div>
+
+  <h3>Cross-pattern communication with p.data</h3>
+  <p>
+    <code>p.data</code> is the same dictionary as <code>composition.data</code>. One pattern can
+    write a value, another can read it — enabling the kind of interdependence that makes a
+    generative system feel alive.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="kw">from</span> <span class="var">subsequence</span>.<span class="var">sequence_utils</span> <span class="kw">import</span> <span class="fn">perlin_1d</span>
+
+<span class="cm"># Pattern 1 writes its density to data</span>
+<span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">density</span> = <span class="fn">perlin_1d</span>(<span class="var">p</span>.<span class="var">cycle</span> * <span class="num">0.05</span>, <span class="var">seed</span>=<span class="num">1</span>)
+    <span class="var">p</span>.<span class="var">data</span>[<span class="str">"density"</span>] = <span class="var">density</span>
+    <span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">60</span>, <span class="var">pulses</span>=<span class="fn">int</span>(<span class="num">2</span> + <span class="var">density</span> * <span class="num">10</span>))
+
+<span class="cm"># Pattern 2 reads that density to affect its own behaviour</span>
+<span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">1</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch2</span>(<span class="var">p</span>):
+    <span class="var">density</span> = <span class="var">p</span>.<span class="var">data</span>.<span class="fn">get</span>(<span class="str">"density"</span>, <span class="num">0.5</span>)
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"48 _ 51 _ 53 _ 55 _"</span>, <span class="var">velocity</span>=<span class="num">80</span>)
+    <span class="var">p</span>.<span class="fn">dropout</span>(<span class="num">1.0</span> - <span class="var">density</span>)  <span class="cm"># sparser when ch1 is dense</span></pre>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title">Clearing signals</div>
+    <p>Click the ✕ button next to any signal in the Signals tab to remove it from the display
+    and the data dictionary.</p>
+  </div>
+</section>
+
+<!-- ─────────────────────────── ALGORITHMIC ─────────────────────────── -->
+<section class="section" id="algorithmic">
+  <div class="section-tag">10 — Algorithmic Methods</div>
+  <h2>Algorithmic composition</h2>
+
+  <p>
+    These methods generate entire note sequences from mathematical systems. They are all available
+    directly as <code>p.</code> methods — no imports needed.
+  </p>
+
+  <h3>Euclidean rhythms</h3>
+  <p>
+    The Euclidean algorithm distributes N hits across M steps as evenly as possible.
+    This produces the rhythmic patterns found in West African drumming, Middle Eastern music,
+    and countless other traditions — because maximum evenness is also maximum musicality.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="cm"># 5 evenly-spaced hits across the pattern — the "cinquillo" rhythm</span>
+<span class="cm"># (steps are derived automatically from pattern length)</span>
+<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">60</span>, <span class="var">pulses</span>=<span class="num">5</span>)
+
+<span class="cm"># Stack multiple voices for polyrhythm</span>
+<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">36</span>, <span class="var">pulses</span>=<span class="num">3</span>)  <span class="cm"># kick</span>
+<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">40</span>, <span class="var">pulses</span>=<span class="num">5</span>)  <span class="cm"># snare</span>
+<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">42</span>, <span class="var">pulses</span>=<span class="num">7</span>)  <span class="cm"># hi-hat</span>
+
+<span class="cm"># Use p.shift() to offset a voice's start point for variation</span>
+<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">60</span>, <span class="var">pulses</span>=<span class="num">5</span>)
+<span class="var">p</span>.<span class="fn">shift</span>(<span class="num">3</span>)  <span class="cm"># shift all notes forward by 3 grid steps</span></pre>
+  </div>
+
+  <h3>Chaos: Lorenz attractor</h3>
+  <p>
+    The Lorenz attractor is a set of differential equations that produces chaotic (never exactly
+    repeating) but aesthetically coherent trajectories. POMSKI maps its x-axis values to pitch.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">lorenz</span>(
+        <span class="var">steps</span>=<span class="num">16</span>,
+        <span class="var">pitch_range</span>=(<span class="num">48</span>, <span class="num">72</span>),  <span class="cm"># C3 to C5</span>
+        <span class="var">velocity</span>=<span class="num">80</span>,
+        <span class="var">s</span>=<span class="num">10.0</span>, <span class="var">r</span>=<span class="num">28.0</span>, <span class="var">b</span>=<span class="num">2.667</span>  <span class="cm"># classic parameters</span>
+    )
+    <span class="var">p</span>.<span class="fn">quantize</span>(<span class="str">"C"</span>, <span class="str">"minor"</span>)</pre>
+  </div>
+
+  <h3>Brownian motion (random walk)</h3>
+  <p>
+    Each note is a small random step away from the previous — like a melody that wanders
+    without leaping wildly. Highly musical because it respects the statistical shape of real melodies.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">brownian</span>(
+        <span class="var">start</span>=<span class="num">60</span>,          <span class="cm"># starting pitch</span>
+        <span class="var">steps</span>=<span class="num">16</span>,
+        <span class="var">step_size</span>=<span class="num">2</span>,       <span class="cm"># max semitones per step</span>
+        <span class="var">pitch_range</span>=(<span class="num">48</span>, <span class="num">72</span>)
+    )
+    <span class="var">p</span>.<span class="fn">quantize</span>(<span class="str">"D"</span>, <span class="str">"dorian"</span>)</pre>
+  </div>
+
+  <h3>Conway's Game of Life</h3>
+  <p>
+    Conway's Game of Life is a 2D cellular automaton — cells live or die by neighbour rules.
+    POMSKI runs N generations and reads one row: live cells trigger note hits.
+    The result is rhythm that feels like it has internal logic — because it does.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">game_of_life</span>(
+        <span class="var">pitch</span>=<span class="num">60</span>,
+        <span class="var">cols</span>=<span class="num">16</span>, <span class="var">rows</span>=<span class="num">4</span>,
+        <span class="var">generations</span>=<span class="var">p</span>.<span class="var">cycle</span> % <span class="num">32</span> + <span class="num">1</span>,  <span class="cm"># advance each loop</span>
+        <span class="var">row</span>=<span class="num">0</span>
+    )</pre>
+  </div>
+
+  <h3>Logistic map (chaos theory)</h3>
+  <p>
+    The logistic map (<code>x → r·x·(1−x)</code>) is one of the simplest equations that produces
+    chaos. At <code>r &gt; 3.57</code> it becomes chaotic — pitch and velocity diverge unpredictably
+    from tiny differences in starting conditions.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="var">p</span>.<span class="fn">logistic</span>(<span class="var">steps</span>=<span class="num">16</span>, <span class="var">r</span>=<span class="num">3.9</span>, <span class="var">pitch_range</span>=(<span class="num">48</span>, <span class="num">72</span>))</pre>
+  </div>
+
+  <h3>Gray-Scott reaction-diffusion</h3>
+  <p>
+    The Gray-Scott equations model chemical reactions creating Turing-like patterns —
+    spots and stripes that emerge from uniform initial conditions. POMSKI maps the
+    intensity field to note velocities, creating complex dynamic textures on a fixed pitch.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="var">p</span>.<span class="fn">gray_scott</span>(<span class="var">pitch</span>=<span class="num">60</span>, <span class="var">n</span>=<span class="num">16</span>, <span class="var">f</span>=<span class="num">0.055</span>, <span class="var">k</span>=<span class="num">0.062</span>)</pre>
+  </div>
+
+  <h3>Golden ratio</h3>
+  <p>
+    Distribute notes at irrational intervals based on φ (1.618…). Because φ is the
+    "most irrational" number, the resulting rhythm never exactly repeats — but it
+    fills the bar with uncanny balance.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="var">p</span>.<span class="fn">golden_ratio</span>(<span class="var">pitch</span>=<span class="num">67</span>, <span class="var">count</span>=<span class="num">8</span>, <span class="var">velocity</span>=<span class="num">75</span>)</pre>
+  </div>
+
+  <h3>Markov chains</h3>
+  <p>
+    Define weighted transitions between named states — each state "decides" what comes next based
+    on relative weights. You provide two things: a <code>transitions</code> dict mapping state names
+    to a list of <code>(next_state, weight)</code> pairs, and a <code>pitch_map</code> dict mapping
+    state names to MIDI note numbers. Produces melodies that feel stylistically consistent without being repetitive.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="cm"># transitions: each state maps to a list of (next_state, weight) pairs</span>
+    <span class="cm"># pitch_map: maps each state name to a MIDI note number</span>
+    <span class="var">p</span>.<span class="fn">markov</span>(
+        <span class="var">transitions</span>={
+            <span class="str">"root"</span>: [(<span class="str">"3rd"</span>, <span class="num">4</span>), (<span class="str">"5th"</span>, <span class="num">2</span>), (<span class="str">"root"</span>, <span class="num">1</span>)],
+            <span class="str">"3rd"</span>:  [(<span class="str">"5th"</span>, <span class="num">3</span>), (<span class="str">"root"</span>, <span class="num">2</span>), (<span class="str">"7th"</span>, <span class="num">1</span>)],
+            <span class="str">"5th"</span>:  [(<span class="str">"root"</span>, <span class="num">3</span>), (<span class="str">"3rd"</span>, <span class="num">2</span>)],
+            <span class="str">"7th"</span>:  [(<span class="str">"root"</span>, <span class="num">4</span>), (<span class="str">"5th"</span>, <span class="num">2</span>)],
+        },
+        <span class="var">pitch_map</span>={<span class="str">"root"</span>: <span class="num">60</span>, <span class="str">"3rd"</span>: <span class="num">63</span>, <span class="str">"5th"</span>: <span class="num">67</span>, <span class="str">"7th"</span>: <span class="num">70</span>},
+        <span class="var">velocity</span>=<span class="num">80</span>,
+        <span class="var">step</span>=<span class="num">0.25</span>,  <span class="cm"># 16th note spacing</span>
+    )</pre>
+  </div>
+
+  <h3>Exotic scales with Music21</h3>
+  <p>
+    <code>p.quantize_m21()</code> gives access to hundreds of scale types. The scale snapping logic
+    is identical to <code>p.quantize()</code> — the only difference is the source of pitch classes.
+    Requires <code>pip install music21</code>.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="cm"># Indian raga</span>
+<span class="var">p</span>.<span class="fn">brownian</span>(<span class="var">start</span>=<span class="num">60</span>, <span class="var">steps</span>=<span class="num">16</span>)
+<span class="var">p</span>.<span class="fn">quantize_m21</span>(<span class="str">"D"</span>, <span class="str">"RagAsawari"</span>)
+
+<span class="cm"># Octatonic (diminished) scale</span>
+<span class="var">p</span>.<span class="fn">lorenz</span>(<span class="var">steps</span>=<span class="num">16</span>, <span class="var">pitch_range</span>=(<span class="num">48</span>, <span class="num">72</span>))
+<span class="var">p</span>.<span class="fn">quantize_m21</span>(<span class="str">"C"</span>, <span class="str">"OctatonicScale"</span>)
+
+<span class="cm"># Whole-tone</span>
+<span class="var">p</span>.<span class="fn">brownian</span>(<span class="var">start</span>=<span class="num">60</span>, <span class="var">steps</span>=<span class="num">16</span>)
+<span class="var">p</span>.<span class="fn">quantize_m21</span>(<span class="str">"C"</span>, <span class="str">"WholeToneScale"</span>)</pre>
+  </div>
+
+  <h4>Some scale names to try</h4>
+  <div class="scale-grid">
+    <div class="scale-pill">HarmonicMinorScale</div>
+    <div class="scale-pill">MelodicMinorScale</div>
+    <div class="scale-pill">OctatonicScale</div>
+    <div class="scale-pill">WholeToneScale</div>
+    <div class="scale-pill">RagAsawari</div>
+    <div class="scale-pill">RagMarwa</div>
+    <div class="scale-pill">PhrygianScale</div>
+    <div class="scale-pill">LydianScale</div>
+    <div class="scale-pill">MixolydianScale</div>
+    <div class="scale-pill">LocrianScale</div>
+    <div class="scale-pill">DorianScale</div>
+    <div class="scale-pill">AugmentedScale</div>
+  </div>
+</section>
+
+<!-- ─────────────────────────── ABLETON ─────────────────────────── -->
+<section class="section" id="live">
+  <div class="section-tag">11 — Ableton Live Bridge</div>
+  <h2>Connecting to Ableton Live</h2>
+
+  <p>
+    POMSKI includes a bridge to Ableton Live via the
+    <a href="https://github.com/AbletonOSC/AbletonOSC" target="_blank">AbletonOSC</a> remote script.
+    Once connected, you can fire clips, read track volumes, and automate parameters — all from
+    patterns and the REPL.
+  </p>
+
+  <h3>Setup</h3>
+  <ol>
+    <li>Install AbletonOSC as a Control Surface in Live Preferences → Link/Tempo/MIDI → Control Surface</li>
+    <li>Ensure Live is running before starting the POMSKI template</li>
+    <li>The bridge connects automatically at startup. Check the log panel — it will show <code>AbletonOSC connected</code></li>
+  </ol>
+
+  <h3>Commands (use in REPL or patterns)</h3>
+  <table class="method-table">
+    <tr><th>Command</th><th>Description</th></tr>
+    <tr><td class="m-name">live.clip_play(track, clip)</td><td class="m-desc">Fire a clip. Both indices are 0-based.</td></tr>
+    <tr><td class="m-name">live.scene_play(scene)</td><td class="m-desc">Fire a scene (launches all clips in that row).</td></tr>
+    <tr><td class="m-name">live.track_volume(track, value)</td><td class="m-desc">Set track volume. <code>value</code> is 0.0–1.0.</td></tr>
+    <tr><td class="m-name">live.track_mute(track, True/False)</td><td class="m-desc">Mute or unmute a track.</td></tr>
+    <tr><td class="m-name">live.device_param(track, device, param, value)</td><td class="m-desc">Set a device parameter (0.0–1.0).</td></tr>
+    <tr><td class="m-name">live.set_tempo(bpm)</td><td class="m-desc">Change Live's tempo.</td></tr>
+    <tr><td class="m-name">live.watch("track/0/volume")</td><td class="m-desc">Subscribe to a Live property. Its value is pushed to <code>composition.data["live_track_0_volume"]</code> continuously.</td></tr>
+    <tr><td class="m-name">live.tracks</td><td class="m-desc">List of track names in the current Live set.</td></tr>
+    <tr><td class="m-name">live.connected</td><td class="m-desc"><code>True</code> if the Live bridge is active.</td></tr>
+  </table>
+
+  <h3>Reacting to Live state inside patterns</h3>
+
+  <div class="code-block">
+    <pre><span class="cm"># Watch a Live parameter (run once from REPL)</span>
+<span class="var">live</span>.<span class="fn">watch</span>(<span class="str">"track/0/volume"</span>)
+
+<span class="cm"># Now use it inside any pattern</span>
+<span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">vol</span> = <span class="var">p</span>.<span class="var">data</span>.<span class="fn">get</span>(<span class="str">"live_track_0_volume"</span>, <span class="num">0.8</span>)
+    <span class="var">vel</span> = <span class="fn">int</span>(<span class="var">vol</span> * <span class="num">127</span>)
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 _ 63 65 _ 67"</span>, <span class="var">velocity</span>=<span class="var">vel</span>)</pre>
+  </div>
+</section>
+
+<!-- ─────────────────────────── PERFORMANCE ─────────────────────────── -->
+<section class="section" id="performance">
+  <div class="section-tag">12 — Live Performance</div>
+  <h2>Performance tips</h2>
+
+  <h3>Mental model for a set</h3>
+  <p>
+    Think of a live POMSKI set like a DJ set, but instead of swapping tracks you are rewriting
+    the rules of the music in real time. A practical workflow:
+  </p>
+  <ol>
+    <li><strong>Establish rhythm first</strong> — drums and bass anchor the audience while you build</li>
+    <li><strong>Layer melody on top</strong> — add harmonic content once the groove is locked</li>
+    <li><strong>Mutate, don't replace</strong> — small edits to running patterns feel more live than total rewrites</li>
+    <li><strong>Use mute/unmute</strong> for energy dynamics instead of always rewriting</li>
+    <li><strong>Let generative patterns run</strong> — euclidean and lorenz patterns evolve on their own; step back and let them breathe</li>
+  </ol>
+
+  <h3>Keyboard shortcuts in the editor</h3>
+  <table class="method-table">
+    <tr><th>Shortcut</th><th>Action</th></tr>
+    <tr><td class="m-name">Shift+Enter</td><td class="m-desc">Send the current code block (detected by double newlines above the cursor)</td></tr>
+    <tr><td class="m-name">Ctrl+↑ / Ctrl+↓</td><td class="m-desc">Navigate command history (last 200 sent blocks)</td></tr>
+  </table>
+
+  <h3>Building in variation without thinking</h3>
+
+  <div class="code-block">
+    <pre><span class="cm"># Drop out notes probabilistically — density controlled by Perlin noise</span>
+<span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="kw">from</span> <span class="var">subsequence</span>.<span class="var">sequence_utils</span> <span class="kw">import</span> <span class="fn">perlin_1d</span>
+    <span class="var">sparsity</span> = <span class="fn">perlin_1d</span>(<span class="var">p</span>.<span class="var">cycle</span> * <span class="num">0.04</span>, <span class="var">seed</span>=<span class="num">7</span>)
+    <span class="var">p</span>.<span class="var">data</span>[<span class="str">"sparsity"</span>] = <span class="var">sparsity</span>
+
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 63 65 67 65 63 67 70"</span>, <span class="var">velocity</span>=<span class="num">80</span>)
+    <span class="var">p</span>.<span class="fn">dropout</span>(<span class="var">sparsity</span> * <span class="num">0.6</span>)   <span class="cm"># max 60% dropout</span>
+    <span class="var">p</span>.<span class="fn">quantize</span>(<span class="str">"C"</span>, <span class="str">"dorian"</span>)</pre>
+  </div>
+
+  <h3>Transposing by section</h3>
+
+  <div class="code-block">
+    <pre><span class="cm"># Modulate key every 16 bars using p.bar</span>
+<span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">modulation</span> = (<span class="var">p</span>.<span class="var">bar</span> // <span class="num">16</span>) % <span class="num">3</span>  <span class="cm"># 0, 1, 2 cycling</span>
+    <span class="var">offset</span> = [<span class="num">0</span>, <span class="num">5</span>, <span class="num">7</span>][<span class="var">modulation</span>]   <span class="cm"># root, fourth, fifth</span>
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 63 65 67"</span>, <span class="var">velocity</span>=<span class="num">85</span>)
+    <span class="var">p</span>.<span class="fn">transpose</span>(<span class="var">offset</span>)</pre>
+  </div>
+
+  <h3>Long-form patterns</h3>
+  <p>
+    A <code>length=128</code> pattern plays for 32 bars before repeating. Inside it, <code>p.cycle</code>
+    increments once every 32 bars — so <code>p.cycle // 1</code> gives you 32-bar sections.
+    Use very long patterns for slow, geological-timescale evolution.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">128</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="cm"># Play 128 notes spread over 32 bars — each note is 1 bar apart</span>
+    <span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="num">32</span>):
+        <span class="var">pitch</span> = <span class="num">48</span> + <span class="var">i</span> % <span class="num">12</span>
+        <span class="var">p</span>.<span class="fn">note</span>(<span class="var">pitch</span>, <span class="var">beat</span>=<span class="var">i</span> * <span class="num">4</span>, <span class="var">duration</span>=<span class="num">3.5</span>)
+    <span class="var">p</span>.<span class="fn">quantize</span>(<span class="str">"C"</span>, <span class="str">"minor"</span>)</pre>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title">Performance mindset</div>
+    <p>The best live coding performances have silences, mistakes, and recovery. An error in the log
+    panel is not embarrassing — it is evidence that something real is happening. Leave the log visible
+    on screen if you are performing for an audience.</p>
+  </div>
+</section>
+
+<!-- ─────────────────────────── API Feeds ─────────────────────────── -->
+<section class="section" id="apifeeds">
+  <div class="section-tag">13 — External API Feeds</div>
+  <h2>Pulling live data into patterns</h2>
+
+  <p>
+    POMSKI includes a built-in <code>feeds</code> object that lets you poll any HTTP API
+    at runtime and pipe the results directly into <code>composition.data</code>, where
+    patterns can read them on every cycle. No template editing required — just type into
+    the command box and the feed starts immediately.
+  </p>
+
+  <div class="callout tip">
+    <div class="callout-title">How it works</div>
+    <p>
+      Each feed is an asyncio task running on POMSKI's event loop. It fetches a URL every
+      <em>N</em> seconds, applies your <code>extract</code> function to the JSON response,
+      and writes the result to <code>composition.data["feed_&lt;key&gt;"]</code>. Patterns
+      are rebuilt every cycle, so they always see the latest value with no extra wiring.
+    </p>
+  </div>
+
+  <h3>Starting a feed</h3>
+  <p>
+    Call <code>feeds.add()</code> from the command box, the main editor, or a REPL client.
+    The feed starts polling immediately and persists until you stop it or restart POMSKI.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="cm"># Poll the ISS position API every 5 seconds</span>
+<span class="fn">feeds</span>.<span class="fn">add</span>(
+    <span class="str">"iss"</span>,
+    <span class="str">"http://api.open-notify.org/iss-now.json"</span>,
+    <span class="var">interval</span>=<span class="num">5</span>,
+    <span class="var">extract</span>=<span class="kw">lambda</span> <span class="var">r</span>: <span class="fn">float</span>(<span class="var">r</span>[<span class="str">"iss_position"</span>][<span class="str">"latitude"</span>])
+)</pre>
+  </div>
+
+  <p>
+    The value lands at <code>composition.data["feed_iss"]</code> after the first fetch.
+    Until then, <code>.get("feed_iss", default)</code> returns your default — always
+    provide one so patterns play something sensible before data arrives.
+  </p>
+
+  <h3>Reading a feed inside a pattern</h3>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="cm"># Latitude −90 to +90 → MIDI pitch 48–84</span>
+    <span class="var">lat</span> = <span class="var">composition</span>.<span class="var">data</span>.<span class="fn">get</span>(<span class="str">"feed_iss"</span>, <span class="num">0</span>)
+    <span class="var">pitch</span> = <span class="fn">int</span>(<span class="num">48</span> + (<span class="fn">float</span>(<span class="var">lat</span>) + <span class="num">90</span>) / <span class="num">180</span> * <span class="num">36</span>)
+    <span class="var">p</span>.<span class="fn">note</span>(<span class="var">pitch</span>, <span class="var">beat</span>=<span class="num">0</span>)</pre>
+  </div>
+
+  <h3>Feeds API</h3>
+  <table class="method-table">
+    <tr><th>Call</th><th>What it does</th></tr>
+    <tr>
+      <td class="m-name"><code>feeds.add(key, url, interval, extract, headers, method, body)</code></td>
+      <td class="m-desc">Start (or restart) a named polling feed. <code>extract</code> is a callable that receives the parsed JSON and returns the value to store. Omit it to store the full response dict.</td>
+    </tr>
+    <tr>
+      <td class="m-name"><code>feeds.stop("key")</code></td>
+      <td class="m-desc">Cancel and remove a feed by name.</td>
+    </tr>
+    <tr>
+      <td class="m-name"><code>feeds.stop_all()</code></td>
+      <td class="m-desc">Cancel every running feed.</td>
+    </tr>
+    <tr>
+      <td class="m-name"><code>feeds</code></td>
+      <td class="m-desc">Print active feeds and their current values (type this bare in the REPL).</td>
+    </tr>
+    <tr>
+      <td class="m-name"><code>composition.data.get("feed_key", default)</code></td>
+      <td class="m-desc">Read the latest value inside a pattern. Always supply a default.</td>
+    </tr>
+  </table>
+
+  <h3>Mapping data to music</h3>
+  <p>
+    Raw API numbers rarely map neatly to MIDI ranges. A simple linear rescale covers most cases:
+  </p>
+
+  <div class="code-block">
+    <pre><span class="kw">def</span> <span class="fn">scale</span>(<span class="var">val</span>, <span class="var">in_lo</span>, <span class="var">in_hi</span>, <span class="var">out_lo</span>, <span class="var">out_hi</span>):
+    <span class="kw">return</span> <span class="var">out_lo</span> + (<span class="var">val</span> - <span class="var">in_lo</span>) / (<span class="var">in_hi</span> - <span class="var">in_lo</span>) * (<span class="var">out_hi</span> - <span class="var">out_lo</span>)
+
+<span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="cm"># A stock price (say 100–300) mapped to pitch and velocity</span>
+    <span class="var">price</span> = <span class="var">composition</span>.<span class="var">data</span>.<span class="fn">get</span>(<span class="str">"feed_stock"</span>, <span class="num">200</span>)
+    <span class="var">pitch</span>    = <span class="fn">int</span>(<span class="fn">max</span>(<span class="num">36</span>, <span class="fn">min</span>(<span class="num">84</span>, <span class="fn">scale</span>(<span class="var">price</span>, <span class="num">100</span>, <span class="num">300</span>, <span class="num">36</span>, <span class="num">84</span>))))
+    <span class="var">velocity</span> = <span class="fn">int</span>(<span class="fn">max</span>(<span class="num">40</span>, <span class="fn">min</span>(<span class="num">120</span>, <span class="fn">scale</span>(<span class="var">price</span>, <span class="num">100</span>, <span class="num">300</span>, <span class="num">40</span>, <span class="num">120</span>))))
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"x . x ."</span>, <span class="var">pitch</span>=<span class="var">pitch</span>, <span class="var">velocity</span>=<span class="var">velocity</span>)</pre>
+  </div>
+
+  <h3>Feeds with authentication and POST</h3>
+
+  <div class="code-block">
+    <pre><span class="cm"># GET with an Authorization header</span>
+<span class="fn">feeds</span>.<span class="fn">add</span>(
+    <span class="str">"gh_stars"</span>,
+    <span class="str">"https://api.github.com/repos/python/cpython"</span>,
+    <span class="var">interval</span>=<span class="num">60</span>,
+    <span class="var">headers</span>={<span class="str">"Accept"</span>: <span class="str">"application/vnd.github+json"</span>},
+    <span class="var">extract</span>=<span class="kw">lambda</span> <span class="var">r</span>: <span class="var">r</span>[<span class="str">"stargazers_count"</span>]
+)
+
+<span class="cm"># POST with a JSON body</span>
+<span class="fn">feeds</span>.<span class="fn">add</span>(
+    <span class="str">"sensor"</span>,
+    <span class="str">"https://my-api.example.com/query"</span>,
+    <span class="var">interval</span>=<span class="num">2</span>,
+    <span class="var">method</span>=<span class="str">"POST"</span>,
+    <span class="var">body</span>={<span class="str">"sensor_id"</span>: <span class="str">"A1"</span>, <span class="str">"field"</span>: <span class="str">"temperature"</span>},
+    <span class="var">extract</span>=<span class="kw">lambda</span> <span class="var">r</span>: <span class="var">r</span>[<span class="str">"value"</span>]
+)</pre>
+  </div>
+
+  <h3>Switching data sources on-the-fly</h3>
+  <p>
+    Calling <code>feeds.add()</code> with the same key replaces the existing feed — the old
+    polling task is cancelled and a new one starts immediately. This lets you swap data
+    sources mid-performance without touching any pattern code:
+  </p>
+
+  <div class="code-block">
+    <pre><span class="cm"># First set: ISS latitude</span>
+<span class="fn">feeds</span>.<span class="fn">add</span>(<span class="str">"signal"</span>, <span class="str">"http://api.open-notify.org/iss-now.json"</span>,
+         <span class="var">extract</span>=<span class="kw">lambda</span> <span class="var">r</span>: <span class="fn">float</span>(<span class="var">r</span>[<span class="str">"iss_position"</span>][<span class="str">"latitude"</span>]))
+
+<span class="cm"># Later in the set: swap to a different source, same key</span>
+<span class="fn">feeds</span>.<span class="fn">add</span>(<span class="str">"signal"</span>, <span class="str">"https://api.open-meteo.com/v1/forecast?latitude=51.5&longitude=-0.1&current=temperature_2m"</span>,
+         <span class="var">extract</span>=<span class="kw">lambda</span> <span class="var">r</span>: <span class="var">r</span>[<span class="str">"current"</span>][<span class="str">"temperature_2m"</span>])
+
+<span class="cm"># Pattern code never changes — it always reads "feed_signal"</span></pre>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title">No extra dependencies</div>
+    <p>
+      <code>DataFeeds</code> uses Python's built-in <code>urllib</code> — no <code>pip install</code>
+      required. Any public JSON API reachable from your machine will work.
+    </p>
+  </div>
+
+</section>
+
+</div><!-- /container -->
+
+<footer>
+  POMSKI — built on Subsequence (AGPL-3.0) — github.com/ThinkInSound/POMSKI
+</footer>
+
+<script>
+// ── Copy buttons ───────────────────────────────────────────────────
+document.querySelectorAll('.code-block').forEach(block => {
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'copy';
+  btn.addEventListener('click', () => {
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'copied';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  });
+  block.appendChild(btn);
+});
+
+// ── Active nav link on scroll ─────────────────────────────────────
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('nav a[href^="#"]');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => {
+        a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id);
+      });
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
