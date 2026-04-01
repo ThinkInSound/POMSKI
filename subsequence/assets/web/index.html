@@ -897,6 +897,7 @@ document.getElementById('tabAdd').addEventListener('click',()=>{
   bufs.push('');tabNames.push('buffer '+(bufs.length));renderTabs();switchTab(bufs.length-1);saveBuffers();
 });
 renderTabs();
+document.getElementById('codeEditor').value=bufs[activeTab]||'';
 
 // ── WEBSOCKET ────────────────────────────────────────────────────────────────
 function connect(){
