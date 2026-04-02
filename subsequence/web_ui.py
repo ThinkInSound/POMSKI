@@ -39,6 +39,7 @@ class WebUI:
         self._last_bar: int = -1
         self._cached_patterns: typing.List[typing.Dict[str, typing.Any]] = []
         self._midi_queue: queue.SimpleQueue = queue.SimpleQueue()
+        self._builder_error_queue: queue.SimpleQueue = queue.SimpleQueue()
         self._data_snap: typing.FrozenSet = frozenset()
         self._data_signals_cache: typing.Dict[str, float] = {}
 
@@ -99,6 +100,9 @@ class WebUI:
                             comp.set_bpm(bpm)
                         elif hasattr(comp, 'sequencer') and comp.sequencer:
                             comp.sequencer.set_bpm(bpm)
+                        live = getattr(comp, '_live_bridge', None)
+                        if live is not None and getattr(live, 'connected', False):
+                            live.set_tempo(bpm)
 
                     elif action == 'mute':
                         name = cmd.get('pattern')
@@ -120,6 +124,11 @@ class WebUI:
                                 pat._builder_fn = lambda p: None
                                 pat._wants_chord = False
                                 pat._muted = False
+                                # Reset length to a safe default so the slot is
+                                # fully usable again even if a bad `unit` value
+                                # left it with an invalid (too-short) length.
+                                pat.length = 4.0
+                                pat.steps = {}
                                 self._last_bar = -1  # invalidate pattern cache
                                 # Silence the channel immediately so pre-queued
                                 # note_on events are skipped at dispatch time.
@@ -294,7 +303,12 @@ class WebUI:
         link = getattr(comp, '_link', None)
         if link is None:
             return {"available": False}
-        return {"available": True, "enabled": bool(getattr(link, 'enabled', False))}
+        return {
+            "available": True,
+            "enabled":   bool(getattr(link, 'enabled', False)),
+            "peers":     int(getattr(link, '_num_peers', 0)),
+            "tempo":     float(getattr(link, '_tempo', 120.0)),
+        }
 
     def _get_midi_devices(self) -> typing.Dict[str, typing.List[str]]:
         try:
@@ -311,6 +325,10 @@ class WebUI:
             asyncio.create_task(self._broadcast_loop())
         except Exception as e:
             logger.error(f"WebSocket server error: {e}")
+
+    def push_builder_error(self, pattern_name: str, tb: str) -> None:
+        """Called from the sequencer thread when a pattern builder raises."""
+        self._builder_error_queue.put_nowait(f"[{pattern_name}] {tb.strip()}")
 
     def _register_midi_hook(self) -> None:
         comp = self.composition_ref()
@@ -389,6 +407,14 @@ class WebUI:
                     websockets.broadcast(self._clients, json.dumps({'midi': event}))
                 except Exception:
                     pass
+
+            # Drain builder error queue and forward to all clients as log messages.
+            try:
+                while True:
+                    err_msg = self._builder_error_queue.get_nowait()
+                    websockets.broadcast(self._clients, json.dumps({'log': err_msg, 'level': 'err'}))
+            except queue.Empty:
+                pass
 
     def _get_state(self, comp: typing.Any) -> typing.Dict[str, typing.Any]:
 
@@ -508,6 +534,15 @@ class WebUI:
         state["live"] = live.get_ui_state() if live is not None else {"connected": False, "tracks": [], "scenes": [], "clip_grid": []}
 
         return state
+
+    def push_builder_error(self, pattern_name: str, tb: str) -> None:
+
+        """Queue a builder error to be forwarded to all connected web clients."""
+
+        try:
+            self._builder_error_queue.put_nowait({"name": pattern_name, "tb": tb})
+        except Exception:
+            pass
 
     def stop(self) -> None:
 
