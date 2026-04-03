@@ -214,6 +214,233 @@ live.device_param(0, 0, 3, 0.5) # track, device, param, value 0–1
 live.set_tempo(128.0)
 
 # Subscribe to a Live value — pushes to composition.data automatically
+live.watch("track/0/volume")     # → composition.data["live_track_0_volume"]## Installation
+
+You'll need Python 3.10+ and a DAW or hardware synth receiving MIDI.
+
+```bash
+git clone https://github.com/ThinkInSound/POMSKI.git
+cd POMSKI
+pip install -e .
+```
+
+> **Important:** use `git clone`, not the ZIP download. The ZIP is missing files that the installer needs.
+
+**Windows users** — POMSKI works on Windows. See the [Windows section](#windows) below.
+
+### Optional extras
+
+```bash
+pip install aalink              # Ableton Link tempo sync
+pip install mido python-rtmidi  # MIDI device selection in the Web UI
+pip install music21             # Extended scales + microtuning (p.quantize_m21, p.microtuning)
+```
+
+> **Windows installer users:** music21 is bundled — no separate install needed.
+
+---
+
+## The basics
+
+### Patterns
+
+A pattern is a function that gets called every time its loop comes around. Place notes by calling methods on `p`, the pattern builder:
+
+```python
+@composition.pattern(channel=0, length=2)
+def kick(p):
+    p.note(36, beat=0, velocity=110, duration=0.1)
+```
+
+`length` sets the loop length in beats. Inside the pattern, `p.bar` tells you the current global bar and `p.cycle` tells you how many times this pattern has looped — use them to vary things over time.
+
+### MIDI channels
+
+POMSKI channels are **0-indexed**: `channel=0` = MIDI channel 1, `channel=9` = MIDI channel 10 (drums). The template assigns slots `ch1`–`ch16` to channels `0`–`15` respectively.
+
+### Drums
+
+Use `drum_note_map=gm_drums.GM_DRUM_MAP` on the decorator to address drums by name. Channel 9 is the standard GM drums channel.
+
+```python
+import subsequence.constants.instruments.gm_drums as gm_drums
+
+@composition.pattern(channel=9, length=4, drum_note_map=gm_drums.GM_DRUM_MAP)
+def drums(p):
+    p.hit_steps("kick_1",       [0, 3, 8, 12], velocity=110)
+    p.hit_steps("snare_1",      [4, 12],        velocity=100)
+    p.hit_steps("hi_hat_closed", range(16),     velocity=70)
+```
+
+### Harmony
+
+Tell POMSKI what harmonic style to use and it will manage chord progressions automatically:
+
+```python
+composition.harmony(style="functional_major", cycle_beats=4, gravity=0.8)
+```
+
+Available styles include `"functional_major"`, `"aeolian_minor"`, `"dorian"`, `"lydian"`, and others. `cycle_beats` sets how often the chord changes. `gravity` (0–1) controls how strongly chords pull toward the tonic.
+
+### Sections
+
+Organise your piece into named sections with automatic transitions:
+
+```python
+composition.form([
+    ("intro",  4),   # 4 bars
+    ("verse",  8),
+    ("chorus", 8),
+])
+```
+
+---
+
+## Live coding
+
+The real power of POMSKI is changing things while they play. Start the live coding server before `play()`:
+
+```python
+composition.live()     # starts a server on port 5555
+composition.play()
+```
+
+Then from the **Web UI** (or any text editor that can open a socket) you can type Python and hit send — your changes take effect on the next bar:
+
+```python
+# change the tempo
+composition.set_bpm(140)
+
+# mute a pattern while you work on it
+composition.mute("bass")
+
+# redefine a pattern entirely
+@composition.pattern(channel=0, length=4)
+def bass(p):
+    p.note(33, beat=0, velocity=90, duration=2)
+```
+
+**`pat` shorthand** — `pat` is pre-loaded as an alias for `composition.pattern`. Channel is positional and length defaults to 4:
+
+```python
+@pat(0)          # channel 0, 4-bar pattern
+def ch1(p):
+    p.note(60, beat=0)
+
+@pat(0, 8)       # channel 0, 8-bar pattern
+def ch1(p):
+    p.note(60, beat=0)
+```
+
+---
+
+## Web UI
+
+The browser dashboard gives you a visual overview of everything happening in your composition and a built-in code editor for sending live changes.
+
+```python
+composition.web_ui()
+composition.live()
+composition.play()
+```
+
+Then open **http://localhost:8080** in any browser.
+
+### What's on screen
+
+**Topbar**
+- BPM display — drag up/down to change tempo, or tap the TAP button to set it by feel
+- Bar and beat counters
+- Current chord and key
+- Link pill — shows Ableton Link status; click to toggle sync on/off
+- Section progress bar
+
+**Log tab** — everything you send to the REPL and every response comes back here in colour. If a pattern raises an exception the full traceback appears as a **red error message** — no need to watch the terminal. The quick command input at the bottom accepts Python one-liners, or prefix with `cx:` to send a ClyphX Pro action instead (e.g. `cx: 1/MUTE ON`).
+
+**Signals tab** — live scrolling waveforms for any LFOs or values you've written to `composition.data`. Each signal has a ✕ button to remove it. Useful for checking that modulations are doing what you expect.
+
+**Patterns tab** — every running pattern listed with a mute button, a clear (×) button, and a small 16-step grid showing which steps have notes and how loud they are.
+
+**Refs tab** — copy-ready code examples for every algorithmic method (including music21 scales and microtuning), plus a button to open the full tutorial in a new window.
+
+**Editor buffer tabs** — add tabs with `+`, rename by double-clicking the label, remove with `×`. All buffer contents and names persist across reloads — your code is there every time you reopen the UI.
+
+**Prefs tab** — turn Ableton Link on or off, select your MIDI input/output device, record a MIDI session to file, and monitor AbletonOSC connection status.
+
+### Keyboard shortcuts
+
+| Keys | What it does |
+|---|---|
+| `Shift+Enter` | Send the current code block to the live coding server |
+| `Ctrl+Shift+Enter` | Send the entire editor contents |
+| `Ctrl+↑` / `Ctrl+↓` | Step through previous commands (last 200) |
+| `Tab` | Indent (4 spaces) |
+
+---
+
+## Ableton Link
+
+Link keeps POMSKI's tempo locked to Ableton Live — and anything else on your network that supports Link (Ableton Live, Reason, Traktor, various iOS apps).
+
+```bash
+pip install aalink
+```
+
+That's it. If aalink is installed POMSKI will connect to Link automatically when you call `play()`. You'll see the peer count in the Link pill in the Web UI.
+
+- Change tempo in Ableton → POMSKI follows
+- Call `composition.set_bpm(140)` → Ableton follows
+- Toggle sync on/off any time from the Prefs tab
+
+---
+
+## AbletonOSC integration
+
+POMSKI can communicate directly with Ableton Live via [AbletonOSC](https://github.com/ideoforms/AbletonOSC), giving you programmatic control over Live's session from Python code or the REPL.
+
+### Setup
+
+1. Install AbletonOSC as a remote script in Ableton (see its README)
+2. Add `LiveBridge` to your script:
+
+```python
+from live_bridge import LiveBridge
+
+composition = subsequence.Composition(key="C", bpm=120)
+live = LiveBridge(composition)
+composition._live_bridge = live   # exposes Live state to the web UI
+
+# ... your patterns ...
+
+composition.web_ui()
+composition.live()
+composition.play()
+```
+
+The bridge connects automatically once `play()` starts. Connection status and track count are shown in the Prefs tab.
+
+### Controlling Live from Python
+
+```python
+# Transport
+live.scene_play(0)
+live.track_stop(0)
+
+# Mixer
+live.track_volume(0, 0.85)       # track index, value 0.0–1.0
+live.track_mute(0, True)
+
+# Clips
+live.clip_play(0, 0)             # track, clip slot
+live.clip_stop(0, 0)
+
+# Devices
+live.device_param(0, 0, 3, 0.5) # track, device, param, value 0–1
+
+# Tempo
+live.set_tempo(128.0)
+
+# Subscribe to a Live value — pushes to composition.data automatically
 live.watch("track/0/volume")     # → composition.data["live_track_0_volume"]
 
 # Inspect the session
@@ -265,6 +492,47 @@ cx: BPM 128 ; METRO
 
 ---
 
+## External API feeds
+
+POMSKI includes a `feeds` object pre-loaded into the REPL namespace. Call it from the browser command box or any REPL client to pull live data from any HTTP JSON API into your patterns — no template editing required.
+
+```python
+# Start a feed — polls every 5 seconds
+feeds.add("iss", "http://api.open-notify.org/iss-now.json",
+          interval=5, extract=lambda r: float(r["iss_position"]["latitude"]))
+
+# See active feeds and their current values
+feeds
+
+# Stop a feed
+feeds.stop("iss")
+```
+
+Values land in `composition.data["feed_<key>"]` and are readable inside any pattern:
+
+```python
+@composition.pattern(channel=0, length=4)
+def ch1(p):
+    lat = composition.data.get("feed_iss", 0)          # default before first fetch
+    pitch = int(48 + (float(lat) + 90) / 180 * 36)    # map −90..+90 → 48..84
+    p.note(pitch, beat=0)
+```
+
+Calling `feeds.add()` with the same key replaces the existing feed — so you can swap data sources mid-performance without changing any pattern code.
+
+### feeds API
+
+| Call | What it does |
+|---|---|
+| `feeds.add(key, url, interval=30, extract=None, headers=None, method="GET", body=None)` | Start or replace a named feed |
+| `feeds.stop("key")` | Cancel a feed by name |
+| `feeds.stop_all()` | Cancel every running feed |
+| `feeds` | Show active feeds and current values |
+
+`extract` is a callable that receives the parsed JSON and returns the value to store. Omit it to store the full response dict. No extra dependencies — uses Python's built-in `urllib`.
+
+---
+
 ## Troubleshooting MIDI output
 
 **LoopBe Internal MIDI — silent muting**
@@ -291,7 +559,7 @@ Older versions of POMSKI crashed on Windows due to a signal handler that Windows
 
 ---
 
-## Max for Live device (Coming Soon)
+## Max for Live device
 
 If you use Ableton Live you can add a small MIDI device to any track that shows whether POMSKI is connected and lets you open the Web UI with one click.
 
@@ -343,8 +611,10 @@ The device connects automatically when POMSKI is running and reconnects if it dr
 | `p.spectral(harmonics, steps, pitch_range)` | Sum-of-harmonics contour |
 | `p.markov(graph, steps, start)` | Markov chain melody |
 | `p.from_midi(filepath, track)` | Load notes from a .mid file |
-| `p.quantize(key, mode)` | Snap notes to a named scale |
-| `p.quantize_m21(key, scale_name)` | Snap notes to any Music21 scale |
+| `p.quantize(key, mode)` | Snap notes to a named scale (9 Western modes) |
+| `p.quantize_m21(key, scale_name)` | Snap notes to any music21 scale class |
+| `p.quantize_m21(key, scala_name="file.scl")` | Snap notes using a Scala archive tuning (3,935 files) |
+| `p.microtuning(key, "file.scl", bend_range=2)` | Scala snap + MIDI pitch bend for true cent accuracy |
 | `p.randomize(timing, velocity)` | Add human-feel micro-variation |
 | `p.dropout(probability)` | Randomly remove notes each cycle |
 | `p.transpose(semitones)` | Shift all notes up/down |
@@ -374,5 +644,8 @@ Open **http://localhost:8080/tutorial.html** while POMSKI is running, or open `d
 ---
 
 ## License
+
+AGPL-3.0 — inherited from [subsequence](https://github.com/simonholliday/subsequence). If you run a modified version of POMSKI as a network service, you must make the source available to its users. See the [LICENSE](LICENSE) file for details.
+
 
 AGPL-3.0 — inherited from [subsequence](https://github.com/simonholliday/subsequence). If you run a modified version of POMSKI as a network service, you must make the source available to its users. See the [LICENSE](LICENSE) file for details.
