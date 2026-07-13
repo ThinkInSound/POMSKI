@@ -1,7 +1,5 @@
 # POMSKI
 
-Write music as Python code. Change it while it's playing.
-
 <img width="1918" height="930" alt="pomski sequencer when running" src="https://github.com/user-attachments/assets/2febb29d-3da3-46ee-ba67-ab3271cac7dd" />
 
 **POMSKI** — *Python Only MIDI Sequencer Keyboard Interface* — named after Qina, a very good Pomsky dog.
@@ -26,7 +24,7 @@ POMSKI is a fork of [subsequence](https://github.com/simonholliday/subsequence) 
 
 ## Installation
 
-You'll need Python 3.10+ and a DAW or hardware synth receiving MIDI.
+You'll need Python 3.10+ (but not later than 3.14) and a DAW or hardware synth receiving MIDI.
 
 ```bash
 git clone https://github.com/ThinkInSound/POMSKI.git
@@ -41,7 +39,6 @@ pip install -e .
 ### Optional extras
 
 ```bash
-pip install aalink              # Ableton Link tempo sync
 pip install mido python-rtmidi  # MIDI device selection in the Web UI
 pip install music21             # Exotic scale support (p.quantize_m21)
 ```
@@ -53,7 +50,7 @@ python pomski_template.py
 # Choose your MIDI device
 ```
 
-Then open **http://localhost:8080** in any browser.
+Then open **http://localhost:8080** in any browser (it should open automatically in your default browser).
 
 ---
 
@@ -401,21 +398,6 @@ POMSKI can communicate directly with Ableton Live via [AbletonOSC](https://githu
 ### Setup
 
 1. Install AbletonOSC as a remote script in Ableton (see its README)
-2. Add `LiveBridge` to your script:
-
-```python
-from live_bridge import LiveBridge
-
-composition = subsequence.Composition(key="C", bpm=120)
-live = LiveBridge(composition)
-composition._live_bridge = live   # exposes Live state to the web UI
-
-# ... your patterns ...
-
-composition.web_ui()
-composition.live()
-composition.play()
-```
 
 The bridge connects automatically once `play()` starts. Connection status and track count are shown in the Prefs tab.
 
@@ -557,23 +539,8 @@ Download via `git clone` rather than the ZIP button on GitHub. The ZIP is missin
 **2. No extra steps needed for asyncio**
 Older versions of POMSKI crashed on Windows due to a signal handler that Windows doesn't support. This is fixed — it just works.
 
----
-
-## Max for Live device
-
-If you use Ableton Live you can add a small MIDI device to any track that shows whether POMSKI is connected and lets you open the Web UI with one click.
-
-The device files are in the project root:
-- `subsequence_webui.amxd` — the Max for Live device
-- `subsequence_webui.maxpat` — the Max patch source
-- `subsequence.js` — the node.script WebSocket connector
-
-**Setup (one time):**
-1. In Ableton, drag `subsequence_webui.amxd` onto any MIDI track
-2. First time only: click the `node.script` object inside the device and send it the message `script npm install ws`
-
-The device connects automatically when POMSKI is running and reconnects if it drops. You'll see a green LED when it's live and the current BPM ticking alongside it.
-
+**3. Windows installer available on release page
+The latest version of POMSKI is compiled and ready-to-go if you're on Windows. Download the installer, install and run POMSKI, and you're good to go. All dependencies should be included with the installer. 
 ---
 
 ## API quick reference
@@ -647,5 +614,3 @@ Open **http://localhost:8080/tutorial.html** while POMSKI is running, or open `d
 
 AGPL-3.0 — inherited from [subsequence](https://github.com/simonholliday/subsequence). If you run a modified version of POMSKI as a network service, you must make the source available to its users. See the [LICENSE](LICENSE) file for details.
 
-
-AGPL-3.0 — inherited from [subsequence](https://github.com/simonholliday/subsequence). If you run a modified version of POMSKI as a network service, you must make the source available to its users. See the [LICENSE](LICENSE) file for details.
