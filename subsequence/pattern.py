@@ -26,10 +26,12 @@ class CcEvent:
 	"""
 
 	pulse: int
-	message_type: str					# 'control_change', 'pitchwheel', 'program_change', or 'sysex'
+	message_type: str					# 'control_change', 'pitchwheel', 'program_change', 'sysex', 'note_on', or 'note_off'
 	control: int = 0					# CC number (0–127), ignored for other types
 	value: int = 0						# 0–127 for CC/program_change, -8192..8191 for pitchwheel
 	data: typing.Optional[bytes] = None	# Raw bytes payload for SysEx messages
+	note: int = 0						# MIDI note number for note_on/note_off (drones)
+	velocity: int = 0					# Velocity for note_on/note_off (drones)
 
 
 @dataclasses.dataclass

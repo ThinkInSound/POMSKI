@@ -7,9 +7,9 @@ name = "subsequence"
 dynamic = ["version"]
 description = "A generative MIDI sequencer"
 readme = "README.md"
-authors = [{ name = "Simon Holliday", email = "simon.holliday@protonmail.com" }]
+authors = [{ name = "Kris Grant", email = "krisgrant21@gmail.com" }]
 license = { text = "AGPL-3.0-or-later" }
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
@@ -23,8 +23,8 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/simonholliday/subsequence"
-Issues = "https://github.com/simonholliday/subsequence/issues"
+Repository = "https://github.com/ThinkInSound/POMSKI"
+Issues = "https://github.com/ThinkInSound/POMSKI/issues"
 
 [project.optional-dependencies]
 test = [

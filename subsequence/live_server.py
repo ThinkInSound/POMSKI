@@ -169,6 +169,11 @@ class LiveServer:
 
 		"""Build the namespace dict with safe builtins that can't block the sequencer."""
 
+		import math
+		import random
+
+		import rich
+
 		import subsequence
 		import subsequence.constants.instruments.gm_drums as gm_drums
 
@@ -184,6 +189,9 @@ class LiveServer:
 			"composition": self._composition,
 			"subsequence": subsequence,
 			"gm_drums": gm_drums,
+			"random": random,
+			"math": math,
+			"rich": rich,
 		}
 
 

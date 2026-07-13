@@ -580,6 +580,8 @@ class Sequencer:
 					pulse = abs_pulse,
 					message_type = cc_event.message_type,
 					channel = pattern.channel,
+					note = getattr(cc_event, 'note', 0),
+					velocity = getattr(cc_event, 'velocity', 0),
 					control = cc_event.control,
 					value = cc_event.value,
 					data = cc_event.data

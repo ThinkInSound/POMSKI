@@ -18,14 +18,29 @@ else:
 _LOG_PATH = os.path.join(_LOG_DIR, 'pomski.log')
 _FAULT_PATH = os.path.join(_LOG_DIR, 'fault.log')
 
+# Console handler: rich colour-codes by level (DEBUG dim, INFO default,
+# WARNING yellow, ERROR/CRITICAL red). File log stays plain text.
+_file_handler = logging.FileHandler(_LOG_PATH, encoding='utf-8')
+_file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
+try:
+    from rich.logging import RichHandler
+    _console_handler = RichHandler(show_path=False, rich_tracebacks=True)
+    _console_handler.setFormatter(logging.Formatter('%(name)s: %(message)s'))
+except Exception:
+    _console_handler = logging.StreamHandler(sys.stdout)
+    _console_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
+
+# Console shows INFO+ only; full DEBUG still goes to pomski.log.
+_console_handler.setLevel(logging.INFO)
+
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s %(levelname)s %(name)s: %(message)s',
-    handlers=[
-        logging.FileHandler(_LOG_PATH, encoding='utf-8'),
-        logging.StreamHandler(sys.stdout),
-    ]
+    handlers=[_file_handler, _console_handler],
 )
+
+# Chatty third-party loggers: websockets logs every frame/ping at DEBUG.
+for _noisy in ('websockets', 'websockets.server', 'asyncio', 'mido'):
+    logging.getLogger(_noisy).setLevel(logging.INFO)
 if getattr(sys, 'frozen', False):
     sys.stderr = open(_LOG_PATH, 'a', encoding='utf-8', buffering=1)
 
@@ -208,12 +223,24 @@ try:
 
     # ── API feeds ─────────────────────────────────────────────────────────────
     feeds = DataFeeds(composition)
+
+    def _pat(channel, length=4, *args, **kwargs):
+        # REPL sugar: a dict passed positionally is a drum note map, so
+        # @pat(9, 4, drums) works; a number is still unit.
+        for arg in args:
+            if isinstance(arg, dict):
+                kwargs.setdefault("drum_note_map", arg)
+            else:
+                kwargs.setdefault("unit", arg)
+        return composition.pattern(channel, length, **kwargs)
+
     _orig_build = composition._live_server._build_namespace
     composition._live_server._build_namespace = lambda: {
         **_orig_build(),
         "feeds": feeds,
         "live": live,
-        "pat": composition.pattern,
+        "pat": _pat,
+        "drums": gm_drums.GM_DRUM_MAP,
     }
 
     if sys.platform == 'win32':
@@ -405,13 +432,24 @@ try:
     except Exception as _e:
         logging.warning(f"Ableton Link unavailable: {_e}")
 
-    # Auto-open browser when running as compiled exe.
-    if getattr(sys, 'frozen', False):
-        import webbrowser, time
-        threading.Thread(
-            target=lambda: (time.sleep(2), webbrowser.open('http://localhost:8080')),
-            daemon=True
-        ).start()
+    # Announce startup + auto-open browser once the web UI is live.
+    # MIDI device selection happens at Composition() construction (top of this
+    # file), so by the time _web_ui_server exists the prompt is long done.
+    def _announce_and_open_browser():
+        import time
+        import webbrowser
+        while getattr(composition, '_web_ui_server', None) is None:
+            time.sleep(0.25)
+        time.sleep(0.5)  # let the HTTP server bind
+        try:
+            from rich.console import Console
+            Console().print("\n[bold green]POMSKI has started up successfully. Have fun![/bold green]\n")
+        except Exception:
+            print("\nPOMSKI has started up successfully. Have fun!\n")
+        webbrowser.open('http://localhost:8080')
+
+    threading.Thread(target=_announce_and_open_browser, daemon=True,
+                     name="startup-announce").start()
 
     composition.play()
 

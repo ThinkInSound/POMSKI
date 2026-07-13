@@ -22,6 +22,7 @@ class PatternMidiMixin:
 	# ── Instance attributes provided by PatternBuilder at runtime ────────
 	_pattern: subsequence.pattern.Pattern
 	_default_grid: int
+	_resolve_pitch: typing.Callable[[typing.Union[int, str]], int]
 
 	# ── Shared ramp helper ──────────────────────────────────────────────────
 
@@ -294,6 +295,92 @@ class PatternMidiMixin:
 				data = bytes(data)
 			)
 		)
+
+	# ── Drones / raw note events ─────────────────────────────────────────────
+
+	def note_on (self, pitch: typing.Union[int, str], beat: float = 0.0, velocity: int = 100) -> None:
+
+		"""
+		Send a raw note_on with no automatic note_off.
+
+		The note sounds until a matching ``note_off()`` / ``drone_off()`` is
+		sent (or the composition stops — active notes are cleaned up then).
+
+		Parameters:
+			pitch: MIDI note number (0–127) or drum name string.
+			beat: Beat position within the pattern (default 0.0).
+			velocity: MIDI velocity (0–127, default 100).
+		"""
+
+		pulse = int(beat * subsequence.constants.MIDI_QUARTER_NOTE)
+
+		self._pattern.cc_events.append(
+			subsequence.pattern.CcEvent(
+				pulse = pulse,
+				message_type = 'note_on',
+				note = self._resolve_pitch(pitch),
+				velocity = max(1, min(127, velocity)),
+			)
+		)
+
+	def note_off (self, pitch: typing.Union[int, str], beat: float = 0.0) -> None:
+
+		"""
+		Send a raw note_off at a beat position.
+
+		Parameters:
+			pitch: MIDI note number (0–127) or drum name string.
+			beat: Beat position within the pattern (default 0.0).
+		"""
+
+		pulse = int(beat * subsequence.constants.MIDI_QUARTER_NOTE)
+
+		self._pattern.cc_events.append(
+			subsequence.pattern.CcEvent(
+				pulse = pulse,
+				message_type = 'note_off',
+				note = self._resolve_pitch(pitch),
+				velocity = 0,
+			)
+		)
+
+	def drone (self, pitch: typing.Union[int, str], beat: float = 0.0, velocity: int = 100) -> None:
+
+		"""
+		Start a sustained note (note_on with no automatic note_off).
+
+		Guard with a cycle check so the drone doesn't retrigger every cycle:
+
+		Example:
+			```python
+			@composition.pattern(channel=2, length=4)
+			def pad (p):
+			    if p.cycle == 0:
+			        p.drone(48)          # start once
+			    if p.section and p.section.last_bar:
+			        p.drone_off(48, beat=3.5)
+			```
+		"""
+
+		self.note_on(pitch, beat=beat, velocity=velocity)
+
+	def drone_off (self, pitch: typing.Union[int, str], beat: float = 0.0) -> None:
+
+		"""Stop a sustained note started with ``drone()``."""
+
+		self.note_off(pitch, beat=beat)
+
+	def silence (self, beat: float = 0.0) -> None:
+
+		"""
+		Silence this pattern's channel: CC 123 (All Notes Off) + CC 120
+		(All Sound Off) at the given beat position.
+
+		Useful to guarantee nothing hangs when cutting a drone or dense pattern.
+		"""
+
+		self.cc(123, 0, beat=beat)
+		self.cc(120, 0, beat=beat)
 
 	# ── OSC messages ─────────────────────────────────────────────────────────
 

@@ -392,7 +392,7 @@ class WebUI:
             try:
                 state = self._get_state(comp)
                 message = json.dumps(state)
-                websockets.broadcast(self._clients, message)
+                websockets.asyncio.server.broadcast(self._clients, message)
             except Exception as e:
                 import traceback
                 logger.error(f"Error broadcasting UI state: {e}\n{traceback.format_exc()}")
@@ -408,7 +408,7 @@ class WebUI:
                 pass
             for event in midi_events:
                 try:
-                    websockets.broadcast(self._clients, json.dumps({'midi': event}))
+                    websockets.asyncio.server.broadcast(self._clients, json.dumps({'midi': event}))
                 except Exception:
                     pass
 
@@ -416,14 +416,19 @@ class WebUI:
             try:
                 while True:
                     err_msg = self._builder_error_queue.get_nowait()
-                    websockets.broadcast(self._clients, json.dumps({'log': err_msg, 'level': 'err'}))
+                    websockets.asyncio.server.broadcast(self._clients, json.dumps({'log': err_msg, 'level': 'err'}))
             except queue.Empty:
                 pass
 
     def _get_state(self, comp: typing.Any) -> typing.Dict[str, typing.Any]:
 
+        # Live sequencer tempo, not the static comp.bpm attribute — during a
+        # target_bpm() ramp only current_bpm moves, and the UI should show it.
+        seq_for_bpm = getattr(comp, '_sequencer', None)
+        live_bpm = round(seq_for_bpm.current_bpm, 1) if seq_for_bpm is not None else comp.bpm
+
         state: typing.Dict[str, typing.Any] = {
-            "bpm": comp.bpm,
+            "bpm": live_bpm,
             "section": None,
             "chord": None,
             "patterns": [],

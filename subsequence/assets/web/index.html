@@ -1025,7 +1025,7 @@ function handleMsg(msg){
     void ew.offsetWidth;
     if(msg.repl_error){log(`<pre class="ll-pre ll-err">${escHtml(msg.repl_error)}</pre>`,'err',true);ew.classList.add('flash-err');}
     else if(msg.repl_result==='OK'){log('=> OK','ok');ew.classList.add('flash-ok');}
-    else{log(`<pre class="ll-pre">${escHtml(msg.repl_result)}</pre>`,'info',true);ew.classList.add('flash-ok');}
+    else{log(`<pre class="ll-pre">${highlightPython(msg.repl_result)}</pre>`,'info',true);ew.classList.add('flash-ok');}
     setTimeout(()=>ew.classList.remove('flash-ok','flash-err'),500);
     return;
   }

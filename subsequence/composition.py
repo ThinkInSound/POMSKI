@@ -413,20 +413,32 @@ async def schedule_task (
 
 async def schedule_form (
     sequencer: subsequence.sequencer.Sequencer,
-    form_state: FormState,
+    get_form_state: typing.Callable[[], typing.Optional[FormState]],
     reschedule_lookahead: int = 1
 ) -> None:
 
-    """Schedule the form state to advance each bar."""
+    """Schedule the form state to advance each bar.
 
-    # Log the initial section.
-    initial_section = form_state.get_section_info()
-    if initial_section:
-        logger.info(f"Form: {initial_section.name}")
+    ``get_form_state`` is read on every bar tick so a form defined (or
+    redefined) live via the REPL after playback starts is picked up and
+    advanced — the callback is registered unconditionally at startup.
+    """
+
+    # Log the initial section, if a form exists at startup.
+    initial_state = get_form_state()
+    if initial_state is not None:
+        initial_section = initial_state.get_section_info()
+        if initial_section:
+            logger.info(f"Form: {initial_section.name}")
 
     def advance_form (pulse: int) -> None:
 
         """Advance the form by one bar, logging section changes."""
+
+        form_state = get_form_state()
+
+        if form_state is None:
+            return
 
         section_changed = form_state.advance()
 
@@ -1313,6 +1325,30 @@ class Composition:
         if hasattr(self, '_link'):
             self._link.tempo = bpm
 
+    def target_bpm (self, bpm: float, bars: int = 4, shape: typing.Union[str, subsequence.easing.EasingFn] = "ease_in_out") -> None:
+
+        """
+        Smoothly ramp the tempo to a new BPM over a number of bars.
+
+        The sequencer interpolates the tempo every pulse; the web UI shows the
+        live value as it moves.  ``composition.bpm`` is set to the target
+        immediately (it reflects intent, not the instantaneous tempo).
+
+        Note: Ableton Link / AbletonOSC peers are **not** ramped — Link has no
+        smooth-tempo concept.  Call ``composition.set_bpm(bpm)`` after the ramp
+        if the final tempo must propagate to Link peers.
+
+        Parameters:
+            bpm: The target tempo in beats per minute.
+            bars: Duration of the transition in bars (default 4).
+            shape: Easing curve name or callable (default ``"ease_in_out"``).
+        """
+
+        self._sequencer.set_target_bpm(bpm, bars=bars, shape=shape)
+
+        if not self._clock_follow:
+            self.bpm = bpm
+
     def live_info (self) -> typing.Dict[str, typing.Any]:
 
         """
@@ -1516,6 +1552,13 @@ class Composition:
         """
 
         self._form_state = FormState(sections, loop=loop, start=start)
+
+        # Defined live (after play()): the always-on form callback picks this
+        # up at the next bar — log the starting section as feedback.
+        if self._is_live:
+            info = self._form_state.get_section_info()
+            if info is not None:
+                logger.info(f"Form: {info.name} (live — advances from next bar)")
 
     def pattern (
         self,
@@ -1924,13 +1967,13 @@ class Composition:
                 get_section_progression = _get_section_progression,
             )
 
-        if self._form_state is not None:
-
-            await schedule_form(
-                sequencer = self._sequencer,
-                form_state = self._form_state,
-                reschedule_lookahead = 1
-            )
+        # Always registered (like the bar counter below) so a form defined
+        # live via the REPL after play() starts advancing on the next bar.
+        await schedule_form(
+            sequencer = self._sequencer,
+            get_form_state = lambda: self._form_state,
+            reschedule_lookahead = 1
+        )
 
         # Bar counter - always active so p.bar is available to all builders.
         def _advance_builder_bar (pulse: int) -> None:
