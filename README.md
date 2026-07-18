@@ -25,6 +25,7 @@ POMSKI is a fork of [subsequence](https://github.com/simonholliday/subsequence) 
 ## Installation
 
 You'll need Python 3.10+ (but not later than 3.14) and a DAW or hardware synth receiving MIDI.
+
 Mac users: User pip3 instead of pip.
 
 ```bash
