@@ -11,7 +11,10 @@ import tempfile
 
 # ── Log directory ─────────────────────────────────────────────────────────────
 if getattr(sys, 'frozen', False):
-    _LOG_DIR = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'POMSKI')
+    if sys.platform == 'darwin':
+        _LOG_DIR = os.path.join(os.path.expanduser('~'), 'Library', 'Logs', 'POMSKI')
+    else:
+        _LOG_DIR = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'POMSKI')
     os.makedirs(_LOG_DIR, exist_ok=True)
 else:
     _LOG_DIR = '.'
@@ -423,12 +426,95 @@ try:
                 proxy._enabled = False    # bridge died unexpectedly
             _delay = 5
 
+    def _start_direct_link() -> None:
+        """
+        macOS/Linux: aalink.Link() works fine directly in-process (no SxS DLL
+        redirection issue like Windows), so no bridge subprocess is needed.
+        Runs its own dedicated asyncio loop in a daemon thread, since aalink
+        needs a *running* loop and composition._main_loop doesn't exist yet
+        at this point in startup.
+        """
+        import aalink as _aalink_mod
+
+        class _DirectLinkProxy:
+            """Wraps a real aalink.Link. Exposes the same shape web_ui.py's
+            _get_link_state() reads from the Windows bridge _LinkProxy
+            (enabled/tempo/num_peers, plus _tempo/_num_peers)."""
+            def __init__(self, link: 'aalink.Link'):
+                self._link = link
+
+            @property
+            def enabled(self):
+                return self._link.enabled
+
+            @enabled.setter
+            def enabled(self, value):
+                self._link.enabled = bool(value)
+
+            @property
+            def tempo(self):
+                return self._link.tempo
+
+            @tempo.setter
+            def tempo(self, value):
+                self._link.tempo = float(value)
+
+            @property
+            def num_peers(self):
+                return self._link.num_peers
+
+            @property
+            def _tempo(self):
+                return self._link.tempo
+
+            @property
+            def _num_peers(self):
+                return self._link.num_peers
+
+        def _link_thread_body() -> None:
+            _loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(_loop)
+            _bpm = float(getattr(composition, "bpm", 120.0))
+            _link = _aalink_mod.Link(_bpm, _loop)
+            _link.enabled = True
+            try:
+                _link.set_num_peers_callback(lambda n: None)
+                _link.set_tempo_callback(lambda t: None)
+                _link.set_start_stop_callback(lambda p: None)
+            except Exception:
+                pass
+
+            composition._link = _DirectLinkProxy(_link)
+            logging.info("Ableton Link initialised (direct, in-process)")
+
+            async def _poll() -> None:
+                _last = _bpm
+                while True:
+                    try:
+                        _t = _link.tempo
+                        if 20.0 <= _t <= 400.0 and abs(_t - _last) > 0.05:
+                            _last = _t
+                            composition._sequencer.set_bpm(_t)
+                            if not composition._clock_follow:
+                                composition.bpm = _t
+                    except Exception:
+                        pass
+                    await asyncio.sleep(0.05)
+
+            _loop.run_until_complete(_poll())
+
+        threading.Thread(target=_link_thread_body, daemon=True,
+                         name="link-direct").start()
+
     try:
-        _link_proxy = _LinkProxy()
-        composition._link = _link_proxy
-        threading.Thread(target=_link_service, args=(_link_proxy,),
-                         daemon=True, name="link-service").start()
-        logging.info("Ableton Link service started")
+        if sys.platform == 'win32':
+            _link_proxy = _LinkProxy()
+            composition._link = _link_proxy
+            threading.Thread(target=_link_service, args=(_link_proxy,),
+                             daemon=True, name="link-service").start()
+            logging.info("Ableton Link service started")
+        else:
+            _start_direct_link()
     except Exception as _e:
         logging.warning(f"Ableton Link unavailable: {_e}")
 

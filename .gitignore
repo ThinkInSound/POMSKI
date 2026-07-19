@@ -2,6 +2,20 @@
 AGENTS.md
 README-AGENTS.md
 
+# Claude config files
+CLAUDE.md
+CLAUDE_MAC.md
+.claude/
+
+# Python virtual environment
+myenv/
+
+# Generated macOS iconset (source: favicon.ico)
+pomski.iconset/
+
+# macOS
+.DS_Store
+
 # Python
 __pycache__/
 *.py[cod]
@@ -23,3 +37,4 @@ docs/*.html
 
 # Work in progress
 examples/wip
+node_modules
