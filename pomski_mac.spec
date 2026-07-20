@@ -64,6 +64,7 @@ a = Analysis(
         collect_submodules('music21') +
         collect_submodules('rich') +
         collect_submodules('requests') +
+        collect_submodules('webview') +
         ['urllib3', 'certifi', 'charset_normalizer', 'idna', 'aalink']
     ),
 

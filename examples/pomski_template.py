@@ -518,26 +518,68 @@ try:
     except Exception as _e:
         logging.warning(f"Ableton Link unavailable: {_e}")
 
-    # Announce startup + auto-open browser once the web UI is live.
+    # ── Startup: native window (macOS) or browser ─────────────────────────────
     # MIDI device selection happens at Composition() construction (top of this
     # file), so by the time _web_ui_server exists the prompt is long done.
-    def _announce_and_open_browser():
+    def _wait_for_web_ui(must_be_alive: 'threading.Thread | None' = None) -> None:
         import time
-        import webbrowser
         while getattr(composition, '_web_ui_server', None) is None:
+            if must_be_alive is not None and not must_be_alive.is_alive():
+                raise RuntimeError("POMSKI failed to start — see pomski.log")
             time.sleep(0.25)
         time.sleep(0.5)  # let the HTTP server bind
+
+    def _print_banner() -> None:
         try:
             from rich.console import Console
             Console().print("\n[bold green]POMSKI has started up successfully. Have fun![/bold green]\n")
         except Exception:
             print("\nPOMSKI has started up successfully. Have fun!\n")
-        webbrowser.open('http://localhost:8080')
 
-    threading.Thread(target=_announce_and_open_browser, daemon=True,
-                     name="startup-announce").start()
+    # pywebview (WKWebView) renders the web UI in a native window, so no
+    # browser is needed. macOS requires the GUI to own the main thread, so
+    # composition.play() moves to a background thread in that mode.
+    _webview = None
+    if sys.platform == 'darwin':
+        try:
+            import webview as _webview
+        except ImportError:
+            pass
 
-    composition.play()
+    if _webview is not None:
+        _play_thread = threading.Thread(target=composition.play,
+                                        name="pomski-play")
+        _play_thread.daemon = True
+        _play_thread.start()
+        _wait_for_web_ui(must_be_alive=_play_thread)
+        _print_banner()
+
+        _webview.create_window('POMSKI', 'http://localhost:8080',
+                               width=1400, height=900)
+        _webview.start()  # blocks until the window is closed
+
+        # Window closed: request a clean sequencer shutdown (notes off),
+        # then exit. os._exit is the backstop for anything non-daemon.
+        try:
+            _seq  = composition._sequencer
+            _loop = composition._main_loop
+            _loop.call_soon_threadsafe(_seq._stop_event.set)
+            _play_thread.join(timeout=5.0)
+        except Exception:
+            pass
+        logging.info("POMSKI window closed — shutting down")
+        os._exit(0)
+    else:
+        def _announce_and_open_browser():
+            import webbrowser
+            _wait_for_web_ui()
+            _print_banner()
+            webbrowser.open('http://localhost:8080')
+
+        threading.Thread(target=_announce_and_open_browser, daemon=True,
+                         name="startup-announce").start()
+
+        composition.play()
 
 except BaseException:
     _write_crash_log()
