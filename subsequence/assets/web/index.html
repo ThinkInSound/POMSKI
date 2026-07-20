@@ -452,7 +452,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="ref-scroll">
 
           <div style="padding:10px 12px 2px;flex-shrink:0">
-            <button onclick="window.open('/tutorial.html','_blank')" style="width:100%;padding:8px 12px;background:transparent;border:1px solid var(--teal);border-radius:4px;color:var(--teal);font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s" onmouseover="this.style.background='rgba(63,200,160,.12)'" onmouseout="this.style.background='transparent'">Open Full Tutorial ↗</button>
+            <button onclick="openTutorial()" style="width:100%;padding:8px 12px;background:transparent;border:1px solid var(--teal);border-radius:4px;color:var(--teal);font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s" onmouseover="this.style.background='rgba(63,200,160,.12)'" onmouseout="this.style.background='transparent'">Open Full Tutorial ↗</button>
           </div>
 
           <div class="ref-section">
@@ -608,6 +608,30 @@ def prime_pat(p):
         return [i for i,v in enumerate(s) if v]
     for b in [x for x in primes(32) if x &lt; 16]:
         p.note(60, beat=b*0.25)</code></div>
+            </div>
+          </div>
+
+          <div class="ref-section">
+            <div class="ref-title">Algorithmic palette — Euclidean rhythms</div>
+            <div class="ref-body">
+              <div class="ref-item"><code><span class="ref-arg"># Euclidean — spread N pulses evenly across the bar (world rhythms)</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def euclid(p):
+    p.euclidean(60, pulses=5)          # 5 hits over 16 steps — Cuban cinquillo feel
+    p.euclidean(48, pulses=3, velocity=70)   # 3-over-16 layered underneath</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Euclidean drum kit — layered pulses on the drum channel</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=9, length=4, drum_note_map=drums)  # ← ch10 = drums
+def ch10(p):
+    p.euclidean("kick_1", pulses=4)
+    p.euclidean("snare_1", pulses=2, velocity=90)
+    p.euclidean("hi_hat_closed", pulses=11, velocity=55, dropout=0.15)</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Evolving euclidean — pulse count follows the cycle</span></code></div>
+              <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
+def euclid_grow(p):
+    p.euclidean(60, pulses=3 + p.cycle % 5)   # 3,4,5,6,7 pulses, then repeats
+    p.euclidean(36, pulses=7, no_overlap=True, velocity=45)  # ghosts fill the gaps</code></div>
             </div>
           </div>
 
@@ -896,6 +920,15 @@ def ch1(p):
 </div>
 
 <script>
+function openTutorial(){
+  // Native-window mode (pywebview/WKWebView) ignores window.open('_blank');
+  // the Python side exposes an API that opens a real second window instead.
+  if(window.pywebview&&window.pywebview.api&&window.pywebview.api.open_tutorial){
+    window.pywebview.api.open_tutorial();
+  }else{
+    window.open('/tutorial.html','_blank');
+  }
+}
 const WS_PORT=8765, WS_HOST=window.location.hostname||'localhost', HIST_LEN=180;
 let ws=null, bpm=120, lastBeat=-1;
 let cmdHist=[], cmdIdx=-1;

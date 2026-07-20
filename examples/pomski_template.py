@@ -554,8 +554,17 @@ try:
         _wait_for_web_ui(must_be_alive=_play_thread)
         _print_banner()
 
+        class _PomskiJsApi:
+            """Bridge for UI actions WKWebView can't do itself (window.open
+            with _blank is silently ignored in pywebview)."""
+            def open_tutorial(self):
+                _webview.create_window('POMSKI Tutorial',
+                                       'http://localhost:8080/tutorial.html',
+                                       width=1100, height=850, text_select=True)
+
         _webview.create_window('POMSKI', 'http://localhost:8080',
-                               width=1400, height=900)
+                               width=1400, height=900,
+                               text_select=True, js_api=_PomskiJsApi())
         _webview.start()  # blocks until the window is closed
 
         # Window closed: request a clean sequencer shutdown (notes off),
