@@ -1261,7 +1261,7 @@ document.getElementById('runBtn').addEventListener('click',()=>{
 document.getElementById('codeEditor').addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.shiftKey&&!e.ctrlKey){e.preventDefault();evalCode(getBlock());}
   if(e.key==='Enter'&&e.shiftKey&&e.ctrlKey){e.preventDefault();evalCode();}
-  if(e.key==='Tab'){e.preventDefault();const s=e.target,v=s.value,pos=s.selectionStart;s.value=v.slice(0,pos)+'    '+v.slice(s.selectionEnd);s.selectionStart=s.selectionEnd=pos+4;}
+  if(e.key==='Tab'){e.preventDefault();const s=e.target,v=s.value,pos=s.selectionStart;s.value=v.slice(0,pos)+'    '+v.slice(s.selectionEnd);s.selectionStart=s.selectionEnd=pos+4;s.dispatchEvent(new Event('input',{bubbles:true}));}
 });
 {let _saveT=0;document.getElementById('codeEditor').addEventListener('input',()=>{clearTimeout(_saveT);_saveT=setTimeout(saveBuffers,1500);});}
 
