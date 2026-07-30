@@ -1,6 +1,7 @@
 # POMSKI
 
-<img width="1918" height="930" alt="pomski sequencer when running" src="https://github.com/user-attachments/assets/2febb29d-3da3-46ee-ba67-ab3271cac7dd" />
+
+<img width="512" height="512" alt="POMSKI icon 512x512" src="https://github.com/user-attachments/assets/00eb176a-3759-472e-8595-deb4b99d23b0" />
 
 **POMSKI** — *Python Only MIDI Sequencer Keyboard Interface* — named after Qina, a very good Pomsky dog.
 
@@ -45,6 +46,9 @@ pip install mido python-rtmidi  # MIDI device selection in the Web UI
 pip install music21             # Exotic scale support (p.quantize_m21)
 ```
 ### Opening POMSKI
+
+<img width="1918" height="930" alt="pomski sequencer when running" src="https://github.com/user-attachments/assets/2febb29d-3da3-46ee-ba67-ab3271cac7dd" />
+<img width="512" height="512" alt="icon_512x512" src="https://github.com/user-attachments/assets/8910dc95-c71b-4d3e-948e-c5b7658522f1" />
 
 ```python
 cd [POMSKI repo examples folder]
