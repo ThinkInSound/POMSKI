@@ -1,8 +1,11 @@
 import dataclasses
+import logging
 import typing
 
 import subsequence.constants
 import subsequence.constants.velocity
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -90,6 +93,14 @@ class Pattern:
 		"""
 		Add a note to the pattern at a specific pulse position.
 		"""
+
+		# MIDI notes are a 7-bit value (0-127) - a pitch outside that range
+		# can never actually be sent. Skip just this note rather than
+		# failing the whole pattern, so e.g. one bad transpose in a chord
+		# or generative run doesn't silence every other note this cycle.
+		if not 0 <= pitch <= 127:
+			logger.warning("add_note: pitch %d is outside the valid MIDI range (0-127) - note skipped", pitch)
+			return
 
 		if position not in self.steps:
 			self.steps[position] = Step()

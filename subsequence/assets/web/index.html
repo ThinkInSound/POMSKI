@@ -135,16 +135,42 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .panel-view{display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden} .panel-view.active{display:flex}
 
 /* Log */
-.log-out{flex:1;overflow-y:auto;padding:10px 12px;font-family:var(--mono);font-size:11px;line-height:1.65;background:var(--bg-input);min-height:0}
-.log-out::-webkit-scrollbar{width:4px} .log-out::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.log-out{flex:65 1 0%;overflow-y:auto;padding:10px 12px;font-family:var(--mono);font-size:11px;line-height:1.65;background:var(--bg-input);min-height:0}
+.log-out::-webkit-scrollbar{width:4px} .log-out:hover::-webkit-scrollbar{width:10px} .log-out::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 .ll{white-space:pre-wrap;word-break:break-all;padding:1px 0}
 .ll.cmd{color:var(--pink)} .ll.ok{color:var(--green)} .ll.err{color:var(--red)} .ll.info{color:var(--blue)} .ll.dim{color:var(--text-dark)}
+.log-divider{height:5px;flex-shrink:0;cursor:row-resize;background:var(--border-dim);position:relative}
+.log-divider::after{content:'';position:absolute;left:50%;top:1.5px;width:24px;height:2px;background:var(--border);border-radius:1px;transform:translateX(-50%)}
+.log-divider:hover,.log-divider.dragging{background:var(--pink-dim)}
+.console-out{flex:35 1 0%;overflow-y:auto;padding:8px 12px;font-family:var(--mono);font-size:10px;line-height:1.55;background:var(--bg);color:var(--text-dim);min-height:0}
+.console-out::-webkit-scrollbar{width:4px} .console-out:hover::-webkit-scrollbar{width:10px} .console-out::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.cl{display:flex;gap:7px;align-items:flex-start;padding:1.5px 0}
+.cl-time{color:var(--text-dark);flex-shrink:0}
+.cl-lvl{flex-shrink:0;font-weight:700;min-width:34px;letter-spacing:.3px}
+.cl-name{color:var(--text-dim);flex-shrink:0;opacity:.75}
+.cl-name::after{content:':'}
+.cl-msg{color:var(--text-dim);flex:1;min-width:0;white-space:pre-wrap;word-break:break-all}
+.cl-info .cl-lvl{color:var(--blue)}
+.cl-warn .cl-lvl,.cl-warn .cl-msg{color:var(--orange)}
+.cl-err .cl-lvl,.cl-err .cl-msg{color:var(--red)}
+.cl-debug{opacity:.7} .cl-debug .cl-lvl{color:var(--teal)}
 .log-input-row{display:flex;align-items:stretch;border-top:1px solid var(--border-dim);flex-shrink:0;background:var(--bg-panel)}
 .log-prompt{padding:9px 10px 8px;font-family:var(--mono);font-size:11px;color:var(--pink);border-right:1px solid var(--border-dim);flex-shrink:0;user-select:none}
 .log-ta{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:11px;line-height:1.6;padding:8px;resize:none;min-height:36px}
 .log-ta::placeholder{color:var(--text-dark)}
+.quick-toggle{display:flex;align-items:center;gap:4px;padding:0 8px;border-left:1px solid var(--border-dim);font-family:var(--mono);font-size:9px;letter-spacing:.5px;color:var(--text-dark);cursor:pointer;user-select:none}
+.quick-toggle:has(input:checked){color:var(--pink)}
 .log-send{background:transparent;border:none;border-left:1px solid var(--border-dim);color:var(--text-dark);font-family:var(--mono);font-size:8px;letter-spacing:1px;padding:0 10px;cursor:pointer;text-transform:uppercase;transition:color .1s;writing-mode:vertical-lr;transform:rotate(180deg)}
 .log-send:hover{color:var(--pink)}
+
+/* Custom context menu (replaces native WKWebView menu, which surfaces
+   macOS Services items like "Add to Music as a Spoken Track" that make no
+   sense for code text) */
+.ctx-menu{position:fixed;z-index:5000;background:var(--bg-panel);border:1px solid var(--border-dim);border-radius:5px;box-shadow:0 6px 20px rgba(0,0,0,.45);padding:4px;font-family:var(--mono);font-size:11px;min-width:100px;display:none}
+.ctx-menu.show{display:block}
+.ctx-item{padding:6px 10px;border-radius:3px;cursor:pointer;color:var(--text);white-space:nowrap}
+.ctx-item:hover{background:var(--pink);color:#111}
+.ctx-item.disabled{color:var(--text-dark);cursor:default;pointer-events:none}
 
 
 /* Signals */
@@ -249,8 +275,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 @keyframes live-pulse{from{opacity:.6}to{opacity:1}}
 </style>
 </head>
-<body>
+<body oncontextmenu="return showCtxMenu(event)">
 <div id="flash"></div>
+<div class="ctx-menu" id="ctxMenu"><div class="ctx-item" id="ctxCopy">Copy</div></div>
 <div class="app">
 
   <!-- ── TOPBAR ── -->
@@ -340,9 +367,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <!-- LOG -->
       <div class="panel-view active" id="view-log">
         <div class="log-out" id="logOut"></div>
+        <div class="log-divider" id="logDivider" title="Drag to resize"></div>
+        <div class="console-out" id="consoleOut"></div>
         <div class="log-input-row">
           <div class="log-prompt">&gt;&gt;&gt;</div>
-          <textarea class="log-ta" id="logInput" rows="2" placeholder="Quick command&#8230;  or  cx: 1/MUTE ON"></textarea>
+          <textarea class="log-ta" id="logInput" rows="2" placeholder="Quick command&#8230;"></textarea>
+          <label class="quick-toggle" title="Send to ClyphX Pro instead of the REPL">
+            <input type="checkbox" id="quickCx"><span>CX</span>
+          </label>
           <button class="log-send" onclick="sendQuick()">Send</button>
         </div>
       </div>
@@ -875,7 +907,7 @@ def ch4(p):
             <div class="ref-title">ClyphX Pro — Multi-action</div>
             <div class="ref-body">
               <div class="ref-item"><span class="ref-tag warn">!</span> Separate actions with <code> ; </code> (spaces matter)</div>
-              <div class="ref-item"><span class="ref-tag warn">!</span> From quick command box, prefix with <code>cx:</code> — e.g. <code>cx: 1/MUTE ON ; BPM 128</code></div>
+              <div class="ref-item"><span class="ref-tag warn">!</span> From quick command box, check <b>CX</b> — e.g. <code>1/MUTE ON ; BPM 128</code></div>
               <div class="ref-item"><code>live.clyphx("1/MUTE ON ; 2/MUTE OFF ; BPM 128")</code></div>
               <div class="ref-item"><code>live.clyphx("(PSEQ) 1/MUTE ; 2/MUTE ; 3/MUTE")</code><span class="ref-desc">Step through each fire</span></div>
             </div>
@@ -929,6 +961,60 @@ function openTutorial(){
     window.open('/tutorial.html','_blank');
   }
 }
+
+// ── CUSTOM CONTEXT MENU ─────────────────────────────────────────────────────
+// Replaces the native WKWebView right-click menu, which surfaces irrelevant
+// macOS Services/AutoFill items for plain text and form-field selections.
+// Copy is the only action that makes sense here.
+//
+// The selected text is captured up front, at contextmenu time, rather than
+// re-read inside the Copy click handler — clicking the menu item is itself a
+// mousedown elsewhere in the page, which collapses the original selection
+// before the click handler runs. Form fields (input/textarea) also don't
+// participate in window.getSelection() at all; their selection lives in
+// selectionStart/selectionEnd instead.
+let _ctxCopyText='';
+function _getSelectedText(target){
+  if(target&&(target.tagName==='TEXTAREA'||target.tagName==='INPUT')){
+    return target.value.substring(target.selectionStart||0,target.selectionEnd||0);
+  }
+  return window.getSelection().toString();
+}
+function showCtxMenu(e){
+  e.preventDefault();
+  _ctxCopyText=_getSelectedText(e.target);
+  const menu=document.getElementById('ctxMenu'),copyItem=document.getElementById('ctxCopy');
+  copyItem.classList.toggle('disabled',!_ctxCopyText);
+  menu.classList.add('show');
+  const w=180,h=40;
+  menu.style.left=Math.min(e.clientX,window.innerWidth-w)+'px';
+  menu.style.top=Math.min(e.clientY,window.innerHeight-h)+'px';
+  return false;
+}
+document.getElementById('ctxCopy').addEventListener('click',()=>{
+  if(_ctxCopyText){
+    navigator.clipboard.writeText(_ctxCopyText).catch(()=>{
+      // Clipboard API can be unavailable/denied in the native window —
+      // fall back to a hidden textarea + execCommand, which copies whatever
+      // is selected in the DOM at the moment execCommand runs (not our
+      // captured string), so build that selection ourselves first.
+      const ta=document.createElement('textarea');
+      ta.value=_ctxCopyText;
+      ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);
+      ta.select();
+      try{document.execCommand('copy');}catch(err){}
+      document.body.removeChild(ta);
+    });
+  }
+  document.getElementById('ctxMenu').classList.remove('show');
+});
+document.addEventListener('mousedown',e=>{
+  const menu=document.getElementById('ctxMenu');
+  if(menu.classList.contains('show')&&!menu.contains(e.target))menu.classList.remove('show');
+});
+document.addEventListener('scroll',()=>document.getElementById('ctxMenu').classList.remove('show'),true);
+
 const WS_PORT=8765, WS_HOST=window.location.hostname||'localhost', HIST_LEN=180;
 let ws=null, bpm=120, lastBeat=-1;
 let cmdHist=[], cmdIdx=-1;
@@ -1071,6 +1157,8 @@ function handleMsg(msg){
     return;
   }
   if(msg.midi){handleMidiEvent(msg.midi);return;}
+  if(msg.console_log_batch!==undefined){consoleLogBatch(msg.console_log_batch);return;}
+  if(msg.log!==undefined){log(msg.log,msg.level||'info');return;}
   // state broadcast
   updateTransport(msg);
   if(msg.link)updateLink(msg.link);
@@ -1270,16 +1358,15 @@ function sendQuick(){
   const ta=document.getElementById('logInput');
   const code=ta.value.trim();
   if(!code) return;
-  if(code.toLowerCase().startsWith('cx:')){
-    const script=code.slice(3).trim();
+  cmdHist.unshift(code);if(cmdHist.length>200)cmdHist.length=200;cmdIdx=-1;
+  if(document.getElementById('quickCx').checked){
+    const script=code.startsWith('cx:')?code.slice(3).trim():code;  // tolerate old cx: prefix if pasted
     if(!script) return;
     if(!_liveConnected){log('ClyphX: AbletonOSC not connected','err');return;}
     log(`<span class="hl-prompt">CX &gt;&gt;&gt;</span> <span class="hl-echo">${_esc(script)}</span>`,'cmd',true);
-    cmdHist.unshift(code);if(cmdHist.length>200)cmdHist.length=200;cmdIdx=-1;
     wsSend({cmd:'clyphx',script});
   } else {
     log(`<span class="hl-prompt">&gt;&gt;&gt;</span> <span class="hl-echo">${highlightPython(code)}</span>`,'cmd',true);
-    cmdHist.unshift(code);if(cmdHist.length>200)cmdHist.length=200;cmdIdx=-1;
     wsSend({cmd:'repl',code});
   }
   ta.value='';
@@ -1293,6 +1380,84 @@ document.getElementById('logInput').addEventListener('keydown',e=>{
 // ── LOG ───────────────────────────────────────────────────────────────────────
 function log(text,cls,isHtml){const out=document.getElementById('logOut'),d=document.createElement('div');d.className='ll'+(cls?' '+cls:'');if(isHtml)d.innerHTML=text;else d.textContent=text;out.appendChild(d);out.scrollTop=out.scrollHeight;}
 
+// ── CONSOLE (mirrored stdout/RichHandler output — bottom pane of Log tab) ──────
+const _CL_HL_RE=/'[^']*'|"[^"]*"|\b\d+\.?\d*\b|\bTrue\b|\bFalse\b|\bNone\b/g;
+function _highlightMsg(text){
+  let out='',last=0;
+  for(const m of text.matchAll(_CL_HL_RE)){
+    out+=_esc(text.slice(last,m.index));
+    const tok=m[0];
+    if(tok[0]==="'"||tok[0]==='"')out+=`<span class="hl-s">${_esc(tok)}</span>`;
+    else if(tok==='True'||tok==='False'||tok==='None')out+=`<span class="hl-k">${_esc(tok)}</span>`;
+    else out+=`<span class="hl-n">${_esc(tok)}</span>`;
+    last=m.index+tok.length;
+  }
+  out+=_esc(text.slice(last));
+  return out;
+}
+// Backend log bursts (e.g. one line per active pattern in the same tick)
+// arrive over the socket back-to-back; rendering them all instantly reads as
+// choppy "chunks" rather than a stream. Buffer and drain at a steady pace
+// instead — like a typewriter — falling back to draining faster only if a
+// backlog builds up, so it never falls meaningfully behind.
+let _consoleQueue=[];
+let _consoleTimer=null;
+function consoleLogBatch(entries){
+  for(const entry of entries)_consoleQueue.push(entry);
+  if(_consoleQueue.length>300)_consoleQueue.splice(0,_consoleQueue.length-300);
+  if(!_consoleTimer)_consoleTimer=setInterval(_drainConsoleQueue,70);
+}
+function _drainConsoleQueue(){
+  if(_consoleQueue.length===0){
+    clearInterval(_consoleTimer);_consoleTimer=null;
+    return;
+  }
+  const n=Math.max(1,Math.ceil(_consoleQueue.length/20));
+  for(let i=0;i<n&&_consoleQueue.length;i++)_renderConsoleLine(_consoleQueue.shift());
+}
+// Tracks scroll intent via real user scroll events rather than measuring
+// scrollHeight/clientHeight at render time — those read as 0 while the Log
+// tab is display:none (e.g. user switched to another tab), which would
+// otherwise misread as "at bottom" and silently reset scrollTop to 0.
+let _consoleAtBottom=true;
+document.getElementById('consoleOut').addEventListener('scroll',()=>{
+  const out=document.getElementById('consoleOut');
+  _consoleAtBottom=out.scrollHeight-out.scrollTop-out.clientHeight<40;
+});
+function _renderConsoleLine(entry){
+  const out=document.getElementById('consoleOut'),d=document.createElement('div');
+  const lvl=entry.level||'info';
+  const lvlLabel={err:'ERROR',warn:'WARN',debug:'DEBUG'}[lvl]||'INFO';
+  d.className='cl cl-'+lvl;
+  d.innerHTML=`<span class="cl-time">${_esc(entry.time||'')}</span><span class="cl-lvl">${lvlLabel}</span><span class="cl-name">${_esc(entry.name||'')}</span><span class="cl-msg">${_highlightMsg(entry.message||'')}</span>`;
+  out.appendChild(d);
+  while(out.children.length>500){
+    const removed=out.firstChild,h=removed.offsetHeight;
+    out.removeChild(removed);
+    if(!_consoleAtBottom)out.scrollTop-=h;
+  }
+  if(_consoleAtBottom)out.scrollTop=out.scrollHeight;
+}
+
+// ── LOG / CONSOLE SPLIT DRAG ────────────────────────────────────────────────────
+(()=>{
+  const divider=document.getElementById('logDivider'),top=document.getElementById('logOut'),bottom=document.getElementById('consoleOut'),wrap=document.getElementById('view-log');
+  divider.addEventListener('mousedown',e=>{
+    e.preventDefault();
+    divider.classList.add('dragging');
+    const wrapRect=wrap.getBoundingClientRect(),dividerH=divider.offsetHeight,inputH=wrap.querySelector('.log-input-row').offsetHeight;
+    const avail=wrapRect.height-dividerH-inputH;
+    const mv=e2=>{
+      const topH=Math.min(avail-40,Math.max(40,e2.clientY-wrapRect.top));
+      top.style.flex=`0 0 ${topH}px`;
+      bottom.style.flex=`0 0 ${avail-topH}px`;
+    };
+    const up=()=>{divider.classList.remove('dragging');document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv);
+    document.addEventListener('mouseup',up);
+  });
+})();
+
 // ── PANEL TABS ────────────────────────────────────────────────────────────────
 document.querySelectorAll('.panel-tab').forEach(tab=>{
   tab.addEventListener('click',()=>{
@@ -1300,6 +1465,10 @@ document.querySelectorAll('.panel-tab').forEach(tab=>{
     document.querySelectorAll('.panel-view').forEach(v=>v.classList.remove('active'));
     tab.classList.add('active');document.getElementById('view-'+tab.dataset.panel).classList.add('active');
     if(tab.dataset.panel==='prefs')refreshMidi();
+    if(tab.dataset.panel==='log'&&_consoleAtBottom){
+      const out=document.getElementById('consoleOut');
+      out.scrollTop=out.scrollHeight;
+    }
   });
 });
 

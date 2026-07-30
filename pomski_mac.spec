@@ -164,6 +164,12 @@ with open(_wrapper, "w") as _f:
         'if [ -t 0 ]; then\n'
         '    exec "$DIR/POMSKI_bin" "$@"\n'
         'else\n'
+        # Marker tells pomski_template.py this Terminal window was opened
+        # just to give the MIDI picker a tty (vs. someone manually running
+        # POMSKI_bin from their own terminal above) — see the picker/relaunch
+        # hand-off near the top of pomski_template.py.
+        '    mkdir -p "$HOME/Library/Logs/POMSKI"\n'
+        '    touch "$HOME/Library/Logs/POMSKI/.launched_via_wrapper"\n'
         '    open -a Terminal "$DIR/POMSKI_bin"\n'
         'fi\n'
     )
