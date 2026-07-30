@@ -1,7 +1,7 @@
 # POMSKI
 
 
-<img width="512" height="512" alt="POMSKI icon 512x512" src="https://github.com/user-attachments/assets/00eb176a-3759-472e-8595-deb4b99d23b0" />
+<img width="256" height="256" alt="POMSKI icon_256x256" src="https://github.com/user-attachments/assets/69a9a144-7999-468f-b92a-c9c6283e1b62" />
 
 **POMSKI** — *Python Only MIDI Sequencer Keyboard Interface* — named after Qina, a very good Pomsky dog.
 
