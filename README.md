@@ -1,7 +1,6 @@
 # POMSKI
 
-
-<img width="256" height="256" alt="POMSKI icon_256x256" src="https://github.com/user-attachments/assets/69a9a144-7999-468f-b92a-c9c6283e1b62" />
+<img width="1918" height="930" alt="pomski sequencer when running" src="https://github.com/user-attachments/assets/2febb29d-3da3-46ee-ba67-ab3271cac7dd" />
 
 **POMSKI** — *Python Only MIDI Sequencer Keyboard Interface* — named after Qina, a very good Pomsky dog.
 
@@ -18,6 +17,8 @@ def bass(p):
 ---
 
 ## Origin
+
+<img width="128" height="128" alt="icon_128x128" src="https://github.com/user-attachments/assets/93e2cc61-2f41-469a-9874-a1b3c58aa751" />
 
 POMSKI is a fork of [subsequence](https://github.com/simonholliday/subsequence) by Simon Holliday, extended with a browser-based Web UI, Ableton Link sync, AbletonOSC, ClyphX, Music21 libraries, and a soon-to-release Max for Live device. The original AGPLv3 license and copyright are preserved.
 
@@ -47,8 +48,6 @@ pip install music21             # Exotic scale support (p.quantize_m21)
 ```
 ### Opening POMSKI
 
-<img width="1918" height="930" alt="pomski sequencer when running" src="https://github.com/user-attachments/assets/2febb29d-3da3-46ee-ba67-ab3271cac7dd" />
-<img width="512" height="512" alt="icon_512x512" src="https://github.com/user-attachments/assets/8910dc95-c71b-4d3e-948e-c5b7658522f1" />
 
 ```python
 cd [POMSKI repo examples folder]
