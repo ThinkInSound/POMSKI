@@ -44,6 +44,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .bpm-btn:hover{background:var(--bg-hover);color:var(--pink)} .bpm-btn:active{background:var(--pink-dim)}
 .bpm-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 8px;cursor:ns-resize;width:72px;height:100%;border-left:1px solid var(--border);border-right:1px solid var(--border)}
 .bpm-num{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--pink);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:0}
+.bpm-num[contenteditable="true"]{outline:1px solid var(--pink);border-radius:2px;cursor:text}
 .bpm-unit{font-family:var(--mono);font-size:7px;color:var(--text-dark);letter-spacing:2px;margin-top:2px}
 .tap-btn{height:30px;padding:0 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--r);color:var(--text-dim);font-family:var(--mono);font-size:9px;letter-spacing:2px;cursor:pointer;transition:all .1s;text-transform:uppercase;flex-shrink:0}
 .tap-btn:hover{border-color:var(--pink);color:var(--pink)}
@@ -144,12 +145,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .log-divider:hover,.log-divider.dragging{background:var(--pink-dim)}
 .console-out{flex:35 1 0%;overflow-y:auto;padding:8px 12px;font-family:var(--mono);font-size:10px;line-height:1.55;background:var(--bg);color:var(--text-dim);min-height:0}
 .console-out::-webkit-scrollbar{width:4px} .console-out:hover::-webkit-scrollbar{width:10px} .console-out::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.cl{display:flex;gap:7px;align-items:flex-start;padding:1.5px 0}
+.cl{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.cl-meta{display:flex;gap:7px;align-items:baseline}
 .cl-time{color:var(--text-dark);flex-shrink:0}
 .cl-lvl{flex-shrink:0;font-weight:700;min-width:34px;letter-spacing:.3px}
-.cl-name{color:var(--text-dim);flex-shrink:0;opacity:.75}
+.cl-name{color:var(--text-dim);flex-shrink:0;opacity:.75;overflow:hidden;text-overflow:ellipsis}
 .cl-name::after{content:':'}
-.cl-msg{color:var(--text-dim);flex:1;min-width:0;white-space:pre-wrap;word-break:break-all}
+.cl-msg{display:block;color:var(--text-dim);margin-top:2px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}
 .cl-info .cl-lvl{color:var(--blue)}
 .cl-warn .cl-lvl,.cl-warn .cl-msg{color:var(--orange)}
 .cl-err .cl-lvl,.cl-err .cl-msg{color:var(--red)}
@@ -277,7 +279,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 </head>
 <body oncontextmenu="return showCtxMenu(event)">
 <div id="flash"></div>
-<div class="ctx-menu" id="ctxMenu"><div class="ctx-item" id="ctxCopy">Copy</div></div>
+<div class="ctx-menu" id="ctxMenu"><div class="ctx-item" id="ctxCut">Cut</div><div class="ctx-item" id="ctxCopy">Copy</div><div class="ctx-item" id="ctxPaste">Paste</div></div>
 <div class="app">
 
   <!-- ── TOPBAR ── -->
@@ -472,6 +474,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div class="toggle-wrap">
                 <div class="toggle" id="lightToggle" onclick="toggleLight()"></div>
                 <span class="toggle-lbl" id="lightToggleLbl">Off</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- MIDI output timing -->
+          <div class="pref-sec">
+            <div class="pref-sec-title">MIDI Output Timing</div>
+            <div class="pref-row">
+              <div class="pref-label">Output delay compensation</div>
+              <div class="link-card-sub">Holds outgoing MIDI for N ms before sending — compensates for a fixed driver/cable lag (e.g. a virtual MIDI port) if notes land audibly ahead of the other app's beat. Doesn't affect pattern timing, BPM, or Link sync.</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+                <input type="range" class="rec-slider" id="midiDelaySlider" min="0" max="200" step="1" value="0" style="flex:1;min-width:0" oninput="onMidiDelayInput(this.value)">
+                <span class="pref-label" id="midiDelayLbl" style="flex-shrink:0;min-width:44px;text-align:right">0 ms</span>
               </div>
             </div>
           </div>
@@ -965,46 +980,85 @@ function openTutorial(){
 // ── CUSTOM CONTEXT MENU ─────────────────────────────────────────────────────
 // Replaces the native WKWebView right-click menu, which surfaces irrelevant
 // macOS Services/AutoFill items for plain text and form-field selections.
-// Copy is the only action that makes sense here.
+// Read-only text (Ref tab, log, console) only ever needs Copy; editable
+// fields (the code editor, quick command box, tab-rename input) also get
+// Cut/Paste.
 //
-// The selected text is captured up front, at contextmenu time, rather than
-// re-read inside the Copy click handler — clicking the menu item is itself a
+// The selection is captured up front, at contextmenu time, rather than
+// re-read inside the click handlers — clicking a menu item is itself a
 // mousedown elsewhere in the page, which collapses the original selection
-// before the click handler runs. Form fields (input/textarea) also don't
+// before the handler runs. Form fields (input/textarea) also don't
 // participate in window.getSelection() at all; their selection lives in
-// selectionStart/selectionEnd instead.
-let _ctxCopyText='';
-function _getSelectedText(target){
-  if(target&&(target.tagName==='TEXTAREA'||target.tagName==='INPUT')){
-    return target.value.substring(target.selectionStart||0,target.selectionEnd||0);
-  }
-  return window.getSelection().toString();
-}
+// selectionStart/selectionEnd instead, so it's tracked separately via
+// _ctxTarget/_ctxStart/_ctxEnd and restored with .focus()+.setSelectionRange()
+// before Cut/Paste act, since focus may have moved to the menu itself.
+let _ctxCopyText='', _ctxTarget=null, _ctxStart=0, _ctxEnd=0;
 function showCtxMenu(e){
   e.preventDefault();
-  _ctxCopyText=_getSelectedText(e.target);
-  const menu=document.getElementById('ctxMenu'),copyItem=document.getElementById('ctxCopy');
-  copyItem.classList.toggle('disabled',!_ctxCopyText);
+  const t=e.target, editable=t&&(t.tagName==='TEXTAREA'||t.tagName==='INPUT');
+  if(editable){
+    _ctxTarget=t;
+    _ctxStart=t.selectionStart||0;
+    _ctxEnd=t.selectionEnd||0;
+    _ctxCopyText=t.value.substring(_ctxStart,_ctxEnd);
+  }else{
+    _ctxTarget=null;
+    _ctxCopyText=window.getSelection().toString();
+  }
+  const menu=document.getElementById('ctxMenu');
+  document.getElementById('ctxCopy').classList.toggle('disabled',!_ctxCopyText);
+  document.getElementById('ctxCut').style.display=editable?'':'none';
+  document.getElementById('ctxCut').classList.toggle('disabled',!_ctxCopyText);
+  document.getElementById('ctxPaste').style.display=editable?'':'none';
   menu.classList.add('show');
-  const w=180,h=40;
+  const w=180,h=100;
   menu.style.left=Math.min(e.clientX,window.innerWidth-w)+'px';
   menu.style.top=Math.min(e.clientY,window.innerHeight-h)+'px';
   return false;
 }
+function _writeClipboard(text){
+  return navigator.clipboard.writeText(text).catch(()=>{
+    // Clipboard API can be unavailable/denied in the native window —
+    // fall back to a hidden textarea + execCommand, which copies whatever
+    // is selected in the DOM at the moment execCommand runs (not our
+    // captured string), so build that selection ourselves first.
+    const ta=document.createElement('textarea');
+    ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);
+    ta.select();
+    try{document.execCommand('copy');}catch(err){}
+    document.body.removeChild(ta);
+  });
+}
 document.getElementById('ctxCopy').addEventListener('click',()=>{
-  if(_ctxCopyText){
-    navigator.clipboard.writeText(_ctxCopyText).catch(()=>{
-      // Clipboard API can be unavailable/denied in the native window —
-      // fall back to a hidden textarea + execCommand, which copies whatever
-      // is selected in the DOM at the moment execCommand runs (not our
-      // captured string), so build that selection ourselves first.
-      const ta=document.createElement('textarea');
-      ta.value=_ctxCopyText;
-      ta.style.position='fixed';ta.style.opacity='0';
-      document.body.appendChild(ta);
-      ta.select();
-      try{document.execCommand('copy');}catch(err){}
-      document.body.removeChild(ta);
+  if(_ctxCopyText)_writeClipboard(_ctxCopyText);
+  document.getElementById('ctxMenu').classList.remove('show');
+});
+document.getElementById('ctxCut').addEventListener('click',()=>{
+  if(_ctxCopyText&&_ctxTarget){
+    const t=_ctxTarget;
+    _writeClipboard(_ctxCopyText).then(()=>{
+      t.focus();
+      t.setRangeText('',_ctxStart,_ctxEnd,'end');
+      t.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+  }
+  document.getElementById('ctxMenu').classList.remove('show');
+});
+document.getElementById('ctxPaste').addEventListener('click',()=>{
+  const t=_ctxTarget;
+  if(t){
+    t.focus();
+    t.setSelectionRange(_ctxStart,_ctxEnd);
+    navigator.clipboard.readText().then(text=>{
+      t.setRangeText(text,t.selectionStart,t.selectionEnd,'end');
+      t.dispatchEvent(new Event('input',{bubbles:true}));
+    }).catch(()=>{
+      // Clipboard read can be blocked without an explicit permission grant —
+      // execCommand('paste') is deprecated but still works in WKWebView for
+      // editable fields, unlike the Clipboard API's readText().
+      try{document.execCommand('paste');}catch(err){}
     });
   }
   document.getElementById('ctxMenu').classList.remove('show');
@@ -1013,7 +1067,11 @@ document.addEventListener('mousedown',e=>{
   const menu=document.getElementById('ctxMenu');
   if(menu.classList.contains('show')&&!menu.contains(e.target))menu.classList.remove('show');
 });
-document.addEventListener('scroll',()=>document.getElementById('ctxMenu').classList.remove('show'),true);
+// No scroll-based auto-close: the menu is position:fixed (viewport-anchored,
+// unaffected by container scrolling), and a capture-phase document scroll
+// listener also fires on the console/log panes' own auto-scroll-to-bottom —
+// which happens continuously as log lines stream in — closing the menu
+// moments after opening it for no reason a user would recognize.
 
 const WS_PORT=8765, WS_HOST=window.location.hostname||'localhost', HIST_LEN=180;
 let ws=null, bpm=120, lastBeat=-1;
@@ -1026,6 +1084,17 @@ let lastRawBar=0, barOffset=0;
 let isRecording=false, recCountdown=null;
 let isDraggingBpm=false;
 let soloedPattern=null;
+let _midiDelayDragging=false,_midiDelayT=0;
+function onMidiDelayInput(val){
+  document.getElementById('midiDelayLbl').textContent=val+' ms';
+  clearTimeout(_midiDelayT);
+  _midiDelayT=setTimeout(()=>wsSend({cmd:'set_midi_delay',value:parseInt(val)}),150);
+}
+{
+  const _mds=document.getElementById('midiDelaySlider');
+  _mds.addEventListener('pointerdown',()=>_midiDelayDragging=true);
+  _mds.addEventListener('change',()=>_midiDelayDragging=false);
+}
 let webMidiOutput=null, webMidiActive=false;
 const COLORS=['#ff5c8a','#9d6fff','#3fc8a0','#ff9940','#5ea8ff','#f5c842'];
 
@@ -1170,9 +1239,14 @@ function handleMsg(msg){
 // ── TRANSPORT ────────────────────────────────────────────────────────────────
 function updateTransport(s){
   bpm=parseFloat(s.bpm)||120;
+  if(_initialBpm===null)_initialBpm=Math.round(bpm);
   playheadPulse=s.playhead_pulse||0;
   pulsesPerBeat=s.pulses_per_beat||24;
-  if(!isDraggingBpm)document.getElementById('bpmDisplay').textContent=bpm.toFixed(1);
+  if(!isDraggingBpm&&!_editingBpm)document.getElementById('bpmDisplay').textContent=_fmtBpm(bpm);
+  if(!_midiDelayDragging&&s.midi_output_delay_ms!==undefined){
+    document.getElementById('midiDelaySlider').value=s.midi_output_delay_ms;
+    document.getElementById('midiDelayLbl').textContent=s.midi_output_delay_ms+' ms';
+  }
   document.getElementById('keyDisp').textContent=s.key||'\u2014';
   document.getElementById('chordDisp').textContent=s.chord||'\u2014';
   lastRawBar=s.global_bar||0;
@@ -1194,19 +1268,71 @@ function updateTransport(s){
 function flashBeat(){const el=document.getElementById('flash');el.classList.add('on');setTimeout(()=>el.classList.remove('on'),80);}
 
 // ── BPM ──────────────────────────────────────────────────────────────────────
-let dy0,bpm0;
+// Floating-point BPM is a faux pas in music production — dragging snaps to
+// whole numbers by default. Hold Shift for fine (0.1) fractional control.
+let dy0,bpm0,_initialBpm=null,_editingBpm=false;
+function _fmtBpm(v){return Number.isInteger(v)?String(v):v.toFixed(1);}
+function _bpmDragValue(e2){
+  const raw=Math.min(999,Math.max(40,bpm0+(dy0-e2.clientY)*.3));
+  return e2.shiftKey?Math.round(raw*10)/10:Math.round(raw);
+}
+function _startBpmEdit(){
+  const disp=document.getElementById('bpmDisplay');
+  _editingBpm=true;
+  disp.textContent=_fmtBpm(bpm);
+  disp.contentEditable='true';
+  disp.focus();
+  const range=document.createRange();range.selectNodeContents(disp);
+  const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+  function commit(){
+    disp.contentEditable='false';
+    _editingBpm=false;
+    disp.removeEventListener('blur',commit);
+    disp.removeEventListener('keydown',onKey);
+    const v=parseFloat(disp.textContent);
+    if(!isNaN(v))wsSend({cmd:'set_bpm',value:Math.min(999,Math.max(40,v))});
+    else disp.textContent=_fmtBpm(bpm);
+  }
+  function onKey(e2){
+    if(e2.key==='Enter'){e2.preventDefault();disp.blur();}
+    else if(e2.key==='Escape'){e2.preventDefault();disp.textContent=_fmtBpm(bpm);disp.blur();}
+  }
+  disp.addEventListener('blur',commit);
+  disp.addEventListener('keydown',onKey);
+}
+let _bpmClickTimer=null;
 document.getElementById('bpmDrag').addEventListener('mousedown',e=>{
+  if(_editingBpm)return;  // let native caret placement inside the editable text proceed
   dy0=e.clientY;bpm0=bpm;isDraggingBpm=true;
-  const mv=e2=>{const v=Math.min(240,Math.max(40,bpm0+(dy0-e2.clientY)*.3));document.getElementById('bpmDisplay').textContent=v.toFixed(1);};
-  const up=e2=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);isDraggingBpm=false;wsSend({cmd:'set_bpm',value:Math.min(240,Math.max(40,bpm0+(dy0-e2.clientY)*.3))});};
+  let moved=false;
+  const mv=e2=>{if(Math.abs(e2.clientY-dy0)>3)moved=true;document.getElementById('bpmDisplay').textContent=_fmtBpm(_bpmDragValue(e2));};
+  const up=e2=>{
+    document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);
+    isDraggingBpm=false;
+    if(moved){
+      wsSend({cmd:'set_bpm',value:_bpmDragValue(e2)});
+    }else{
+      // Delay entering edit mode — a second click within this window means
+      // it's actually a double-click (reset to default), not a plain click.
+      document.getElementById('bpmDisplay').textContent=_fmtBpm(bpm);
+      clearTimeout(_bpmClickTimer);
+      _bpmClickTimer=setTimeout(_startBpmEdit,300);
+    }
+  };
   document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);e.preventDefault();
+});
+document.getElementById('bpmDrag').addEventListener('dblclick',()=>{
+  clearTimeout(_bpmClickTimer);
+  if(_initialBpm===null)return;
+  document.getElementById('bpmDisplay').textContent=_fmtBpm(_initialBpm);
+  wsSend({cmd:'set_bpm',value:_initialBpm});
 });
 document.getElementById('barDisp').addEventListener('click',()=>{
   barOffset=lastRawBar;
   const el=document.getElementById('barDisp');
   el.classList.add('bar-flash');setTimeout(()=>el.classList.remove('bar-flash'),300);
 });
-document.getElementById('bpmUp').addEventListener('click',()=>wsSend({cmd:'set_bpm',value:Math.min(240,bpm+1)}));
+document.getElementById('bpmUp').addEventListener('click',()=>wsSend({cmd:'set_bpm',value:Math.min(999,bpm+1)}));
 document.getElementById('bpmDown').addEventListener('click',()=>wsSend({cmd:'set_bpm',value:Math.max(40,bpm-1)}));
 let tapT=[];
 document.getElementById('tapBtn').addEventListener('click',()=>{
@@ -1353,6 +1479,42 @@ document.getElementById('codeEditor').addEventListener('keydown',e=>{
 });
 {let _saveT=0;document.getElementById('codeEditor').addEventListener('input',()=>{clearTimeout(_saveT);_saveT=setTimeout(saveBuffers,1500);});}
 
+// ── EDITOR FONT ZOOM (Cmd +/-) ──────────────────────────────────────────────
+// #editorHL is a syntax-highlight overlay positioned exactly behind the
+// (invisible-text) #codeEditor textarea — both must get the same font-size
+// or the highlighted tokens drift out of alignment with the real caret/text.
+//
+// Font size is tracked in a plain variable rather than re-read via
+// getComputedStyle() on every keydown (that forces a synchronous layout
+// flush), and the actual style write is batched to once per animation
+// frame via rAF rather than once per keydown — holding Cmd+= fires rapid
+// OS key-repeat events, and writing the style on every single one is a
+// tight forced-reflow loop that visibly outpaces the textarea's own
+// caret-position repaint, so the caret lags behind the resized text.
+const EDITOR_FONT_MIN=9,EDITOR_FONT_MAX=28,EDITOR_FONT_DEFAULT=13;
+let _editorFontSize=EDITOR_FONT_DEFAULT,_editorFontRAF=null;
+function _applyEditorFontSize(){
+  document.getElementById('codeEditor').style.fontSize=_editorFontSize+'px';
+  document.getElementById('editorHL').style.fontSize=_editorFontSize+'px';
+  _editorFontRAF=null;
+}
+function _setEditorFontSize(px){
+  _editorFontSize=Math.max(EDITOR_FONT_MIN,Math.min(EDITOR_FONT_MAX,px));
+  if(!_editorFontRAF)_editorFontRAF=requestAnimationFrame(_applyEditorFontSize);
+  try{localStorage.setItem('pomski_editor_fontsize',String(_editorFontSize));}catch(e){}
+  return _editorFontSize;
+}
+{
+  try{const _f=parseInt(localStorage.getItem('pomski_editor_fontsize'));if(_f)_editorFontSize=Math.max(EDITOR_FONT_MIN,Math.min(EDITOR_FONT_MAX,_f));}catch(e){}
+  _applyEditorFontSize();
+}
+document.addEventListener('keydown',e=>{
+  if(!e.metaKey)return;
+  if(e.key==='='||e.key==='+'){e.preventDefault();_setEditorFontSize(_editorFontSize+1);}
+  else if(e.key==='-'||e.key==='_'){e.preventDefault();_setEditorFontSize(_editorFontSize-1);}
+  else if(e.key==='0'){e.preventDefault();_setEditorFontSize(EDITOR_FONT_DEFAULT);}
+});
+
 // ── QUICK INPUT ───────────────────────────────────────────────────────────────
 function sendQuick(){
   const ta=document.getElementById('logInput');
@@ -1428,8 +1590,9 @@ function _renderConsoleLine(entry){
   const out=document.getElementById('consoleOut'),d=document.createElement('div');
   const lvl=entry.level||'info';
   const lvlLabel={err:'ERROR',warn:'WARN',debug:'DEBUG'}[lvl]||'INFO';
+  const shortName=(entry.name||'').replace(/^subsequence\./,'');
   d.className='cl cl-'+lvl;
-  d.innerHTML=`<span class="cl-time">${_esc(entry.time||'')}</span><span class="cl-lvl">${lvlLabel}</span><span class="cl-name">${_esc(entry.name||'')}</span><span class="cl-msg">${_highlightMsg(entry.message||'')}</span>`;
+  d.innerHTML=`<div class="cl-meta"><span class="cl-time">${_esc(entry.time||'')}</span><span class="cl-lvl">${lvlLabel}</span><span class="cl-name">${_esc(shortName)}</span></div><span class="cl-msg">${_highlightMsg(entry.message||'')}</span>`;
   out.appendChild(d);
   while(out.children.length>500){
     const removed=out.firstChild,h=removed.offsetHeight;
@@ -1538,6 +1701,7 @@ function updatePatterns(patterns){
     const notesEl=row.querySelector('.pat-notes');
     if(!p.notes||!p.notes.length){
       notesEl.innerHTML='<span style="font-family:var(--mono);font-size:9px;color:var(--text-dark)">—</span>';
+      notesEl.dataset.key='';
     }else{
       const loopPulse=p.length_pulses>0?playheadPulse%p.length_pulses:0;
       const activeNow=new Set(p.notes.filter(n=>{const d=Math.max(n.d*pulsesPerBeat,1);return n.s<=loopPulse&&loopPulse<n.s+d;}).map(n=>n.p));

@@ -64,6 +64,14 @@ class WebUI:
                 super().__init__(*args, directory=web_dir, **kwargs)
             def log_message(self, format: str, *args: typing.Any) -> None:
                 pass
+            def end_headers(self) -> None:
+                # The native window's WKWebView data store is persistent
+                # (private_mode=False, for editor-buffer localStorage), which
+                # also makes its HTTP cache persistent across app launches.
+                # Without this, a rebuilt index.html can silently keep
+                # serving the previous version after relaunch.
+                self.send_header('Cache-Control', 'no-store, must-revalidate')
+                super().end_headers()
 
         def run_server() -> None:
             socketserver.TCPServer.allow_reuse_address = True
@@ -105,6 +113,12 @@ class WebUI:
                         live = getattr(comp, '_live_bridge', None)
                         if live is not None and getattr(live, 'connected', False):
                             live.set_tempo(bpm)
+
+                    elif action == 'set_midi_delay':
+                        ms = max(0.0, min(200.0, float(cmd.get('value', 0))))
+                        seq = getattr(comp, 'sequencer', None)
+                        if seq is not None:
+                            seq.midi_output_delay_ms = ms
 
                     elif action == 'mute':
                         name = cmd.get('pattern')
@@ -475,7 +489,8 @@ class WebUI:
             "section_bars": None,
             "next_section": None,
             "global_bar": 0,
-            "global_beat": 0
+            "global_beat": 0,
+            "midi_output_delay_ms": seq_for_bpm.midi_output_delay_ms if seq_for_bpm is not None else 0
         }
         
         if comp.sequencer:

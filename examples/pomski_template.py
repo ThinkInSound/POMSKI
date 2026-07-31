@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 import traceback
 import logging
 import faulthandler
@@ -604,36 +605,53 @@ try:
                 return self._link.num_peers
 
         def _link_thread_body() -> None:
-            _loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(_loop)
-            _bpm = float(getattr(composition, "bpm", 120.0))
-            _link = _aalink_mod.Link(_bpm, _loop)
-            _link.enabled = True
+            # This whole function runs on a daemon thread with no caller to
+            # propagate exceptions to — an uncaught error here (e.g. aalink's
+            # Link() constructor failing) previously just killed the thread
+            # silently: Link would be permanently dead with zero indication
+            # anywhere, including the console pane, of why.
             try:
-                _link.set_num_peers_callback(lambda n: None)
-                _link.set_tempo_callback(lambda t: None)
-                _link.set_start_stop_callback(lambda p: None)
-            except Exception:
-                pass
+                _loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(_loop)
+                _bpm = float(getattr(composition, "bpm", 120.0))
+                _link = _aalink_mod.Link(_bpm, _loop)
+                _link.enabled = True
+                try:
+                    _link.set_num_peers_callback(lambda n: None)
+                    _link.set_tempo_callback(lambda t: None)
+                    _link.set_start_stop_callback(lambda p: None)
+                except Exception:
+                    pass
 
-            composition._link = _DirectLinkProxy(_link)
-            logging.info("Ableton Link initialised (direct, in-process)")
+                composition._link = _DirectLinkProxy(_link)
+                logging.info("Ableton Link initialised (direct, in-process)")
 
-            async def _poll() -> None:
-                _last = _bpm
-                while True:
-                    try:
-                        _t = _link.tempo
-                        if 20.0 <= _t <= 400.0 and abs(_t - _last) > 0.05:
-                            _last = _t
-                            composition._sequencer.set_bpm(_t)
-                            if not composition._clock_follow:
-                                composition.bpm = _t
-                    except Exception:
-                        pass
-                    await asyncio.sleep(0.05)
+                async def _poll() -> None:
+                    _last = _bpm
+                    _last_err = None
+                    while True:
+                        try:
+                            _t = _link.tempo
+                            # Sanity bound only guards against garbage/zero
+                            # values, not a real subsequence engine limit —
+                            # Sequencer.set_bpm() itself only requires > 0.
+                            if 0.0 < _t <= 999.0 and abs(_t - _last) > 0.05:
+                                _last = _t
+                                logging.debug(f"Link tempo poll: applying {_t:.2f} (peers={_link.num_peers})")
+                                composition._sequencer.set_bpm(_t)
+                                if not composition._clock_follow:
+                                    composition.bpm = _t
+                        except Exception as _e:
+                            # Deduplicated so a persistent error logs once,
+                            # not every 50ms — but it does now actually log.
+                            if str(_e) != _last_err:
+                                _last_err = str(_e)
+                                logging.warning(f"Link tempo poll error: {_e}")
+                        await asyncio.sleep(0.05)
 
-            _loop.run_until_complete(_poll())
+                _loop.run_until_complete(_poll())
+            except Exception as _e:
+                logging.warning(f"Ableton Link (direct) failed to start: {_e}")
 
         threading.Thread(target=_link_thread_body, daemon=True,
                          name="link-direct").start()
@@ -727,12 +745,23 @@ try:
                                        'http://localhost:8080/tutorial.html',
                                        width=1100, height=850, text_select=True)
 
-        _webview.create_window('POMSKI', 'http://localhost:8080',
+        # Cache-busting query param: the persistent WKWebView data store
+        # (private_mode=False) can keep serving an already-cached index.html
+        # from a previous launch even after the no-store header is added
+        # below, since that header only prevents *future* caching. A unique
+        # URL per launch guarantees this and every future launch fetches
+        # fresh, regardless of whatever's already sitting in the cache.
+        _webview.create_window('POMSKI', f'http://localhost:8080/?_launch={int(time.time())}',
                                width=1400, height=900,
                                text_select=True, js_api=_PomskiJsApi())
         # func runs once the GUI loop starts (window is up) — closes the
         # launch Terminal at that point. Blocks until the window is closed.
-        _webview.start(func=_close_launch_terminal)
+        # private_mode=False: pywebview defaults to private_mode=True, which
+        # wipes ALL WKWebView site data (including localStorage — the editor
+        # tab buffers) at every launch before the page even loads. That made
+        # buffer contents look saved mid-session (localStorage still works
+        # in-memory) but reset to blank on the next app launch.
+        _webview.start(func=_close_launch_terminal, private_mode=False)
 
         # Window closed: request a clean sequencer shutdown (notes off),
         # then exit. os._exit is the backstop for anything non-daemon.

@@ -195,6 +195,14 @@ class Sequencer:
 		self.current_beat: int = -1
 		self.active_notes: typing.Set[typing.Tuple[int, int]] = set()
 
+		# Manual compensation for a fixed output-side lag (e.g. a virtual MIDI
+		# cable) between POMSKI and another app it's driving — holds outgoing
+		# MIDI for this many ms before actually sending. Pattern/clock timing
+		# itself (p.bar, signals, Link tempo) is untouched; only the physical
+		# send is delayed, via loop.call_later() in _process_pulse() so the
+		# scheduler's own pulse loop is never blocked.
+		self.midi_output_delay_ms: float = 0.0
+
 		self.queue_lock = asyncio.Lock()
 		self.pattern_lock = asyncio.Lock()
 		self.reschedule_queue: typing.List[typing.Tuple[int, int, ScheduledPattern]] = []
@@ -1115,7 +1123,10 @@ class Sequencer:
 					continue
 
 				# Send events at or before the current pulse (late events are sent immediately).
-				self._send_midi(event)
+				if self.midi_output_delay_ms > 0:
+					asyncio.get_running_loop().call_later(self.midi_output_delay_ms / 1000.0, self._send_midi, event)
+				else:
+					self._send_midi(event)
 
 				if self.recording and event.message_type != 'osc':
 
