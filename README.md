@@ -37,7 +37,9 @@ pip install -e .
 
 > **Important:** use `git clone`, not the ZIP download. The ZIP is missing files that the installer needs.
 
-**Windows users** — POMSKI works on Windows. See the [Windows section](#windows) below.
+**Windows users** — POMSKI comes as an app on Windows. See the [Windows section](#windows) below.
+
+Standalone Mac app coming very soon.
 
 ### Optional extras
 
