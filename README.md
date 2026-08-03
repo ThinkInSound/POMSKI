@@ -299,14 +299,7 @@ composition.form([
 
 ## Live coding
 
-The real power of POMSKI is changing things while they play. Start the live coding server before `play()`:
-
-```python
-composition.live()     # starts a server on port 5555
-composition.play()
-```
-
-Then from the **Web UI** (or any text editor that can open a socket) you can type Python and hit send — your changes take effect on the next bar:
+From the **Web UI** (or any text editor that can open a socket) you can type Python and hit send — your changes take effect on the next bar:
 
 ```python
 # change the tempo
@@ -538,12 +531,9 @@ Check that your DAW instrument tracks are set to receive from the correct MIDI p
 POMSKI runs on Windows with two things to be aware of:
 
 **1. Use git clone**
-Download via `git clone` rather than the ZIP button on GitHub. The ZIP is missing the `.git` folder and the installer won't work without it.
+Download via `git clone` rather than the ZIP button on GitHub if you want to build it yourself. The ZIP is missing the `.git` folder and the installer won't work without it.
 
-**2. No extra steps needed for asyncio**
-Older versions of POMSKI crashed on Windows due to a signal handler that Windows doesn't support. This is fixed — it just works.
-
-**3. Windows installer available on release page
+**2. Windows installer available on release page (Easy Way)
 The latest version of POMSKI is compiled and ready-to-go if you're on Windows. Download the installer, install and run POMSKI, and you're good to go. All dependencies should be included with the installer. 
 ---
 
