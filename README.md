@@ -229,8 +229,6 @@ pip install -e .
 
 > **Important:** use `git clone`, not the ZIP download. The ZIP is missing files that the installer needs.
 
-**Windows users** — POMSKI works on Windows. See the [Windows section](#windows) below.
-
 ### Optional extras
 
 ```bash
