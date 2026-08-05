@@ -116,7 +116,7 @@ composition.form([
 
 ## Live coding
 
-The real power of POMSKI is changing things while they play. From the **Web UI** (or any text editor that can open a socket) you can type Pythonand hit send — your changes take effect on the next bar:
+The real power of POMSKI is changing things while they play. From the **Web UI** (or any text editor that can open a socket) you can type Python and hit send — your changes take effect on the next bar:
 
 ```python
 # change the tempo
