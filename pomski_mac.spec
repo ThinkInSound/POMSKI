@@ -109,7 +109,11 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    # UPX off: on macOS it mostly no-ops on Mach-O binaries anyway, and
+    # UPX-compressed dylibs interact badly with ad-hoc codesigning/AMFI —
+    # every cold launch pays extra Gatekeeper validation on top of the
+    # decompression itself. Disabling it measurably shortens cold start.
+    upx=False,
     console=True,              # see module docstring above — MIDI picker needs a terminal
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -125,7 +129,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name="POMSKI",
 )
@@ -140,6 +144,12 @@ app = BUNDLE(
         "CFBundleName": "POMSKI",
         "NSHighResolutionCapable": True,
         "LSMinimumSystemVersion": "10.15",
+        # Without this, macOS's Local Network privacy check silently stalls
+        # the WKWebView's loopback connections (HTTP :8080, WS :8765) for
+        # ~30s on every launch before letting them through — declaring the
+        # usage description lets it prompt/allow immediately instead.
+        "NSLocalNetworkUsageDescription":
+            "POMSKI's web UI and REPL connect to the app itself over localhost.",
     },
 )
 
@@ -161,7 +171,14 @@ with open(_wrapper, "w") as _f:
     _f.write(
         '#!/bin/bash\n'
         'DIR="$(cd "$(dirname "$0")" && pwd)"\n'
-        'if [ -t 0 ]; then\n'
+        'CONF="$HOME/Library/Application Support/POMSKI/midi_device.txt"\n'
+        'if [ -s "$CONF" ]; then\n'
+        # A device was already picked on a previous launch (see
+        # _save_midi_device() in pomski_template.py) — skip the
+        # Terminal/picker dance entirely and go straight to the real binary.
+        '    export POMSKI_MIDI_OUTPUT="$(cat "$CONF")"\n'
+        '    exec "$DIR/POMSKI_bin" "$@"\n'
+        'elif [ -t 0 ]; then\n'
         '    exec "$DIR/POMSKI_bin" "$@"\n'
         'else\n'
         # Marker tells pomski_template.py this Terminal window was opened

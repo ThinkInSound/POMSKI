@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import json
 import traceback
 import logging
 import faulthandler
@@ -22,6 +23,36 @@ else:
     _LOG_DIR = '.'
 _LOG_PATH = os.path.join(_LOG_DIR, 'pomski.log')
 _FAULT_PATH = os.path.join(_LOG_DIR, 'fault.log')
+
+# ── Remembered MIDI device ──────────────────────────────────────────────────
+# Persists the device picked via the Finder-launch picker below, so later
+# launches skip the Terminal/picker/relaunch dance entirely — pomski.spec's
+# wrapper script checks this same path before deciding whether it needs to
+# open a Terminal at all.
+if getattr(sys, 'frozen', False):
+    if sys.platform == 'darwin':
+        _CONFIG_DIR = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'POMSKI')
+    else:
+        _CONFIG_DIR = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'POMSKI')
+else:
+    _CONFIG_DIR = '.'
+_MIDI_DEVICE_PATH = os.path.join(_CONFIG_DIR, 'midi_device.txt')
+
+def _read_saved_midi_device() -> 'str | None':
+    try:
+        with open(_MIDI_DEVICE_PATH, 'r', encoding='utf-8') as _f:
+            _name = _f.read().strip()
+        return _name or None
+    except OSError:
+        return None
+
+def _save_midi_device(name: str) -> None:
+    try:
+        os.makedirs(_CONFIG_DIR, exist_ok=True)
+        with open(_MIDI_DEVICE_PATH, 'w', encoding='utf-8') as _f:
+            _f.write(name)
+    except OSError:
+        pass
 
 # ── Finder-launch MIDI picker hand-off (macOS, frozen builds only) ─────────────
 # pomski_mac.spec's wrapper script opens a fresh Terminal window (and drops a
@@ -87,6 +118,9 @@ def _run_midi_picker_and_relaunch() -> None:
                 break
             except ValueError:
                 pass
+
+    if device:
+        _save_midi_device(device)
 
     env = dict(os.environ)
     env['POMSKI_RELAUNCHED'] = '1'
@@ -258,7 +292,8 @@ from api_feeds import DataFeeds
 
 try:
     composition = subsequence.Composition(key="C", bpm=120,
-                                          output_device=os.environ.get('POMSKI_MIDI_OUTPUT') or None)
+                                          output_device=(os.environ.get('POMSKI_MIDI_OUTPUT')
+                                                          or _read_saved_midi_device()))
     composition.harmony(style="functional_major", cycle_beats=4, gravity=0.8)
 
     # Mirror console log lines (INFO+) into the web UI's console pane, so the
@@ -734,26 +769,69 @@ try:
                                         name="pomski-play")
         _play_thread.daemon = True
         _play_thread.start()
-        _wait_for_web_ui(must_be_alive=_play_thread)
-        _print_banner()
 
         class _PomskiJsApi:
             """Bridge for UI actions WKWebView can't do itself (window.open
             with _blank is silently ignored in pywebview)."""
             def open_tutorial(self):
                 _webview.create_window('POMSKI Tutorial',
-                                       'http://localhost:8080/tutorial.html',
+                                       'http://127.0.0.1:8080/tutorial.html',
                                        width=1100, height=850, text_select=True)
 
-        # Cache-busting query param: the persistent WKWebView data store
-        # (private_mode=False) can keep serving an already-cached index.html
-        # from a previous launch even after the no-store header is added
-        # below, since that header only prevents *future* caching. A unique
-        # URL per launch guarantees this and every future launch fetches
-        # fresh, regardless of whatever's already sitting in the cache.
-        _webview.create_window('POMSKI', f'http://localhost:8080/?_launch={int(time.time())}',
-                               width=1400, height=900,
+        # Backend bring-up (imports already paid for by this point, but MIDI
+        # port open + web/websocket server start still take a beat) used to
+        # block window creation entirely, so the user saw nothing but a
+        # bouncing dock icon for several seconds. Instead show a lightweight
+        # inline-HTML loading window immediately — inline (not a URL) since
+        # the HTTP server isn't listening yet — then swap it to the real UI
+        # once _wait_for_web_ui() confirms the backend is ready.
+        _loading_html = """<!doctype html><html><head><meta charset="utf-8">
+        <style>
+          html,body{height:100%;margin:0;background:#1c1c1e;color:#8a8a90;
+            font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+          .spinner{width:28px;height:28px;border-radius:50%;
+            border:3px solid #38383e;border-top-color:#ff5c8a;
+            animation:spin .8s linear infinite}
+          @keyframes spin{to{transform:rotate(360deg)}}
+          .label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#5a5a60}
+          .status{font-size:10px;color:#4a4a50}
+        </style></head>
+        <body><div class="spinner"></div><div class="label">Starting POMSKI&hellip;</div>
+        <div class="status" id="status">Starting sequencer &amp; MIDI engine&hellip;</div></body></html>"""
+
+        _window = _webview.create_window('POMSKI', html=_loading_html,
+                               width=1400, height=900, background_color='#1c1c1e',
                                text_select=True, js_api=_PomskiJsApi())
+
+        def _set_status(text: str) -> None:
+            try:
+                _window.evaluate_js(
+                    f"document.getElementById('status').textContent={json.dumps(text)}")
+            except Exception:
+                pass
+
+        def _on_gui_ready():
+            _set_status('Waiting for web server & pattern engine…')
+            _wait_for_web_ui(must_be_alive=_play_thread)
+            _set_status('Loading interface…')
+            _print_banner()
+            # Cache-busting query param: the persistent WKWebView data store
+            # (private_mode=False) can keep serving an already-cached
+            # index.html from a previous launch even after the no-store
+            # header is added below, since that header only prevents
+            # *future* caching. A unique URL per launch guarantees this and
+            # every future launch fetches fresh, regardless of whatever's
+            # already sitting in the cache.
+            #
+            # 127.0.0.1, not localhost: WKWebView on macOS can stall
+            # resolving the hostname "localhost" for ~30s under some
+            # network conditions (sleep/wake, VPN, Wi-Fi reassociation) even
+            # though it's loopback — a known WKWebView quirk. Loopback IP
+            # skips name resolution entirely.
+            _window.load_url(f'http://127.0.0.1:8080/?_launch={int(time.time())}')
+            _close_launch_terminal()
+
         # func runs once the GUI loop starts (window is up) — closes the
         # launch Terminal at that point. Blocks until the window is closed.
         # private_mode=False: pywebview defaults to private_mode=True, which
@@ -761,7 +839,7 @@ try:
         # tab buffers) at every launch before the page even loads. That made
         # buffer contents look saved mid-session (localStorage still works
         # in-memory) but reset to blank on the next app launch.
-        _webview.start(func=_close_launch_terminal, private_mode=False)
+        _webview.start(func=_on_gui_ready, private_mode=False)
 
         # Window closed: request a clean sequencer shutdown (notes off),
         # then exit. os._exit is the backstop for anything non-daemon.
