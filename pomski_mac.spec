@@ -43,6 +43,11 @@ a = Analysis(
     datas=[
         (str(ROOT / "subsequence" / "assets" / "web"),
          "subsequence/assets/web"),
+        # Bundled free ClyphX (LGPL-3.0, github.com/ldrolez/clyphx-live11) —
+        # installed into Ableton's Remote Scripts folder on first run by
+        # _ensure_clyphx_installed() in pomski_template.py. Not ClyphX Pro:
+        # no OSC/X-OSC support, see live_bridge.py's clyphx()/osc_send().
+        (str(ROOT / "third_party" / "ClyphX"), "third_party/ClyphX"),
         *collect_data_files('music21', excludes=[
             # Exclude score files (the bulk of the corpus) but keep:
             #   - corpus/scala/*.scl  — needed for ScalaScale / microtuning

@@ -9,6 +9,13 @@ Requires AbletonOSC remote script installed in Live:
     macOS:   ~/Music/Ableton/User Library/Remote Scripts/AbletonOSC
     Then: Live Preferences → Link/Tempo/MIDI → Control Surface → AbletonOSC
     Live's status bar should confirm: "AbletonOSC: Listening for OSC on port 11000"
+
+clyphx()/X-Clip triggers additionally need ClyphX installed as a control
+surface too (POMSKI installs the free version, github.com/ldrolez/clyphx-live11,
+LGPL-3.0, to the same Remote Scripts folder on first run — see
+_ensure_clyphx_installed() in pomski_template.py). clyphx_osc()/X-OSC is a
+ClyphX Pro–only feature (paid, nativeKontrol) that the bundled free version
+does not provide.
 """
 
 import asyncio
@@ -151,15 +158,19 @@ class LiveBridge:
 
     def clyphx(self, action: str) -> None:
         """
-        Send an arbitrary ClyphX Pro action string via an X-Clip trigger track.
+        Send an arbitrary action string via an X-Clip trigger track.
+
+        Works with either the bundled free ClyphX or ClyphX Pro — X-Clip
+        triggers (the "[] ACTION" clip-name convention) are a core ClyphX
+        feature, not Pro-exclusive.
 
         Uses a dedicated hidden MIDI track (_POMSKI_CLYPHX). On first call the
         track and a 1-bar clip are created automatically. On every subsequent
-        call the clip is renamed to the new action and fired — ClyphX Pro
+        call the clip is renamed to the new action and fired — ClyphX
         intercepts the launch and executes the action list.
 
         This approach supports fully dynamic, arbitrary action strings without
-        any pre-configuration in ClyphX Pro's settings files.
+        any pre-configuration in ClyphX's settings files.
 
         Examples:
             live.clyphx("BPM 120")
@@ -194,11 +205,25 @@ class LiveBridge:
             live.clyphx_osc("/MUTE_1", 0)       # off (if action has stop list)
 
         Default ClyphX Pro OSC port is 7005 (change in Preferences.txt if needed).
+
+        ClyphX Pro–only: the bundled free ClyphX has no OSC listener, so this
+        call sends into the void with no error (UDP is fire-and-forget — a
+        missing listener never raises). Use clyphx() instead unless ClyphX
+        Pro (paid, nativeKontrol) is actually installed.
         """
         self._clyphx_osc_send(address, value)
 
+    _clyphx_osc_warned = False  # log the ClyphX-Pro-required note once, not on every call
+
     def _clyphx_osc_send(self, address: str, value: float) -> None:
         """Send a raw OSC message directly to ClyphX Pro on port 7005."""
+        if not LiveBridge._clyphx_osc_warned:
+            LiveBridge._clyphx_osc_warned = True
+            logger.warning(
+                "ClyphX OSC (X-OSC) requires ClyphX Pro (paid, nativeKontrol) — "
+                "the bundled free ClyphX doesn't listen on this port. "
+                "Message sent regardless; it will be silently dropped if ClyphX Pro isn't running."
+            )
         try:
             from pythonosc.udp_client import SimpleUDPClient
             client = SimpleUDPClient("127.0.0.1", self.clyphx_osc_port)

@@ -54,6 +54,47 @@ def _save_midi_device(name: str) -> None:
     except OSError:
         pass
 
+# ── Bundled ClyphX (free/LGPL-3.0, not ClyphX Pro) ──────────────────────────
+# Installs the vendored third_party/ClyphX (github.com/ldrolez/clyphx-live11)
+# into Ableton's Remote Scripts folder on first run, so ClyphX's own X-Trigger
+# actions work out of the box. This is NOT ClyphX Pro — it has no OSC/X-OSC
+# support, so live_bridge.py's clyphx()/osc_send() (which target ClyphX Pro's
+# OSC listener on port 7005) still require the separate paid product; they
+# fail with a clear log message rather than silently doing nothing when only
+# the bundled free ClyphX is present. Users still need to add "ClyphX" as a
+# control surface in Ableton's Preferences themselves — that's a one-time
+# manual step the Live API gives no way to automate.
+def _ensure_clyphx_installed() -> None:
+    if sys.platform == 'darwin':
+        _remote_scripts = os.path.join(os.path.expanduser('~'), 'Music', 'Ableton',
+                                        'User Library', 'Remote Scripts')
+    elif sys.platform == 'win32':
+        _remote_scripts = os.path.join(os.path.expanduser('~'), 'Documents', 'Ableton',
+                                        'User Library', 'Remote Scripts')
+    else:
+        return
+
+    _dest = os.path.join(_remote_scripts, 'ClyphX')
+    if os.path.isdir(_dest):
+        return  # already installed (bundled or user's own) — never clobber
+
+    if getattr(sys, 'frozen', False):
+        _src = os.path.join(sys._MEIPASS, 'third_party', 'ClyphX')
+    else:
+        _src = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..',
+                             'third_party', 'ClyphX')
+    if not os.path.isdir(_src):
+        return
+
+    try:
+        import shutil
+        os.makedirs(_remote_scripts, exist_ok=True)
+        shutil.copytree(_src, _dest)
+        logging.info(f"Installed bundled ClyphX to {_dest} — "
+                     f"enable it in Ableton Preferences > Link/Tempo/MIDI > Control Surface.")
+    except OSError as _e:
+        logging.warning(f"Could not install bundled ClyphX to {_dest}: {_e}")
+
 # ── Finder-launch MIDI picker hand-off (macOS, frozen builds only) ─────────────
 # pomski_mac.spec's wrapper script opens a fresh Terminal window (and drops a
 # marker file here) only when launched with no controlling terminal (i.e. from
@@ -336,6 +377,7 @@ try:
     logging.getLogger().addHandler(_WebUILogHandler(composition))
 
     # ── Ableton Live bridge ───────────────────────────────────────────────────
+    _ensure_clyphx_installed()
     live = LiveBridge(composition)
     composition._live_bridge = live
 
