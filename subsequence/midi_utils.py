@@ -1,5 +1,6 @@
 
 import logging
+import sys
 import typing
 import mido
 
@@ -77,7 +78,19 @@ def select_output_device(device_name: typing.Optional[str] = None) -> typing.Tup
             logger.info(f"One MIDI output found - using '{selected_name}'")
             return selected_name, midi_out
 
-        # Auto-discover: multiple devices - prompt user
+        # Auto-discover: multiple devices - prompt user.
+        # No attached terminal (e.g. a macOS .app launched from Finder) means
+        # stdin is closed and input() raises EOFError on every call — fall
+        # back to the first device instead of spinning forever.
+        if not sys.stdin.isatty():
+            selected_name = outputs[0]
+            midi_out = mido.open_output(selected_name)
+            logger.warning(
+                f"No interactive terminal to select a MIDI device; "
+                f"defaulting to '{selected_name}'. Pass output_device_name= to choose another."
+            )
+            return selected_name, midi_out
+
         print("\nAvailable MIDI output devices:\n")
         for i, name in enumerate(outputs, 1):
             print(f"  {i}. {name}")
@@ -88,7 +101,11 @@ def select_output_device(device_name: typing.Optional[str] = None) -> typing.Tup
                 choice = int(input(f"Select a device (1-{len(outputs)}): "))
                 if 1 <= choice <= len(outputs):
                     break
-            except (ValueError, EOFError):
+            except EOFError:
+                choice = 1
+                logger.warning("No input available; defaulting to first MIDI device.")
+                break
+            except ValueError:
                 pass
             print(f"Enter a number between 1 and {len(outputs)}.")
 

@@ -40,6 +40,8 @@ class WebUI:
         self._cached_patterns: typing.List[typing.Dict[str, typing.Any]] = []
         self._midi_queue: queue.SimpleQueue = queue.SimpleQueue()
         self._builder_error_queue: queue.SimpleQueue = queue.SimpleQueue()
+        self._console_log_queue: queue.SimpleQueue = queue.SimpleQueue()
+        self._repl_tasks: typing.Set[asyncio.Task] = set()
         self._data_snap: typing.FrozenSet = frozenset()
         self._data_signals_cache: typing.Dict[str, float] = {}
 
@@ -62,6 +64,14 @@ class WebUI:
                 super().__init__(*args, directory=web_dir, **kwargs)
             def log_message(self, format: str, *args: typing.Any) -> None:
                 pass
+            def end_headers(self) -> None:
+                # The native window's WKWebView data store is persistent
+                # (private_mode=False, for editor-buffer localStorage), which
+                # also makes its HTTP cache persistent across app launches.
+                # Without this, a rebuilt index.html can silently keep
+                # serving the previous version after relaunch.
+                self.send_header('Cache-Control', 'no-store, must-revalidate')
+                super().end_headers()
 
         def run_server() -> None:
             socketserver.TCPServer.allow_reuse_address = True
@@ -104,6 +114,12 @@ class WebUI:
                         if live is not None and getattr(live, 'connected', False):
                             live.set_tempo(bpm)
 
+                    elif action == 'set_midi_delay':
+                        ms = max(0.0, min(200.0, float(cmd.get('value', 0))))
+                        seq = getattr(comp, 'sequencer', None)
+                        if seq is not None:
+                            seq.midi_output_delay_ms = ms
+
                     elif action == 'mute':
                         name = cmd.get('pattern')
                         if name and hasattr(comp, 'running_patterns'):
@@ -145,7 +161,9 @@ class WebUI:
                         else:
                             code = cmd.get('code', '').strip()
                             if code:
-                                asyncio.create_task(self._forward_repl(code, websocket))
+                                task = asyncio.create_task(self._forward_repl(code, websocket))
+                                self._repl_tasks.add(task)
+                                task.add_done_callback(self._repl_tasks.discard)
 
                     elif action == 'link_toggle':
                         link = getattr(comp, '_link', None)
@@ -282,6 +300,12 @@ class WebUI:
             writer.close()
             result = b''.join(chunks).decode('utf-8').strip()
             is_error = any(x in result for x in ['Traceback', 'Error:', 'Exception:'])
+            if is_error:
+                # live_server._evaluate() catches exec errors and returns them
+                # as plain text (for the editor's inline feedback) without
+                # ever calling logging.error() — log it too so it also shows
+                # up in the console pane, not just the top log pane.
+                logger.error(f"REPL error:\n{result}")
 
             # Deduplicate pending patterns and invalidate pattern cache
             comp = self.composition_ref()
@@ -333,6 +357,10 @@ class WebUI:
     def push_builder_error(self, pattern_name: str, tb: str) -> None:
         """Called from the sequencer thread when a pattern builder raises."""
         self._builder_error_queue.put_nowait(f"[{pattern_name}] {tb.strip()}")
+
+    def push_console_log(self, time: str, name: str, message: str, level: str = 'info') -> None:
+        """Called from the logging handler thread to mirror console output."""
+        self._console_log_queue.put_nowait({'time': time, 'name': name, 'message': message, 'level': level})
 
     def _register_midi_hook(self) -> None:
         comp = self.composition_ref()
@@ -420,6 +448,27 @@ class WebUI:
             except queue.Empty:
                 pass
 
+            # Drain mirrored console log lines (RichHandler output) for the
+            # console pane — kept separate from app 'log' messages via 'source'.
+            # Sent as a single batched message rather than one broadcast per
+            # line: pattern reschedule at each bar boundary can log 15+ DEBUG
+            # lines in the same tick, and firing that many individual
+            # WebSocket sends/onmessage dispatches at once visibly hitched
+            # the native WKWebView (a frame of blanked-out UI).
+            console_lines: typing.List[typing.Dict] = []
+            try:
+                while True:
+                    console_lines.append(self._console_log_queue.get_nowait())
+            except queue.Empty:
+                pass
+            if console_lines:
+                try:
+                    websockets.asyncio.server.broadcast(self._clients, json.dumps({
+                        'console_log_batch': console_lines,
+                    }))
+                except Exception:
+                    pass
+
     def _get_state(self, comp: typing.Any) -> typing.Dict[str, typing.Any]:
 
         # Live sequencer tempo, not the static comp.bpm attribute — during a
@@ -440,7 +489,8 @@ class WebUI:
             "section_bars": None,
             "next_section": None,
             "global_bar": 0,
-            "global_beat": 0
+            "global_beat": 0,
+            "midi_output_delay_ms": seq_for_bpm.midi_output_delay_ms if seq_for_bpm is not None else 0
         }
         
         if comp.sequencer:
@@ -546,6 +596,8 @@ class WebUI:
 
     def stop(self) -> None:
 
+        for task in list(self._repl_tasks):
+            task.cancel()
         if self._broadcast_task:
             self._broadcast_task.cancel()
         if self._ws_server:

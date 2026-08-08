@@ -488,6 +488,10 @@ async def run_until_stopped (sequencer: subsequence.sequencer.Sequencer) -> None
     stop_event = asyncio.Event()
     loop = asyncio.get_running_loop()
 
+    # Expose the stop event so an external thread (e.g. a native GUI window's
+    # close handler) can request a clean shutdown via call_soon_threadsafe.
+    sequencer._stop_event = stop_event
+
     def _request_stop () -> None:
 
         """
@@ -499,8 +503,13 @@ async def run_until_stopped (sequencer: subsequence.sequencer.Sequencer) -> None
     for sig in (signal.SIGINT, signal.SIGTERM):
         try:
             loop.add_signal_handler(sig, _request_stop)
-        except NotImplementedError:
-            pass  # Windows does not support add_signal_handler
+        except (NotImplementedError, ValueError, RuntimeError):
+            # NotImplementedError: Windows does not support add_signal_handler.
+            # ValueError/RuntimeError: set_wakeup_fd fails when the loop runs
+            # outside the main thread (macOS native-window mode, where the GUI
+            # owns the main thread); asyncio wraps the ValueError in a
+            # RuntimeError on unix.
+            pass
 
     assert sequencer.task is not None, "Sequencer task should exist after start()"
     await asyncio.wait(

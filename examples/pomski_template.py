@@ -1,5 +1,7 @@
 import sys
 import os
+import time
+import json
 import traceback
 import logging
 import faulthandler
@@ -8,15 +10,143 @@ import threading
 import asyncio
 import socket as _socket_mod
 import tempfile
+import weakref
 
 # ── Log directory ─────────────────────────────────────────────────────────────
 if getattr(sys, 'frozen', False):
-    _LOG_DIR = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'POMSKI')
+    if sys.platform == 'darwin':
+        _LOG_DIR = os.path.join(os.path.expanduser('~'), 'Library', 'Logs', 'POMSKI')
+    else:
+        _LOG_DIR = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'POMSKI')
     os.makedirs(_LOG_DIR, exist_ok=True)
 else:
     _LOG_DIR = '.'
 _LOG_PATH = os.path.join(_LOG_DIR, 'pomski.log')
 _FAULT_PATH = os.path.join(_LOG_DIR, 'fault.log')
+
+# ── Remembered MIDI device ──────────────────────────────────────────────────
+# Persists the device picked via the Finder-launch picker below, so later
+# launches skip the Terminal/picker/relaunch dance entirely — pomski.spec's
+# wrapper script checks this same path before deciding whether it needs to
+# open a Terminal at all.
+if getattr(sys, 'frozen', False):
+    if sys.platform == 'darwin':
+        _CONFIG_DIR = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'POMSKI')
+    else:
+        _CONFIG_DIR = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'POMSKI')
+else:
+    _CONFIG_DIR = '.'
+_MIDI_DEVICE_PATH = os.path.join(_CONFIG_DIR, 'midi_device.txt')
+
+def _read_saved_midi_device() -> 'str | None':
+    try:
+        with open(_MIDI_DEVICE_PATH, 'r', encoding='utf-8') as _f:
+            _name = _f.read().strip()
+        return _name or None
+    except OSError:
+        return None
+
+def _save_midi_device(name: str) -> None:
+    try:
+        os.makedirs(_CONFIG_DIR, exist_ok=True)
+        with open(_MIDI_DEVICE_PATH, 'w', encoding='utf-8') as _f:
+            _f.write(name)
+    except OSError:
+        pass
+
+# ── Finder-launch MIDI picker hand-off (macOS, frozen builds only) ─────────────
+# pomski_mac.spec's wrapper script opens a fresh Terminal window (and drops a
+# marker file here) only when launched with no controlling terminal (i.e. from
+# Finder) — that Terminal window exists solely so the MIDI-output prompt below
+# has a tty. Once a device is picked, this process hands off to a fully
+# detached copy of itself (no controlling terminal at all) and exits — so the
+# window can close later with no "still running" warning and no risk of
+# SIGHUP killing the real app (see _close_launch_terminal() further down,
+# which the detached copy calls once its own window is on screen).
+_WRAPPER_MARKER = os.path.join(_LOG_DIR, '.launched_via_wrapper')
+_launched_via_wrapper = False
+_marker_seen = os.path.exists(_WRAPPER_MARKER)
+if getattr(sys, 'frozen', False) and sys.platform == 'darwin' and _marker_seen:
+    _launched_via_wrapper = True
+    try:
+        os.remove(_WRAPPER_MARKER)
+    except OSError:
+        pass
+
+# Temporary diagnostics for the picker/relaunch hand-off — safe to remove
+# once this is confirmed working across launches.
+def _debug(msg: str) -> None:
+    try:
+        import datetime as _dt
+        with open(os.path.join(_LOG_DIR, 'picker_debug.log'), 'a', encoding='utf-8') as _pf:
+            _pf.write(f"{_dt.datetime.now().isoformat()} pid={os.getpid()} {msg}\n")
+    except Exception:
+        pass
+
+_debug(
+    f"startup frozen={getattr(sys,'frozen',False)} platform={sys.platform} "
+    f"marker_path={_WRAPPER_MARKER} marker_seen={_marker_seen} "
+    f"launched_via_wrapper={_launched_via_wrapper} "
+    f"stdin_isatty={sys.stdin.isatty()} "
+    f"POMSKI_RELAUNCHED={os.environ.get('POMSKI_RELAUNCHED')!r} "
+    f"POMSKI_LAUNCH_TTY={os.environ.get('POMSKI_LAUNCH_TTY')!r}"
+)
+
+def _run_midi_picker_and_relaunch() -> None:
+    try:
+        import mido
+        outputs = mido.get_output_names()
+    except Exception:
+        outputs = []
+
+    device = None
+    if len(outputs) == 1:
+        device = outputs[0]
+    elif len(outputs) > 1:
+        print("\nAvailable MIDI output devices:\n")
+        for i, name in enumerate(outputs, 1):
+            print(f"  {i}. {name}")
+        print()
+        while True:
+            try:
+                choice = int(input(f"Select a device (1-{len(outputs)}): "))
+                if 1 <= choice <= len(outputs):
+                    device = outputs[choice - 1]
+                    break
+            except EOFError:
+                device = outputs[0]
+                break
+            except ValueError:
+                pass
+
+    if device:
+        _save_midi_device(device)
+
+    env = dict(os.environ)
+    env['POMSKI_RELAUNCHED'] = '1'
+    if device:
+        env['POMSKI_MIDI_OUTPUT'] = device
+    try:
+        env['POMSKI_LAUNCH_TTY'] = os.ttyname(sys.stdin.fileno())
+    except OSError:
+        pass
+
+    print("\nStarting POMSKI…\n")
+    child = subprocess.Popen(
+        [sys.executable] + sys.argv[1:],
+        env=env,
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    _debug(f"picker: outputs={outputs} device={device!r} spawned_child_pid={child.pid} exiting")
+    os._exit(0)
+
+_debug(
+    f"gate: will_run_picker={_launched_via_wrapper and sys.stdin.isatty() and os.environ.get('POMSKI_RELAUNCHED') != '1'}"
+)
+if (_launched_via_wrapper and sys.stdin.isatty()
+        and os.environ.get('POMSKI_RELAUNCHED') != '1'):
+    _run_midi_picker_and_relaunch()  # never returns
 
 # Console handler: rich colour-codes by level (DEBUG dim, INFO default,
 # WARNING yellow, ERROR/CRITICAL red). File log stays plain text.
@@ -161,8 +291,49 @@ from live_bridge import LiveBridge
 from api_feeds import DataFeeds
 
 try:
-    composition = subsequence.Composition(key="C", bpm=120)
+    composition = subsequence.Composition(key="C", bpm=120,
+                                          output_device=(os.environ.get('POMSKI_MIDI_OUTPUT')
+                                                          or _read_saved_midi_device()))
     composition.harmony(style="functional_major", cycle_beats=4, gravity=0.8)
+
+    # Mirror console log lines (INFO+) into the web UI's console pane, so the
+    # launch Terminal can be closed once the native window is up without
+    # losing debug visibility — see _close_launch_terminal() below.
+    class _WebUILogHandler(logging.Handler):
+        # DEBUG here (unlike the real console/terminal, which stays INFO+)
+        # so the pane replicates the old terminal's constantly-flowing
+        # scheduler activity. websockets/asyncio/mido are already capped at
+        # INFO globally (see the noisy-logger loop above), so this only
+        # actually adds subsequence's own DEBUG chatter (pattern scheduling).
+        def __init__(self, comp: 'subsequence.Composition') -> None:
+            super().__init__(level=logging.DEBUG)
+            self._comp_ref = weakref.ref(comp)
+
+        def emit(self, record: logging.LogRecord) -> None:
+            comp = self._comp_ref()
+            server = getattr(comp, '_web_ui_server', None) if comp else None
+            if server is None:
+                return
+            try:
+                if record.levelno >= logging.ERROR:
+                    level = 'err'
+                elif record.levelno >= logging.WARNING:
+                    level = 'warn'
+                elif record.levelno <= logging.DEBUG:
+                    level = 'debug'
+                else:
+                    level = 'info'
+                import datetime as _dt
+                server.push_console_log(
+                    time=_dt.datetime.fromtimestamp(record.created).strftime('%H:%M:%S'),
+                    name=record.name,
+                    message=record.getMessage(),
+                    level=level,
+                )
+            except Exception:
+                pass
+
+    logging.getLogger().addHandler(_WebUILogHandler(composition))
 
     # ── Ableton Live bridge ───────────────────────────────────────────────────
     live = LiveBridge(composition)
@@ -423,35 +594,275 @@ try:
                 proxy._enabled = False    # bridge died unexpectedly
             _delay = 5
 
+    def _start_direct_link() -> None:
+        """
+        macOS/Linux: aalink.Link() works fine directly in-process (no SxS DLL
+        redirection issue like Windows), so no bridge subprocess is needed.
+        Runs its own dedicated asyncio loop in a daemon thread, since aalink
+        needs a *running* loop and composition._main_loop doesn't exist yet
+        at this point in startup.
+        """
+        import aalink as _aalink_mod
+
+        class _DirectLinkProxy:
+            """Wraps a real aalink.Link. Exposes the same shape web_ui.py's
+            _get_link_state() reads from the Windows bridge _LinkProxy
+            (enabled/tempo/num_peers, plus _tempo/_num_peers)."""
+            def __init__(self, link: 'aalink.Link'):
+                self._link = link
+
+            @property
+            def enabled(self):
+                return self._link.enabled
+
+            @enabled.setter
+            def enabled(self, value):
+                self._link.enabled = bool(value)
+
+            @property
+            def tempo(self):
+                return self._link.tempo
+
+            @tempo.setter
+            def tempo(self, value):
+                self._link.tempo = float(value)
+
+            @property
+            def num_peers(self):
+                return self._link.num_peers
+
+            @property
+            def _tempo(self):
+                return self._link.tempo
+
+            @property
+            def _num_peers(self):
+                return self._link.num_peers
+
+        def _link_thread_body() -> None:
+            # This whole function runs on a daemon thread with no caller to
+            # propagate exceptions to — an uncaught error here (e.g. aalink's
+            # Link() constructor failing) previously just killed the thread
+            # silently: Link would be permanently dead with zero indication
+            # anywhere, including the console pane, of why.
+            try:
+                _loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(_loop)
+                _bpm = float(getattr(composition, "bpm", 120.0))
+                _link = _aalink_mod.Link(_bpm, _loop)
+                _link.enabled = True
+                try:
+                    _link.set_num_peers_callback(lambda n: None)
+                    _link.set_tempo_callback(lambda t: None)
+                    _link.set_start_stop_callback(lambda p: None)
+                except Exception:
+                    pass
+
+                composition._link = _DirectLinkProxy(_link)
+                logging.info("Ableton Link initialised (direct, in-process)")
+
+                async def _poll() -> None:
+                    _last = _bpm
+                    _last_err = None
+                    while True:
+                        try:
+                            _t = _link.tempo
+                            # Sanity bound only guards against garbage/zero
+                            # values, not a real subsequence engine limit —
+                            # Sequencer.set_bpm() itself only requires > 0.
+                            if 0.0 < _t <= 999.0 and abs(_t - _last) > 0.05:
+                                _last = _t
+                                logging.debug(f"Link tempo poll: applying {_t:.2f} (peers={_link.num_peers})")
+                                composition._sequencer.set_bpm(_t)
+                                if not composition._clock_follow:
+                                    composition.bpm = _t
+                        except Exception as _e:
+                            # Deduplicated so a persistent error logs once,
+                            # not every 50ms — but it does now actually log.
+                            if str(_e) != _last_err:
+                                _last_err = str(_e)
+                                logging.warning(f"Link tempo poll error: {_e}")
+                        await asyncio.sleep(0.05)
+
+                _loop.run_until_complete(_poll())
+            except Exception as _e:
+                logging.warning(f"Ableton Link (direct) failed to start: {_e}")
+
+        threading.Thread(target=_link_thread_body, daemon=True,
+                         name="link-direct").start()
+
     try:
-        _link_proxy = _LinkProxy()
-        composition._link = _link_proxy
-        threading.Thread(target=_link_service, args=(_link_proxy,),
-                         daemon=True, name="link-service").start()
-        logging.info("Ableton Link service started")
+        if sys.platform == 'win32':
+            _link_proxy = _LinkProxy()
+            composition._link = _link_proxy
+            threading.Thread(target=_link_service, args=(_link_proxy,),
+                             daemon=True, name="link-service").start()
+            logging.info("Ableton Link service started")
+        else:
+            _start_direct_link()
     except Exception as _e:
         logging.warning(f"Ableton Link unavailable: {_e}")
 
-    # Announce startup + auto-open browser once the web UI is live.
+    # ── Startup: native window (macOS) or browser ─────────────────────────────
     # MIDI device selection happens at Composition() construction (top of this
     # file), so by the time _web_ui_server exists the prompt is long done.
-    def _announce_and_open_browser():
+    def _wait_for_web_ui(must_be_alive: 'threading.Thread | None' = None) -> None:
         import time
-        import webbrowser
         while getattr(composition, '_web_ui_server', None) is None:
+            if must_be_alive is not None and not must_be_alive.is_alive():
+                raise RuntimeError("POMSKI failed to start — see pomski.log")
             time.sleep(0.25)
         time.sleep(0.5)  # let the HTTP server bind
+
+    def _print_banner() -> None:
         try:
             from rich.console import Console
             Console().print("\n[bold green]POMSKI has started up successfully. Have fun![/bold green]\n")
         except Exception:
             print("\nPOMSKI has started up successfully. Have fun!\n")
-        webbrowser.open('http://localhost:8080')
 
-    threading.Thread(target=_announce_and_open_browser, daemon=True,
-                     name="startup-announce").start()
+    def _close_launch_terminal() -> None:
+        """Called by pywebview once the native window's GUI loop is running.
+        This process is the detached copy spawned by
+        _run_midi_picker_and_relaunch() above — it has no controlling
+        terminal of its own (stdin is /dev/null). POMSKI_LAUNCH_TTY names
+        the *picker's* Terminal window/tab, which by now has long since
+        exited (the picker process exits immediately after spawning us), so
+        closing it triggers neither a "still running" confirmation nor any
+        risk of SIGHUP to a live process."""
+        tty_path = os.environ.get('POMSKI_LAUNCH_TTY')
+        _debug(f"close_launch_terminal: tty_path={tty_path!r}")
+        if sys.platform != 'darwin' or not tty_path:
+            return
+        import time
+        time.sleep(0.5)  # let the window actually render before closing
+        script = f'''
+        tell application "Terminal"
+            repeat with w in windows
+                repeat with t in tabs of w
+                    if tty of t is "{tty_path}" then
+                        close w
+                        return
+                    end if
+                end repeat
+            end repeat
+        end tell
+        '''
+        try:
+            result = subprocess.run(['osascript', '-e', script], capture_output=True, timeout=5)
+            _debug(f"close_launch_terminal: osascript rc={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}")
+        except Exception as _e:
+            _debug(f"close_launch_terminal: osascript raised {_e!r}")
 
-    composition.play()
+    # pywebview (WKWebView) renders the web UI in a native window, so no
+    # browser is needed. macOS requires the GUI to own the main thread, so
+    # composition.play() moves to a background thread in that mode.
+    _webview = None
+    if sys.platform == 'darwin':
+        try:
+            import webview as _webview
+        except ImportError:
+            pass
+
+    if _webview is not None:
+        _play_thread = threading.Thread(target=composition.play,
+                                        name="pomski-play")
+        _play_thread.daemon = True
+        _play_thread.start()
+
+        class _PomskiJsApi:
+            """Bridge for UI actions WKWebView can't do itself (window.open
+            with _blank is silently ignored in pywebview)."""
+            def open_tutorial(self):
+                _webview.create_window('POMSKI Tutorial',
+                                       'http://127.0.0.1:8080/tutorial.html',
+                                       width=1100, height=850, text_select=True)
+
+        # Backend bring-up (imports already paid for by this point, but MIDI
+        # port open + web/websocket server start still take a beat) used to
+        # block window creation entirely, so the user saw nothing but a
+        # bouncing dock icon for several seconds. Instead show a lightweight
+        # inline-HTML loading window immediately — inline (not a URL) since
+        # the HTTP server isn't listening yet — then swap it to the real UI
+        # once _wait_for_web_ui() confirms the backend is ready.
+        _loading_html = """<!doctype html><html><head><meta charset="utf-8">
+        <style>
+          html,body{height:100%;margin:0;background:#1c1c1e;color:#8a8a90;
+            font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+          .spinner{width:28px;height:28px;border-radius:50%;
+            border:3px solid #38383e;border-top-color:#ff5c8a;
+            animation:spin .8s linear infinite}
+          @keyframes spin{to{transform:rotate(360deg)}}
+          .label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#5a5a60}
+          .status{font-size:10px;color:#4a4a50}
+        </style></head>
+        <body><div class="spinner"></div><div class="label">Starting POMSKI&hellip;</div>
+        <div class="status" id="status">Starting sequencer &amp; MIDI engine&hellip;</div></body></html>"""
+
+        _window = _webview.create_window('POMSKI', html=_loading_html,
+                               width=1400, height=900, background_color='#1c1c1e',
+                               text_select=True, js_api=_PomskiJsApi())
+
+        def _set_status(text: str) -> None:
+            try:
+                _window.evaluate_js(
+                    f"document.getElementById('status').textContent={json.dumps(text)}")
+            except Exception:
+                pass
+
+        def _on_gui_ready():
+            _set_status('Waiting for web server & pattern engine…')
+            _wait_for_web_ui(must_be_alive=_play_thread)
+            _set_status('Loading interface…')
+            _print_banner()
+            # Cache-busting query param: the persistent WKWebView data store
+            # (private_mode=False) can keep serving an already-cached
+            # index.html from a previous launch even after the no-store
+            # header is added below, since that header only prevents
+            # *future* caching. A unique URL per launch guarantees this and
+            # every future launch fetches fresh, regardless of whatever's
+            # already sitting in the cache.
+            #
+            # 127.0.0.1, not localhost: WKWebView on macOS can stall
+            # resolving the hostname "localhost" for ~30s under some
+            # network conditions (sleep/wake, VPN, Wi-Fi reassociation) even
+            # though it's loopback — a known WKWebView quirk. Loopback IP
+            # skips name resolution entirely.
+            _window.load_url(f'http://127.0.0.1:8080/?_launch={int(time.time())}')
+            _close_launch_terminal()
+
+        # func runs once the GUI loop starts (window is up) — closes the
+        # launch Terminal at that point. Blocks until the window is closed.
+        # private_mode=False: pywebview defaults to private_mode=True, which
+        # wipes ALL WKWebView site data (including localStorage — the editor
+        # tab buffers) at every launch before the page even loads. That made
+        # buffer contents look saved mid-session (localStorage still works
+        # in-memory) but reset to blank on the next app launch.
+        _webview.start(func=_on_gui_ready, private_mode=False)
+
+        # Window closed: request a clean sequencer shutdown (notes off),
+        # then exit. os._exit is the backstop for anything non-daemon.
+        try:
+            _seq  = composition._sequencer
+            _loop = composition._main_loop
+            _loop.call_soon_threadsafe(_seq._stop_event.set)
+            _play_thread.join(timeout=5.0)
+        except Exception:
+            pass
+        logging.info("POMSKI window closed — shutting down")
+        os._exit(0)
+    else:
+        def _announce_and_open_browser():
+            import webbrowser
+            _wait_for_web_ui()
+            _print_banner()
+            webbrowser.open('http://localhost:8080')
+
+        threading.Thread(target=_announce_and_open_browser, daemon=True,
+                         name="startup-announce").start()
+
+        composition.play()
 
 except BaseException:
     _write_crash_log()

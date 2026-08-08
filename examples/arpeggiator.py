@@ -15,7 +15,7 @@ LEAD_CHANNEL = 3
 
 composition = subsequence.Composition(
 	bpm=120,
-	key="E"
+	key="C"
 )
 
 composition.form({
