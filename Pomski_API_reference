@@ -9,19 +9,27 @@ POMSKI is a live-coding music environment. Write Python patterns in the browser 
 
 1. [Setup & REPL](#setup--repl)
 2. [Composition](#composition)
+   - [Playback control](#playback-control)
+   - [Startup & lifecycle](#startup--lifecycle)
+   - [Harmony](#harmony)
+   - [Song structure (form)](#song-structure-form)
+   - [Scheduling](#scheduling)
 3. [PatternBuilder (`p`)](#patternbuilder-p)
    - [Note placement](#note-placement)
    - [Rhythmic generators](#rhythmic-generators)
+   - [Algorithmic & generative](#algorithmic--generative)
    - [Transformations](#transformations)
    - [music21 scales (`quantize_m21`, `microtuning`)](#music21-scales-quantize_m21)
    - [Timing & feel](#timing--feel)
    - [Utilities](#utilities)
-4. [LiveBridge (`live`)](#livebridgelive)
-5. [DataFeeds (`feeds`)](#datafeedsfeeds)
-6. [Duration constants (`dur`)](#duration-constants-dur)
-7. [GM Drum Map](#gm-drum-map)
-8. [REPL Quick Reference](#repl-quick-reference)
-9. [Ports](#ports)
+4. [Conductor & signals](#conductor--signals)
+5. [MIDI messages & automation](#midi-messages--automation)
+6. [LiveBridge (`live`)](#livebridgelive)
+7. [DataFeeds (`feeds`)](#datafeedsfeeds)
+8. [Duration constants (`dur`)](#duration-constants-dur)
+9. [GM Drum Map](#gm-drum-map)
+10. [REPL Quick Reference](#repl-quick-reference)
+11. [Ports](#ports)
 
 ---
 
@@ -70,7 +78,7 @@ def ch1(p):
     p.note(60, beat=0)
 ```
 
-**`composition.pattern(channel, length=4, unit=None, drum_note_map=None, voice_leading=False)`**
+**`composition.pattern(channel, length=4, unit=None, drum_note_map=None, reschedule_lookahead=1, voice_leading=False)`**
 
 | Parameter | Description |
 |-----------|-------------|
@@ -120,6 +128,52 @@ composition.unmute("ch1")        # Resume
 composition.set_bpm(128.0)       # Change tempo immediately
 composition.live_info()          # Returns dict: bpm, key, bar, section, chord, patterns, data
 ```
+
+**`composition.target_bpm(bpm, bars=4, shape="ease_in_out")`**
+
+Ramp the tempo smoothly instead of jumping. The sequencer interpolates every pulse.
+
+```python
+composition.target_bpm(140, bars=8, shape="ease_in_out")
+```
+
+> Ableton Link and AbletonOSC peers are **not** ramped — they only receive the final value.
+> Call `composition.set_bpm(140)` afterwards to bring them in line.
+
+Easing shapes: `"linear"`, `"ease_in"`, `"ease_out"`, `"ease_in_out"`, `"exponential"`,
+`"logarithmic"`, `"s_curve"`.
+
+### Startup & lifecycle
+
+These are called once, in the template, before playback begins.
+
+| Call | What it does |
+|---|---|
+| `composition.play()` | Start everything. **Blocks** until interrupted — call it last. |
+| `composition.live(port=5555)` | Start the live-coding REPL server. |
+| `composition.web_ui()` | Enable the browser/native dashboard on port 8080. |
+| `composition.seed(value)` | Fix the RNG for identical playback every run. |
+| `composition.display(enabled=True, grid=False, grid_scale=1.0)` | Terminal dashboard. |
+| `composition.hotkeys(enabled=True)` | Enable the global hotkey listener (before `play()`). |
+| `composition.hotkey(key, action, quantize=0, label=None)` | Bind a single key to an action. |
+| `composition.midi_input(device, clock_follow=False)` | Take MIDI in; optionally slave the clock. |
+| `composition.clock_output(enabled=True)` | Act as MIDI clock master. |
+| `composition.osc(receive_port=9000, send_port=9001, send_host="127.0.0.1")` | Enable OSC in/out. |
+| `composition.cc_map(cc, key, channel=None, min_val=0.0, max_val=1.0)` | Route an incoming CC into `composition.data[key]`. |
+| `composition.on_event(event_name, callback)` | Hook a sequencer event — `"bar"`, `"start"`, `"stop"`. |
+
+**`composition.render(bars=None, filename="render.mid", max_minutes=60.0)`**
+
+Render to a MIDI file as fast as possible, with no real-time playback.
+
+```python
+composition.render(bars=32, filename="sketch.mid")
+```
+
+**`composition.layer(*builder_fns, channel, length=4, unit=None, drum_note_map=None, ...)`**
+
+Combine several builder functions into one pattern on a single channel — useful for
+composing a part out of reusable pieces.
 
 ### Tweaks — live parameter injection
 
@@ -202,7 +256,27 @@ def melody(p):
         p.note(67, beat=0)
 ```
 
-`p.section` attributes: `.name`, `.bar` (bar within section), `.bars` (total bars), `.progress` (0.0–1.0)
+`p.section` attributes: `.name`, `.bar` (bar within section), `.bars` (total bars), `.progress` (0.0–1.0),
+`.first_bar` / `.last_bar` (bool), `.next_section` (name or `None`).
+
+**Navigating the form live**
+
+```python
+composition.form_next("chorus")   # queue it — takes effect when this section ends
+composition.form_jump("chorus")   # cut to it immediately
+composition.form_state            # property — the active FormState, or None
+```
+
+**Freezing harmony into a fixed progression**
+
+`composition.freeze(bars)` runs the harmony engine forward and captures the chords it
+produces, returning a reusable `Progression`. Bind it to a section so that section plays
+the same changes every time.
+
+```python
+verse_prog = composition.freeze(8)
+composition.section_chords("verse", verse_prog)
+```
 
 ### Scheduling
 
@@ -237,9 +311,9 @@ notes and apply transformations.
 
 ### Note placement
 
-**`p.note(pitch, beat=0, velocity=100, duration=0.25)`**
+**`p.note(pitch, beat, velocity=100, duration=0.25)`**
 
-Place a single MIDI note.
+Place a single MIDI note. `beat` is required — there is no default position.
 
 ```python
 p.note(60, beat=0)                             # Middle C on beat 1
@@ -330,7 +404,7 @@ p.fill(60, step=0.5)    # 8th notes
 
 ---
 
-**`p.arpeggio(pitches, step=0.25, velocity=85, duration=None, direction="up")`**
+**`p.arpeggio(pitches, step=0.25, velocity=100, duration=None, direction="up")`**
 
 Cycle through a list of pitches at regular intervals.
 
@@ -356,7 +430,7 @@ def pads(p, chord):
 
 ---
 
-**`p.strum(chord_obj, root, velocity=90, offset=0.05, direction="up", ...)`**
+**`p.strum(chord_obj, root, velocity=90, sustain=False, duration=1.0, inversion=0, count=None, offset=0.05, direction="up", legato=None)`**
 
 Chord with staggered note onsets (guitar strum effect).
 
@@ -412,6 +486,120 @@ p.bresenham_poly(
 
 `parts` dict: `{pitch: density_weight}`. Weights 0.0–1.0; remainder becomes rests.
 Use per-voice velocity dict or a single int for all voices.
+
+---
+
+### Algorithmic & generative
+
+These generate whole sequences from mathematical or musical systems. All are `p.` methods —
+no imports needed. Most place notes across the full pattern length automatically.
+
+#### Chaos & continuous systems
+
+**`p.lorenz(steps=16, pitch_range=(48, 72), velocity=80, duration=0.25, s=10.0, r=28.0, b=2.667, dt=0.01)`**
+
+Pitches follow the x-axis of a Lorenz attractor — never exactly repeating, always coherent.
+
+```python
+p.lorenz(steps=16, pitch_range=(48, 72))
+p.quantize("C", "minor")
+```
+
+**`p.logistic(steps=16, r=3.9, x0=0.5, pitch_range=(48, 72), velocity_range=(60, 120), duration=0.25)`**
+
+The logistic map. `r` controls behaviour: below 3.0 settles, 3.0–3.57 oscillates,
+above 3.57 is chaotic.
+
+**`p.brownian(start=60, steps=16, step_size=2, pitch_range=(36, 84), velocity=80, duration=0.25)`**
+
+Random-walk melody — each note steps up or down from the last, so lines stay connected.
+
+**`p.golden_ratio(pitch=60, count=12, velocity=80, duration=0.25)`**
+
+Spaces hits by the golden ratio: maximally even, never repeating.
+
+**`p.spectral(harmonics=None, steps=16, pitch_range=(48, 72), velocity=80, duration=0.25)`**
+
+Maps a sum-of-harmonics waveform to a pitch contour.
+
+**`p.gray_scott(pitch=60, n=16, f=0.055, k=0.062, iterations=200, velocity_range=(40, 120), duration=0.25)`**
+
+Reaction-diffusion: Turing-pattern intensities become note velocities.
+
+#### Cellular automata
+
+**`p.cellular_1d(pitch, rule=30, generation=None, velocity=60, duration=0.1, no_overlap=False, dropout=0.0, rng=None)`**
+
+Elementary 1D cellular automaton. Rule 30 is chaotic, 90 is fractal, 110 is complex.
+`generation=None` advances automatically with the pattern cycle.
+
+```python
+p.cellular_1d("hi_hat_closed", rule=30)
+```
+
+**`p.cellular_2d(pitches, rule="B368/S245", generation=None, velocity=60, duration=0.1, no_overlap=False, dropout=0.0, seed=1, density=0.5, rng=None)`**
+
+Life-like 2D automaton — rows map to pitches, so it produces polyphony. `pitches` is a list.
+
+**`p.game_of_life(pitch=60, cols=16, rows=4, generations=8, row=0, duration=0.25, velocity=80)`**
+
+Conway's Game of Life; triggers notes for live cells in a single row.
+
+#### Grammar & probability
+
+**`p.lsystem(pitch_map, axiom, rules, generations=3, step=None, velocity=80, duration=0.2)`**
+
+L-system string rewriting. `pitch_map` maps each symbol to a pitch.
+
+```python
+p.lsystem({"A": 60, "B": 64}, axiom="A", rules={"A": "AB", "B": "A"}, generations=4)
+```
+
+**`p.markov(transitions, pitch_map, velocity=100, duration=0.1, step=0.25, start=None)`**
+
+Walks a first-order Markov chain, one note per `step` beats. `transitions` maps each state
+to a list of `(next_state, weight)` tuples.
+
+```python
+p.markov(
+    transitions={"a": [("b", 3), ("c", 1)], "b": [("a", 2)], "c": [("a", 1)]},
+    pitch_map={"a": 60, "b": 63, "c": 67},
+)
+```
+
+**`p.melody(state, step=0.25, velocity=90, duration=0.2, chord_tones=None)`**
+
+Generates a melodic line from a persistent `MelodicState` (Narmour implication-realisation
+model). Keep the `state` object between cycles so the melody develops.
+
+#### Ghost notes & density
+
+**`p.ghost_fill(pitch, density=0.3, velocity=35, bias="uniform", no_overlap=True, grid=None, duration=0.1, rng=None)`**
+
+Fill the pattern with quiet probability-weighted ghost notes.
+
+```python
+p.ghost_fill("snare_1", density=0.4, bias="offbeat")
+```
+
+**`p.thin(pitch, strategy="strength", amount=0.5, grid=None, rng=None)`**
+
+The inverse of `ghost_fill` — removes notes based on rhythmic position, keeping the
+strong beats.
+
+**`p.build_ghost_bias(grid, bias)`** — Build the probability weight list used by the above,
+if you want to inspect or reuse it.
+
+#### Importing
+
+**`p.from_midi(filepath, track=0, channel=None, pitch_offset=0, velocity=None, duration=0.25)`**
+
+Load notes from a `.mid` file into the pattern, then treat them like any other notes.
+
+```python
+p.from_midi("riff.mid", pitch_offset=-12)
+p.swing(60)
+```
 
 ---
 
@@ -657,7 +845,7 @@ p.staccato(0.5)    # 8th note gate
 
 ---
 
-**`p.velocity_shape(low=60, high=120)`**
+**`p.velocity_shape(low=64, high=127)`**
 
 Apply organic velocity variation using a van der Corput quasi-random sequence.
 
@@ -693,6 +881,115 @@ Read a conductor signal value at the current bar (0.0–1.0 by default).
 ```python
 density = p.signal("density")
 ```
+
+---
+
+## Conductor & signals
+
+The conductor produces named, continuously-varying values. Register a signal once, then read
+it from any pattern with `p.signal(name)`. Signals are drawn live in the Signals tab.
+
+**`composition.conductor.lfo(name, shape="sine", cycle_beats=16.0, min_val=0.0, max_val=1.0, phase=0.0)`**
+
+A repeating cycle. Shapes: `"sine"`, `"triangle"`, `"saw"`, `"square"`.
+
+```python
+composition.conductor.lfo("swell", shape="sine", cycle_beats=16, min_val=0.2, max_val=1.0)
+
+@composition.pattern(channel=0, length=4)
+def pad(p):
+    vel = int(p.signal("swell") * 100)
+    p.chord(chord, root=48, velocity=vel)
+```
+
+**`composition.conductor.line(name, start_val, end_val, duration_beats, start_beat=0.0, loop=False, shape="linear")`**
+
+A one-shot ramp that holds at `end_val` when it finishes — use it for build-ups and fades.
+Set `loop=True` to repeat instead of holding.
+
+```python
+composition.conductor.line("buildup", start_val=0, end_val=1,
+                           duration_beats=32, shape="ease_in_out")
+```
+
+Ramp shapes are easing curves, **not** the LFO waveform list: `"linear"`, `"ease_in"`,
+`"ease_out"`, `"ease_in_out"`, `"exponential"`, `"logarithmic"`, `"s_curve"`.
+
+**`composition.conductor.signal_names`** — property (no parentheses); a tuple of every
+registered signal name.
+**`composition.conductor.get(name, beat)`** — value at an explicit beat. Inside a pattern
+prefer `p.signal(name)`, which resolves the current beat for you.
+
+---
+
+## MIDI messages & automation
+
+Beyond notes, a pattern can emit CC, pitch bend, program changes, SysEx and OSC — all
+scheduled at beat positions inside the loop.
+
+### Sustained notes & drones
+
+`note()` schedules its own note-off. These do not — they sustain until you stop them.
+
+| Call | What it does |
+|---|---|
+| `p.drone(pitch, beat=0.0, velocity=100)` | Start a sustained note |
+| `p.drone_off(pitch, beat=0.0)` | Stop a drone |
+| `p.note_on(pitch, beat=0.0, velocity=100)` | Raw note-on, no counterpart |
+| `p.note_off(pitch, beat=0.0)` | Raw note-off |
+| `p.silence(beat=0.0)` | CC 123 + CC 120 — all notes/sound off on this channel |
+
+Guard a drone with a cycle check so it doesn't retrigger every loop:
+
+```python
+@composition.pattern(channel=2, length=4)
+def bed(p):
+    if p.cycle == 0:
+        p.drone(36, velocity=70)
+```
+
+### Control change
+
+**`p.cc(control, value, beat=0.0)`** — one CC message.
+
+**`p.cc_ramp(control, start, end, beat_start=0.0, beat_end=None, resolution=1, shape="linear")`**
+
+Interpolate a CC over a beat range — filter sweeps, swells, anything mapped in your synth.
+`resolution` is messages per pulse; raise it for smoother movement.
+
+```python
+p.cc_ramp(74, 0, 127, beat_start=0, beat_end=4, shape="ease_in_out")
+```
+
+### Pitch bend & glide
+
+| Call | What it does |
+|---|---|
+| `p.pitch_bend(value, beat=0.0)` | Single bend message |
+| `p.pitch_bend_ramp(start, end, beat_start=0.0, beat_end=None, resolution=1, shape="linear")` | Bend over a range |
+| `p.portamento(time=0.15, shape="linear", resolution=1, bend_range=2.0, wrap=True)` | Glide between **all** consecutive notes |
+| `p.slide(notes=None, steps=None, time=0.15, shape="linear", resolution=1, bend_range=2.0, wrap=True, extend=True)` | TB-303-style glide into **selected** notes only |
+| `p.bend(note, amount, start=0.0, end=1.0, shape="linear", resolution=1)` | Bend one note by index |
+
+`bend_range` must match your synth's pitch-bend range in semitones, or the interval will
+sound wrong.
+
+```python
+p.seq("36 _ 39 _ 43")
+p.slide(steps=[2, 4], time=0.12, bend_range=2.0)
+```
+
+### Patches, SysEx & OSC
+
+**`p.program_change(program, beat=0.0, bank_msb=None, bank_lsb=None)`** — switch patch on
+this pattern's channel, optionally with bank select.
+
+**`p.sysex(data, beat=0.0)`** — raw System Exclusive bytes.
+
+**`p.osc(address, *args, beat=0.0)`** and
+**`p.osc_ramp(address, start, end, beat_start=0.0, beat_end=None, resolution=4, shape="linear")`**
+send OSC from inside a pattern. Both require `composition.osc()` to have been called before
+`composition.play()`.
 
 ---
 
@@ -769,12 +1066,16 @@ def reactive(p):
     p.note(pitch, beat=0)
 ```
 
-### ClyphX Pro
+### ClyphX
 
-**`live.clyphx(action)`** — Send any ClyphX Pro action string.
+POMSKI bundles the free [ClyphX](https://github.com/ldrolez/clyphx-live11) (LGPL-3.0) and
+installs it into Ableton's Remote Scripts folder on first launch. Add **ClyphX** as a Control
+Surface in Live's preferences (alongside AbletonOSC) and restart Live to enable it.
+
+**`live.clyphx(action)`** — Send any ClyphX action string. Works with the bundled free version.
 
 Creates a clip on a dedicated hidden MIDI track (`_POMSKI_CLYPHX`) and fires it.
-ClyphX Pro intercepts the clip launch and executes the action. Each concurrent call
+ClyphX intercepts the clip launch and executes the action. Each concurrent call
 uses its own clip slot.
 
 ```python
@@ -785,6 +1086,10 @@ live.clyphx("(PSEQ) 1/MUTE ; 2/MUTE ; 3/MUTE")
 ```
 
 **`live.clyphx_osc(address, value=1.0)`** — Trigger a pre-defined X-OSC address.
+**Requires ClyphX Pro** — a separate paid product from
+[Isotonik Studios](https://isotonikstudios.com/product/clyphx-pro/). The bundled free ClyphX
+has no OSC listener, and because this is fire-and-forget UDP it cannot detect a missing
+listener: the call silently does nothing if ClyphX Pro isn't installed and running.
 
 Faster than `clyphx()` for frequently-used actions. Bypasses AbletonOSC and sends
 directly to ClyphX Pro on port 7005. Requires entries in ClyphX Pro's `X-OSC.txt`.
