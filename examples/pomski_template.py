@@ -864,9 +864,11 @@ try:
           @keyframes spin{{to{{transform:rotate(360deg)}}}}
           .label{{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#fff}}
           .status{{font-size:10px;color:rgba(255,255,255,.65)}}
+          .note{{font-size:10px;color:rgba(255,255,255,.45);margin-top:-8px}}
         </style></head>
         <body>{_icon_html}<div class="spinner"></div><div class="label">Starting POMSKI&hellip;</div>
-        <div class="status" id="status">Starting sequencer &amp; MIDI engine&hellip;</div></body></html>"""
+        <div class="status" id="status">Starting sequencer &amp; MIDI engine&hellip;</div>
+        <div class="note">(first run can take a little longer while POMSKI sets itself up)</div></body></html>"""
 
         _window = _webview.create_window('POMSKI', html=_loading_html,
                                width=1400, height=900, background_color='#d63e6a',
