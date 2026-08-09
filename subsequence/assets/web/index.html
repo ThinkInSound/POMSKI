@@ -242,7 +242,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .ref-indent{padding-left:14px}
 .ref-arg{color:var(--orange)}
 .ref-desc{font-family:var(--sans);font-size:9px;color:var(--text-dark);margin-left:4px;flex-shrink:0}
-.ref-tag{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:3px;font-size:8px;font-weight:700;flex-shrink:0}
+.ref-tag{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:3px;font-size:8px;font-weight:700;flex-shrink:0;background:rgba(94,168,255,.15);color:var(--blue)}
 .ref-tag.warn{background:rgba(255,153,64,.2);color:var(--orange)}
 
 /* WebMIDI status */
@@ -373,7 +373,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="log-input-row">
           <div class="log-prompt">&gt;&gt;&gt;</div>
           <textarea class="log-ta" id="logInput" rows="2" placeholder="Quick command&#8230;"></textarea>
-          <label class="quick-toggle" title="Send to ClyphX Pro instead of the REPL">
+          <label class="quick-toggle" title="Send to ClyphX instead of the REPL">
             <input type="checkbox" id="quickCx"><span>CX</span>
           </label>
           <button class="log-send" onclick="sendQuick()">Send</button>
@@ -606,10 +606,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
           </div>
 
           <div class="ref-section">
-            <div class="ref-title">Conductor (LFOs)</div>
+            <div class="ref-title">Conductor — Signals</div>
             <div class="ref-body">
-              <div class="ref-item"><code>composition.conductor.lfo(<span class="ref-arg">"name"</span>, shape=<span class="ref-arg">"sine"</span>, cycle_beats=<span class="ref-arg">16</span>, min_val=<span class="ref-arg">0</span>, max_val=<span class="ref-arg">1</span>)</code></div>
-              <div class="ref-item"><code>composition.data.get(<span class="ref-arg">"name"</span>, <span class="ref-arg">0.5</span>)</code><span class="ref-desc">Read with fallback</span></div>
+              <div class="ref-item"><code>composition.conductor.lfo(<span class="ref-arg">"name"</span>, shape=<span class="ref-arg">"sine"</span>, cycle_beats=<span class="ref-arg">16</span>, min_val=<span class="ref-arg">0</span>, max_val=<span class="ref-arg">1</span>)</code><span class="ref-desc">Repeating cycle</span></div>
+              <div class="ref-item ref-indent"><span class="ref-desc">LFO shapes: <code>sine</code> <code>triangle</code> <code>saw</code> <code>square</code></span></div>
+              <div class="ref-item"><code>composition.conductor.line(<span class="ref-arg">"name"</span>, start_val=<span class="ref-arg">0</span>, end_val=<span class="ref-arg">1</span>, duration_beats=<span class="ref-arg">32</span>, shape=<span class="ref-arg">"ease_in_out"</span>)</code><span class="ref-desc">One-shot ramp</span></div>
+              <div class="ref-item ref-indent"><span class="ref-desc">Line shapes: <code>linear</code> <code>ease_in</code> <code>ease_out</code> <code>ease_in_out</code> <code>exponential</code> <code>logarithmic</code> <code>s_curve</code></span></div>
+              <div class="ref-item"><code>composition.conductor.line(<span class="ref-arg">"name"</span>, ..., loop=<span class="ref-arg">True</span>)</code><span class="ref-desc">Repeat the ramp instead of holding at end_val</span></div>
+              <div class="ref-item"><code>p.signal(<span class="ref-arg">"name"</span>)</code><span class="ref-desc">Read inside a pattern — works for both lfo() and line()</span></div>
+              <div class="ref-item"><code>composition.data.get(<span class="ref-arg">"name"</span>, <span class="ref-arg">0.5</span>)</code><span class="ref-desc">Read with fallback (REPL or outside a pattern)</span></div>
             </div>
           </div>
 
@@ -880,7 +885,7 @@ def ch4(p):
           </div>
 
           <div class="ref-section">
-            <div class="ref-title">ClyphX Pro — Global Actions</div>
+            <div class="ref-title">ClyphX — Global Actions</div>
             <div class="ref-body">
               <div class="ref-item"><code>live.clyphx("BPM <span class="ref-arg">120</span>")</code><span class="ref-desc">Set tempo</span></div>
               <div class="ref-item"><code>live.clyphx("METRO")</code><span class="ref-desc">Toggle metronome</span></div>
@@ -893,7 +898,7 @@ def ch4(p):
           </div>
 
           <div class="ref-section">
-            <div class="ref-title">ClyphX Pro — Track Actions</div>
+            <div class="ref-title">ClyphX — Track Actions</div>
             <div class="ref-body">
               <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/MUTE")</code><span class="ref-desc">Toggle mute on track 1</span></div>
               <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/MUTE ON")</code><span class="ref-desc">Mute on explicitly</span></div>
@@ -908,7 +913,7 @@ def ch4(p):
           </div>
 
           <div class="ref-section">
-            <div class="ref-title">ClyphX Pro — Clip Actions</div>
+            <div class="ref-title">ClyphX — Clip Actions</div>
             <div class="ref-body">
               <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/CLIP(<span class="ref-arg">1</span>) PLAY")</code><span class="ref-desc">Play clip 1 on track 1</span></div>
               <div class="ref-item"><code>live.clyphx("<span class="ref-arg">1</span>/CLIP(<span class="ref-arg">1</span>) STOP")</code><span class="ref-desc">Stop clip</span></div>
@@ -918,12 +923,22 @@ def ch4(p):
           </div>
 
           <div class="ref-section">
-            <div class="ref-title">ClyphX Pro — Multi-action</div>
+            <div class="ref-title">ClyphX — Multi-action</div>
             <div class="ref-body">
               <div class="ref-item"><span class="ref-tag warn">!</span> Separate actions with <code> ; </code> (spaces matter)</div>
               <div class="ref-item"><span class="ref-tag warn">!</span> From quick command box, check <b>CX</b> — e.g. <code>1/MUTE ON ; BPM 128</code></div>
               <div class="ref-item"><code>live.clyphx("1/MUTE ON ; 2/MUTE OFF ; BPM 128")</code></div>
               <div class="ref-item"><code>live.clyphx("(PSEQ) 1/MUTE ; 2/MUTE ; 3/MUTE")</code><span class="ref-desc">Step through each fire</span></div>
+              <div class="ref-item"><span class="ref-tag">i</span> Works with the free ClyphX POMSKI bundles automatically — no separate purchase needed</div>
+            </div>
+          </div>
+
+          <div class="ref-section">
+            <div class="ref-title">ClyphX Pro — X-OSC (paid add-on)</div>
+            <div class="ref-body">
+              <div class="ref-item"><span class="ref-tag warn">!</span> Requires <a href="https://isotonikstudios.com/product/clyphx-pro/" target="_blank">ClyphX Pro</a> — the bundled free ClyphX has no OSC listener</div>
+              <div class="ref-item"><code>live.clyphx_osc(<span class="ref-arg">"/MY_ACTION"</span>)</code><span class="ref-desc">Trigger address mapped in X-OSC.txt</span></div>
+              <div class="ref-item"><code>live.clyphx_osc(<span class="ref-arg">"/MUTE_1"</span>, <span class="ref-arg">1</span>)</code><span class="ref-desc">On</span> &nbsp; <code>live.clyphx_osc(<span class="ref-arg">"/MUTE_1"</span>, <span class="ref-arg">0</span>)</code><span class="ref-desc">Off</span></div>
             </div>
           </div>
 

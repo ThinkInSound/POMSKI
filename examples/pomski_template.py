@@ -377,7 +377,12 @@ try:
     logging.getLogger().addHandler(_WebUILogHandler(composition))
 
     # ── Ableton Live bridge ───────────────────────────────────────────────────
-    _ensure_clyphx_installed()
+    # Backgrounded: the copytree is small but has no reason to sit on the
+    # startup path blocking window creation — nothing needs it done before
+    # the user manually enables ClyphX in Ableton Preferences anyway, which
+    # happens well after launch.
+    threading.Thread(target=_ensure_clyphx_installed, daemon=True,
+                     name="clyphx-install").start()
     live = LiveBridge(composition)
     composition._live_bridge = live
 
@@ -827,23 +832,46 @@ try:
         # inline-HTML loading window immediately — inline (not a URL) since
         # the HTTP server isn't listening yet — then swap it to the real UI
         # once _wait_for_web_ui() confirms the backend is ready.
-        _loading_html = """<!doctype html><html><head><meta charset="utf-8">
+        #
+        # pomski_loading_icon.png's background (#d63e6a) is the exact same
+        # pink used here — the square edge is invisible, so the mark reads
+        # as floating directly on the window rather than a tile with a seam.
+        def _load_icon_data_uri() -> str:
+            if getattr(sys, 'frozen', False):
+                _icon_path = os.path.join(sys._MEIPASS, 'subsequence', 'assets', 'web',
+                                          'pomski_loading_icon.png')
+            else:
+                _icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..',
+                                          'subsequence', 'assets', 'web', 'pomski_loading_icon.png')
+            try:
+                import base64
+                with open(_icon_path, 'rb') as _f:
+                    return 'data:image/png;base64,' + base64.b64encode(_f.read()).decode('ascii')
+            except OSError:
+                return ''
+
+        _icon_uri = _load_icon_data_uri()
+        _icon_html = (f'<img class="icon" src="{_icon_uri}">' if _icon_uri else '')
+        _loading_html = f"""<!doctype html><html><head><meta charset="utf-8">
         <style>
-          html,body{height:100%;margin:0;background:#1c1c1e;color:#8a8a90;
+          html,body{{height:100%;margin:0;background:#d63e6a;color:#fff;
             font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-            display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
-          .spinner{width:28px;height:28px;border-radius:50%;
-            border:3px solid #38383e;border-top-color:#ff5c8a;
-            animation:spin .8s linear infinite}
-          @keyframes spin{to{transform:rotate(360deg)}}
-          .label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#5a5a60}
-          .status{font-size:10px;color:#4a4a50}
+            display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}}
+          .icon{{width:112px;height:112px;border-radius:22px}}
+          .spinner{{width:26px;height:26px;border-radius:50%;
+            border:3px solid rgba(255,255,255,.28);border-top-color:#fff;
+            animation:spin .8s linear infinite}}
+          @keyframes spin{{to{{transform:rotate(360deg)}}}}
+          .label{{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#fff}}
+          .status{{font-size:10px;color:rgba(255,255,255,.65)}}
+          .note{{font-size:10px;color:rgba(255,255,255,.45);margin-top:-8px}}
         </style></head>
-        <body><div class="spinner"></div><div class="label">Starting POMSKI&hellip;</div>
-        <div class="status" id="status">Starting sequencer &amp; MIDI engine&hellip;</div></body></html>"""
+        <body>{_icon_html}<div class="spinner"></div><div class="label">Starting POMSKI&hellip;</div>
+        <div class="status" id="status">Starting sequencer &amp; MIDI engine&hellip;</div>
+        <div class="note">(first run can take a little longer while POMSKI sets itself up)</div></body></html>"""
 
         _window = _webview.create_window('POMSKI', html=_loading_html,
-                               width=1400, height=900, background_color='#1c1c1e',
+                               width=1400, height=900, background_color='#d63e6a',
                                text_select=True, js_api=_PomskiJsApi())
 
         def _set_status(text: str) -> None:

@@ -1064,6 +1064,38 @@ footer {
         <span class="var">p</span>.<span class="fn">note</span>(<span class="num">60</span>, <span class="var">beat</span>=<span class="var">i</span> * <span class="num">0.5</span>, <span class="var">velocity</span>=<span class="fn">int</span>(<span class="var">vol</span> * <span class="num">100</span>))</pre>
   </div>
 
+  <p>
+    <code>lfo()</code> shapes are <code>sine</code>, <code>triangle</code>, <code>saw</code>, or
+    <code>square</code> — always a repeating cycle.
+  </p>
+
+  <h3>One-shot ramps with conductor.line()</h3>
+  <p>
+    Not every signal should loop forever. <code>composition.conductor.line()</code> ramps from one
+    value to another once over a fixed number of beats, then holds at <code>end_val</code> — good for
+    a build-up, a filter sweep into a drop, or a fade. Set <code>loop=True</code> to have it repeat
+    the ramp instead of holding. <code>p.signal()</code> reads a <code>line()</code> exactly the same
+    way it reads an <code>lfo()</code>.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="cm"># Ramp a filter-style value from 0 to 1 over 32 beats (8 bars at 4/4), then hold at 1</span>
+<span class="var">composition</span>.<span class="var">conductor</span>.<span class="fn">line</span>(<span class="str">"buildup"</span>, <span class="var">start_val</span>=<span class="num">0</span>, <span class="var">end_val</span>=<span class="num">1</span>,
+                            <span class="var">duration_beats</span>=<span class="num">32</span>, <span class="var">shape</span>=<span class="str">"ease_in_out"</span>)
+
+<span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">build</span> = <span class="var">p</span>.<span class="fn">signal</span>(<span class="str">"buildup"</span>)
+    <span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">42</span>, <span class="var">pulses</span>=<span class="fn">int</span>(<span class="num">2</span> + <span class="var">build</span> * <span class="num">14</span>))  <span class="cm"># sparse → dense hi-hats</span>
+    <span class="var">p</span>.<span class="fn">velocity_shape</span>(<span class="var">low</span>=<span class="fn">int</span>(<span class="num">40</span> + <span class="var">build</span> * <span class="num">20</span>), <span class="var">high</span>=<span class="fn">int</span>(<span class="num">70</span> + <span class="var">build</span> * <span class="num">57</span>))</pre>
+  </div>
+
+  <p>
+    <code>line()</code> shapes come from POMSKI's easing curves, not the LFO waveform list:
+    <code>linear</code>, <code>ease_in</code>, <code>ease_out</code>, <code>ease_in_out</code>,
+    <code>exponential</code>, <code>logarithmic</code>, <code>s_curve</code>.
+  </p>
+
   <h3>Perlin noise for organic modulation</h3>
   <p>
     <code>perlin_1d</code> generates smooth, organic noise — much more musical than pure random.
@@ -1349,6 +1381,42 @@ footer {
     <span class="var">vol</span> = <span class="var">p</span>.<span class="var">data</span>.<span class="fn">get</span>(<span class="str">"live_track_0_volume"</span>, <span class="num">0.8</span>)
     <span class="var">vel</span> = <span class="fn">int</span>(<span class="var">vol</span> * <span class="num">127</span>)
     <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 _ 63 65 _ 67"</span>, <span class="var">velocity</span>=<span class="var">vel</span>)</pre>
+  </div>
+
+  <h3>ClyphX — trigger actions by track/clip naming</h3>
+  <p>
+    POMSKI bundles the free <a href="https://github.com/ldrolez/clyphx-live11" target="_blank">ClyphX</a>
+    remote script (LGPL-3.0) and installs it into Ableton's Remote Scripts folder automatically the
+    first time you run POMSKI — no separate purchase needed for this part.
+    <code>live.clyphx()</code> works by renaming a hidden clip to an Action String and firing it;
+    ClyphX intercepts the launch and executes it.
+  </p>
+
+  <h3>ClyphX setup</h3>
+  <ol>
+    <li>Add <b>ClyphX</b> as a second Control Surface in Live Preferences → Link/Tempo/MIDI → Control Surface, alongside AbletonOSC</li>
+    <li>Restart Live once so it picks up the newly-installed script</li>
+  </ol>
+
+  <div class="code-block">
+    <pre><span class="var">live</span>.<span class="fn">clyphx</span>(<span class="str">"BPM 128"</span>)
+<span class="var">live</span>.<span class="fn">clyphx</span>(<span class="str">"1/MUTE ON"</span>)
+<span class="var">live</span>.<span class="fn">clyphx</span>(<span class="str">"1/DEV(1) ON ; 2/ARM ON"</span>)
+<span class="var">live</span>.<span class="fn">clyphx</span>(<span class="str">"(PSEQ) 1/MUTE ; 2/MUTE ; 3/MUTE"</span>)  <span class="cm"># steps to the next action on each call</span></pre>
+  </div>
+
+  <p>
+    The quick command box in the Log tab has a <b>CX</b> checkbox — check it to route what you type
+    straight to <code>live.clyphx()</code> instead of the REPL.
+  </p>
+
+  <div class="callout">
+    <div class="callout-title">ClyphX Pro is a separate paid product</div>
+    <p><code>live.clyphx_osc()</code> (X-OSC, port 7005) is a
+    <a href="https://isotonikstudios.com/product/clyphx-pro/" target="_blank">ClyphX Pro</a>–only feature —
+    the bundled free ClyphX has no OSC listener, so that call sends into the void with no error unless
+    ClyphX Pro is separately installed and running. Everything above, including <code>live.clyphx()</code>
+    and X-Clip triggers, works with the free bundled version.</p>
   </div>
 </section>
 

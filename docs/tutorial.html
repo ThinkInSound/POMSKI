@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>POMSKI — Tutorial</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #1c1c1e;
@@ -416,6 +415,7 @@ footer {
   <a href="#algorithmic">Algorithmic</a>
   <a href="#live">Ableton</a>
   <a href="#performance">Performance</a>
+  <a href="#apifeeds">API Feeds</a>
 </nav>
 
 <div class="container">
@@ -442,7 +442,7 @@ footer {
   </p>
 
   <p>
-    POMSKI inverts this. You write a few lines of Python, press <code>Ctrl+Enter</code>, and the change
+    POMSKI inverts this. You write a few lines of Python, press <code>Shift+Enter</code>, and the change
     takes effect on the <em>very next bar</em> — while everything else keeps playing. The music is always
     running. You are always inside it.
   </p>
@@ -521,7 +521,7 @@ footer {
 
   <ul>
     <li><strong>Top bar</strong> — BPM (drag to change), bar counter, beat, current key and chord, TAP tempo button</li>
-    <li><strong>Editor panel (left)</strong> — write and send code to the live REPL. <code>Ctrl+Enter</code> sends the current block. <code>Ctrl+↑/↓</code> scrolls command history.</li>
+    <li><strong>Editor panel (left)</strong> — write and send code to the live REPL. <code>Shift+Enter</code> sends the current block. <code>Ctrl+Shift+Enter</code> sends the whole editor. <code>Ctrl+↑/↓</code> scrolls command history.</li>
     <li><strong>Log panel (below editor)</strong> — shows sent commands, REPL results, and errors</li>
     <li><strong>Patterns tab</strong> — visual grid of all 16 active pattern slots. Click the × to clear a slot.</li>
     <li><strong>Signals tab</strong> — live scrolling graphs of all active modulators (LFOs, Perlin noise, etc.)</li>
@@ -531,7 +531,7 @@ footer {
 
   <div class="callout">
     <div class="callout-title">Quick test</div>
-    <p>Copy this into the editor and press <code>Ctrl+Enter</code>. You should hear a metronome-like kick on MIDI channel 1.</p>
+    <p>Copy this into the editor and press <code>Shift+Enter</code>. You should hear a metronome-like kick on MIDI channel 1.</p>
   </div>
 
   <div class="code-block">
@@ -800,12 +800,12 @@ footer {
       <td class="m-desc">Place hits at 16th-note grid positions. <code>steps</code> is a list of indices 0–15. With <code>drum_note_map</code>, <code>pitch</code> can be a drum name string like <code>"kick_1"</code>.</td>
     </tr>
     <tr>
-      <td class="m-name">p.sequence(steps, pitches, velocity, duration)</td>
-      <td class="m-desc">Pair a list of grid positions with a list of pitches. Positions are 16th-note indices; pitch list cycles if shorter than steps list.</td>
+      <td class="m-name">p.sequence(steps, pitches, velocities, durations)</td>
+      <td class="m-desc">Pair a list of grid positions with a list of pitches. Positions are 16th-note indices; pitch list cycles if shorter than steps list. Parameters are <code>velocities</code> and <code>durations</code> (plural) — pass a single int/float or a list.</td>
     </tr>
     <tr>
-      <td class="m-name">p.seq(string, velocity, duration)</td>
-      <td class="m-desc">Sonic Pi style: space-separated numbers, <code>_</code> for rests. All tokens are equal duration (pattern length / token count). Example: <code>"60 _ 62 64"</code>.</td>
+      <td class="m-name">p.seq(notation, velocity)</td>
+      <td class="m-desc">Sonic Pi style: space-separated numbers, <code>_</code> for rests. All tokens are equal duration (pattern length / token count). Example: <code>"60 _ 62 64"</code>. Note: <code>p.seq()</code> has no <code>duration</code> parameter — note length is set automatically.</td>
     </tr>
   </table>
 
@@ -813,12 +813,12 @@ footer {
   <table class="method-table">
     <tr><th>Method</th><th>Description</th></tr>
     <tr>
-      <td class="m-name">p.euclidean(pitch, pulses, steps, velocity, duration, rotation)</td>
-      <td class="m-desc">Distribute <code>pulses</code> hits as evenly as possible across <code>steps</code> 16th-note positions (Björklund algorithm). Classic for polyrhythmic layering. <code>rotation</code> shifts the pattern around the grid.</td>
+      <td class="m-name">p.euclidean(pitch, pulses, velocity, duration)</td>
+      <td class="m-desc">Distribute <code>pulses</code> hits as evenly as possible across the pattern's grid (Björklund algorithm). The grid size is derived automatically from the pattern's <code>length</code>. Classic for polyrhythmic layering.</td>
     </tr>
     <tr>
-      <td class="m-name">p.bresenham(pitch, pulses, steps, velocity, duration)</td>
-      <td class="m-desc">Alternate even distribution using the Bresenham line algorithm — creates slightly different accent patterns than Euclidean.</td>
+      <td class="m-name">p.bresenham(pitch, pulses, velocity, duration)</td>
+      <td class="m-desc">Alternate even distribution using the Bresenham line algorithm — creates slightly different accent patterns than Euclidean. Grid size is derived automatically from pattern length.</td>
     </tr>
     <tr>
       <td class="m-name">p.hit_steps() with range()</td>
@@ -862,8 +862,8 @@ footer {
       <td class="m-desc">Re-scale all velocities to fit within a <code>low–high</code> range, preserving relative dynamics. Great for humanising step-sequenced drum patterns.</td>
     </tr>
     <tr>
-      <td class="m-name">p.thin(density, strategy)</td>
-      <td class="m-desc">Remove notes probabilistically, biased toward weak beats. <code>density=1.0</code> keeps everything, <code>density=0.5</code> removes roughly half. Strategies: <code>"downbeat"</code>, <code>"offbeat"</code>, <code>"uniform"</code>.</td>
+      <td class="m-name">p.thin(pitch, strategy, amount)</td>
+      <td class="m-desc">Remove notes for a specific pitch or drum name based on rhythmic position. <code>amount=0.5</code> removes roughly half; <code>amount=1.0</code> removes all qualifying notes. Strategies: <code>"strength"</code> (default — weakest positions drop first), <code>"sixteenths"</code>, <code>"offbeat"</code>, <code>"e_and_a"</code>, <code>"downbeat"</code>, <code>"upbeat"</code>, <code>"uniform"</code>. Unlike <code>p.dropout()</code>, targets one instrument and respects rhythmic position.</td>
     </tr>
   </table>
 
@@ -921,7 +921,7 @@ footer {
       <div class="code-block">
         <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
 <span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
-    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 _ 63 65 _ 67 _ 65"</span>, <span class="var">velocity</span>=<span class="num">80</span>, <span class="var">duration</span>=<span class="num">0.3</span>)
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 _ 63 65 _ 67 _ 65"</span>, <span class="var">velocity</span>=<span class="num">80</span>)
     <span class="var">p</span>.<span class="fn">randomize</span>(<span class="var">timing</span>=<span class="num">0.01</span>, <span class="var">velocity</span>=<span class="num">0.04</span>)</pre>
       </div>
     </div>
@@ -1044,23 +1044,57 @@ footer {
 
   <h3>LFOs via the conductor</h3>
   <p>
-    Create a named LFO and write its current value into <code>composition.data</code> each pattern cycle.
-    The Signals tab automatically picks up any float value written to <code>composition.data</code>.
+    Create a named LFO with <code>composition.conductor.lfo()</code>, then read its current value
+    inside any pattern with <code>p.signal(name)</code>. The value (0.0–1.0 by default) can drive
+    velocity, pitch offset, or any other numeric parameter.
   </p>
 
   <div class="code-block">
     <pre><span class="cm"># Create an LFO (send this once from the editor or add it to the template)</span>
-<span class="var">composition</span>.<span class="var">conductor</span>.<span class="fn">lfo</span>(<span class="str">"vol_lfo"</span>, <span class="var">rate</span>=<span class="num">0.25</span>, <span class="var">lo</span>=<span class="num">0.2</span>, <span class="var">hi</span>=<span class="num">1.0</span>)</pre>
+<span class="cm"># cycle_beats = how many beats for one full sweep (16 = 4 bars at 4/4)</span>
+<span class="var">composition</span>.<span class="var">conductor</span>.<span class="fn">lfo</span>(<span class="str">"vol_lfo"</span>, <span class="var">cycle_beats</span>=<span class="num">16</span>, <span class="var">min_val</span>=<span class="num">0.2</span>, <span class="var">max_val</span>=<span class="num">1.0</span>)</pre>
   </div>
 
   <div class="code-block">
-    <pre><span class="cm"># Use it inside a pattern via p.data</span>
+    <pre><span class="cm"># Read it inside a pattern with p.signal()</span>
 <span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
 <span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
-    <span class="cm"># The conductor evaluates the LFO — it appears in Signals tab automatically</span>
+    <span class="var">vol</span> = <span class="var">p</span>.<span class="fn">signal</span>(<span class="str">"vol_lfo"</span>)          <span class="cm"># returns 0.2–1.0, sweeping over 16 beats</span>
     <span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="num">8</span>):
-        <span class="var">p</span>.<span class="fn">note</span>(<span class="num">60</span>, <span class="var">beat</span>=<span class="var">i</span> * <span class="num">0.5</span>, <span class="var">velocity</span>=<span class="num">80</span>)</pre>
+        <span class="var">p</span>.<span class="fn">note</span>(<span class="num">60</span>, <span class="var">beat</span>=<span class="var">i</span> * <span class="num">0.5</span>, <span class="var">velocity</span>=<span class="fn">int</span>(<span class="var">vol</span> * <span class="num">100</span>))</pre>
   </div>
+
+  <p>
+    <code>lfo()</code> shapes are <code>sine</code>, <code>triangle</code>, <code>saw</code>, or
+    <code>square</code> — always a repeating cycle.
+  </p>
+
+  <h3>One-shot ramps with conductor.line()</h3>
+  <p>
+    Not every signal should loop forever. <code>composition.conductor.line()</code> ramps from one
+    value to another once over a fixed number of beats, then holds at <code>end_val</code> — good for
+    a build-up, a filter sweep into a drop, or a fade. Set <code>loop=True</code> to have it repeat
+    the ramp instead of holding. <code>p.signal()</code> reads a <code>line()</code> exactly the same
+    way it reads an <code>lfo()</code>.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="cm"># Ramp a filter-style value from 0 to 1 over 32 beats (8 bars at 4/4), then hold at 1</span>
+<span class="var">composition</span>.<span class="var">conductor</span>.<span class="fn">line</span>(<span class="str">"buildup"</span>, <span class="var">start_val</span>=<span class="num">0</span>, <span class="var">end_val</span>=<span class="num">1</span>,
+                            <span class="var">duration_beats</span>=<span class="num">32</span>, <span class="var">shape</span>=<span class="str">"ease_in_out"</span>)
+
+<span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">build</span> = <span class="var">p</span>.<span class="fn">signal</span>(<span class="str">"buildup"</span>)
+    <span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">42</span>, <span class="var">pulses</span>=<span class="fn">int</span>(<span class="num">2</span> + <span class="var">build</span> * <span class="num">14</span>))  <span class="cm"># sparse → dense hi-hats</span>
+    <span class="var">p</span>.<span class="fn">velocity_shape</span>(<span class="var">low</span>=<span class="fn">int</span>(<span class="num">40</span> + <span class="var">build</span> * <span class="num">20</span>), <span class="var">high</span>=<span class="fn">int</span>(<span class="num">70</span> + <span class="var">build</span> * <span class="num">57</span>))</pre>
+  </div>
+
+  <p>
+    <code>line()</code> shapes come from POMSKI's easing curves, not the LFO waveform list:
+    <code>linear</code>, <code>ease_in</code>, <code>ease_out</code>, <code>ease_in_out</code>,
+    <code>exponential</code>, <code>logarithmic</code>, <code>s_curve</code>.
+  </p>
 
   <h3>Perlin noise for organic modulation</h3>
   <p>
@@ -1095,12 +1129,14 @@ footer {
   </p>
 
   <div class="code-block">
-    <pre><span class="cm"># Pattern 1 writes its density to data</span>
+    <pre><span class="kw">from</span> <span class="var">subsequence</span>.<span class="var">sequence_utils</span> <span class="kw">import</span> <span class="fn">perlin_1d</span>
+
+<span class="cm"># Pattern 1 writes its density to data</span>
 <span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
 <span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
     <span class="var">density</span> = <span class="fn">perlin_1d</span>(<span class="var">p</span>.<span class="var">cycle</span> * <span class="num">0.05</span>, <span class="var">seed</span>=<span class="num">1</span>)
     <span class="var">p</span>.<span class="var">data</span>[<span class="str">"density"</span>] = <span class="var">density</span>
-    <span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">60</span>, <span class="var">pulses</span>=<span class="fn">int</span>(<span class="num">2</span> + <span class="var">density</span> * <span class="num">10</span>), <span class="var">steps</span>=<span class="num">16</span>)
+    <span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">60</span>, <span class="var">pulses</span>=<span class="fn">int</span>(<span class="num">2</span> + <span class="var">density</span> * <span class="num">10</span>))
 
 <span class="cm"># Pattern 2 reads that density to affect its own behaviour</span>
 <span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">1</span>, <span class="var">length</span>=<span class="num">4</span>)
@@ -1135,16 +1171,18 @@ footer {
   </p>
 
   <div class="code-block">
-    <pre><span class="cm"># 5 hits in 16 steps — the "cinquillo" pattern</span>
-<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">60</span>, <span class="var">pulses</span>=<span class="num">5</span>, <span class="var">steps</span>=<span class="num">16</span>)
+    <pre><span class="cm"># 5 evenly-spaced hits across the pattern — the "cinquillo" rhythm</span>
+<span class="cm"># (steps are derived automatically from pattern length)</span>
+<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">60</span>, <span class="var">pulses</span>=<span class="num">5</span>)
 
 <span class="cm"># Stack multiple voices for polyrhythm</span>
-<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">36</span>, <span class="var">pulses</span>=<span class="num">3</span>, <span class="var">steps</span>=<span class="num">16</span>)  <span class="cm"># kick</span>
-<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">40</span>, <span class="var">pulses</span>=<span class="num">5</span>, <span class="var">steps</span>=<span class="num">16</span>)  <span class="cm"># snare</span>
-<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">42</span>, <span class="var">pulses</span>=<span class="num">7</span>, <span class="var">steps</span>=<span class="num">16</span>)  <span class="cm"># hi-hat</span>
+<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">36</span>, <span class="var">pulses</span>=<span class="num">3</span>)  <span class="cm"># kick</span>
+<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">40</span>, <span class="var">pulses</span>=<span class="num">5</span>)  <span class="cm"># snare</span>
+<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">42</span>, <span class="var">pulses</span>=<span class="num">7</span>)  <span class="cm"># hi-hat</span>
 
-<span class="cm"># Rotate shifts the pattern start point</span>
-<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">60</span>, <span class="var">pulses</span>=<span class="num">5</span>, <span class="var">steps</span>=<span class="num">16</span>, <span class="var">rotation</span>=<span class="num">3</span>)</pre>
+<span class="cm"># Use p.shift() to offset a voice's start point for variation</span>
+<span class="var">p</span>.<span class="fn">euclidean</span>(<span class="num">60</span>, <span class="var">pulses</span>=<span class="num">5</span>)
+<span class="var">p</span>.<span class="fn">shift</span>(<span class="num">3</span>)  <span class="cm"># shift all notes forward by 3 grid steps</span></pre>
   </div>
 
   <h3>Chaos: Lorenz attractor</h3>
@@ -1236,21 +1274,28 @@ footer {
 
   <h3>Markov chains</h3>
   <p>
-    Define transition probabilities between notes — each note "decides" what comes next based
-    on a weighted graph. Produces melodies that feel stylistically consistent without being repetitive.
+    Define weighted transitions between named states — each state "decides" what comes next based
+    on relative weights. You provide two things: a <code>transitions</code> dict mapping state names
+    to a list of <code>(next_state, weight)</code> pairs, and a <code>pitch_map</code> dict mapping
+    state names to MIDI note numbers. Produces melodies that feel stylistically consistent without being repetitive.
   </p>
 
   <div class="code-block">
     <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
 <span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
-    <span class="var">graph</span> = {
-        <span class="num">60</span>: {<span class="num">62</span>: <span class="num">0.4</span>, <span class="num">63</span>: <span class="num">0.3</span>, <span class="num">65</span>: <span class="num">0.3</span>},
-        <span class="num">62</span>: {<span class="num">60</span>: <span class="num">0.2</span>, <span class="num">63</span>: <span class="num">0.5</span>, <span class="num">65</span>: <span class="num">0.3</span>},
-        <span class="num">63</span>: {<span class="num">60</span>: <span class="num">0.3</span>, <span class="num">62</span>: <span class="num">0.3</span>, <span class="num">67</span>: <span class="num">0.4</span>},
-        <span class="num">65</span>: {<span class="num">63</span>: <span class="num">0.4</span>, <span class="num">67</span>: <span class="num">0.6</span>},
-        <span class="num">67</span>: {<span class="num">60</span>: <span class="num">0.3</span>, <span class="num">65</span>: <span class="num">0.4</span>, <span class="num">63</span>: <span class="num">0.3</span>},
-    }
-    <span class="var">p</span>.<span class="fn">markov</span>(<span class="var">graph</span>, <span class="var">steps</span>=<span class="num">16</span>, <span class="var">start</span>=<span class="num">60</span>)</pre>
+    <span class="cm"># transitions: each state maps to a list of (next_state, weight) pairs</span>
+    <span class="cm"># pitch_map: maps each state name to a MIDI note number</span>
+    <span class="var">p</span>.<span class="fn">markov</span>(
+        <span class="var">transitions</span>={
+            <span class="str">"root"</span>: [(<span class="str">"3rd"</span>, <span class="num">4</span>), (<span class="str">"5th"</span>, <span class="num">2</span>), (<span class="str">"root"</span>, <span class="num">1</span>)],
+            <span class="str">"3rd"</span>:  [(<span class="str">"5th"</span>, <span class="num">3</span>), (<span class="str">"root"</span>, <span class="num">2</span>), (<span class="str">"7th"</span>, <span class="num">1</span>)],
+            <span class="str">"5th"</span>:  [(<span class="str">"root"</span>, <span class="num">3</span>), (<span class="str">"3rd"</span>, <span class="num">2</span>)],
+            <span class="str">"7th"</span>:  [(<span class="str">"root"</span>, <span class="num">4</span>), (<span class="str">"5th"</span>, <span class="num">2</span>)],
+        },
+        <span class="var">pitch_map</span>={<span class="str">"root"</span>: <span class="num">60</span>, <span class="str">"3rd"</span>: <span class="num">63</span>, <span class="str">"5th"</span>: <span class="num">67</span>, <span class="str">"7th"</span>: <span class="num">70</span>},
+        <span class="var">velocity</span>=<span class="num">80</span>,
+        <span class="var">step</span>=<span class="num">0.25</span>,  <span class="cm"># 16th note spacing</span>
+    )</pre>
   </div>
 
   <h3>Exotic scales with Music21</h3>
@@ -1337,6 +1382,42 @@ footer {
     <span class="var">vel</span> = <span class="fn">int</span>(<span class="var">vol</span> * <span class="num">127</span>)
     <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 _ 63 65 _ 67"</span>, <span class="var">velocity</span>=<span class="var">vel</span>)</pre>
   </div>
+
+  <h3>ClyphX — trigger actions by track/clip naming</h3>
+  <p>
+    POMSKI bundles the free <a href="https://github.com/ldrolez/clyphx-live11" target="_blank">ClyphX</a>
+    remote script (LGPL-3.0) and installs it into Ableton's Remote Scripts folder automatically the
+    first time you run POMSKI — no separate purchase needed for this part.
+    <code>live.clyphx()</code> works by renaming a hidden clip to an Action String and firing it;
+    ClyphX intercepts the launch and executes it.
+  </p>
+
+  <h3>ClyphX setup</h3>
+  <ol>
+    <li>Add <b>ClyphX</b> as a second Control Surface in Live Preferences → Link/Tempo/MIDI → Control Surface, alongside AbletonOSC</li>
+    <li>Restart Live once so it picks up the newly-installed script</li>
+  </ol>
+
+  <div class="code-block">
+    <pre><span class="var">live</span>.<span class="fn">clyphx</span>(<span class="str">"BPM 128"</span>)
+<span class="var">live</span>.<span class="fn">clyphx</span>(<span class="str">"1/MUTE ON"</span>)
+<span class="var">live</span>.<span class="fn">clyphx</span>(<span class="str">"1/DEV(1) ON ; 2/ARM ON"</span>)
+<span class="var">live</span>.<span class="fn">clyphx</span>(<span class="str">"(PSEQ) 1/MUTE ; 2/MUTE ; 3/MUTE"</span>)  <span class="cm"># steps to the next action on each call</span></pre>
+  </div>
+
+  <p>
+    The quick command box in the Log tab has a <b>CX</b> checkbox — check it to route what you type
+    straight to <code>live.clyphx()</code> instead of the REPL.
+  </p>
+
+  <div class="callout">
+    <div class="callout-title">ClyphX Pro is a separate paid product</div>
+    <p><code>live.clyphx_osc()</code> (X-OSC, port 7005) is a
+    <a href="https://isotonikstudios.com/product/clyphx-pro/" target="_blank">ClyphX Pro</a>–only feature —
+    the bundled free ClyphX has no OSC listener, so that call sends into the void with no error unless
+    ClyphX Pro is separately installed and running. Everything above, including <code>live.clyphx()</code>
+    and X-Clip triggers, works with the free bundled version.</p>
+  </div>
 </section>
 
 <!-- ─────────────────────────── PERFORMANCE ─────────────────────────── -->
@@ -1360,7 +1441,7 @@ footer {
   <h3>Keyboard shortcuts in the editor</h3>
   <table class="method-table">
     <tr><th>Shortcut</th><th>Action</th></tr>
-    <tr><td class="m-name">Ctrl+Enter</td><td class="m-desc">Send the current code block (detected by double newlines above the cursor)</td></tr>
+    <tr><td class="m-name">Shift+Enter</td><td class="m-desc">Send the current code block (detected by double newlines above the cursor)</td></tr>
     <tr><td class="m-name">Ctrl+↑ / Ctrl+↓</td><td class="m-desc">Navigate command history (last 200 sent blocks)</td></tr>
   </table>
 
@@ -1414,6 +1495,156 @@ footer {
     panel is not embarrassing — it is evidence that something real is happening. Leave the log visible
     on screen if you are performing for an audience.</p>
   </div>
+</section>
+
+<!-- ─────────────────────────── API Feeds ─────────────────────────── -->
+<section class="section" id="apifeeds">
+  <div class="section-tag">13 — External API Feeds</div>
+  <h2>Pulling live data into patterns</h2>
+
+  <p>
+    POMSKI includes a built-in <code>feeds</code> object that lets you poll any HTTP API
+    at runtime and pipe the results directly into <code>composition.data</code>, where
+    patterns can read them on every cycle. No template editing required — just type into
+    the command box and the feed starts immediately.
+  </p>
+
+  <div class="callout tip">
+    <div class="callout-title">How it works</div>
+    <p>
+      Each feed is an asyncio task running on POMSKI's event loop. It fetches a URL every
+      <em>N</em> seconds, applies your <code>extract</code> function to the JSON response,
+      and writes the result to <code>composition.data["feed_&lt;key&gt;"]</code>. Patterns
+      are rebuilt every cycle, so they always see the latest value with no extra wiring.
+    </p>
+  </div>
+
+  <h3>Starting a feed</h3>
+  <p>
+    Call <code>feeds.add()</code> from the command box, the main editor, or a REPL client.
+    The feed starts polling immediately and persists until you stop it or restart POMSKI.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="cm"># Poll the ISS position API every 5 seconds</span>
+<span class="fn">feeds</span>.<span class="fn">add</span>(
+    <span class="str">"iss"</span>,
+    <span class="str">"http://api.open-notify.org/iss-now.json"</span>,
+    <span class="var">interval</span>=<span class="num">5</span>,
+    <span class="var">extract</span>=<span class="kw">lambda</span> <span class="var">r</span>: <span class="fn">float</span>(<span class="var">r</span>[<span class="str">"iss_position"</span>][<span class="str">"latitude"</span>])
+)</pre>
+  </div>
+
+  <p>
+    The value lands at <code>composition.data["feed_iss"]</code> after the first fetch.
+    Until then, <code>.get("feed_iss", default)</code> returns your default — always
+    provide one so patterns play something sensible before data arrives.
+  </p>
+
+  <h3>Reading a feed inside a pattern</h3>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="cm"># Latitude −90 to +90 → MIDI pitch 48–84</span>
+    <span class="var">lat</span> = <span class="var">composition</span>.<span class="var">data</span>.<span class="fn">get</span>(<span class="str">"feed_iss"</span>, <span class="num">0</span>)
+    <span class="var">pitch</span> = <span class="fn">int</span>(<span class="num">48</span> + (<span class="fn">float</span>(<span class="var">lat</span>) + <span class="num">90</span>) / <span class="num">180</span> * <span class="num">36</span>)
+    <span class="var">p</span>.<span class="fn">note</span>(<span class="var">pitch</span>, <span class="var">beat</span>=<span class="num">0</span>)</pre>
+  </div>
+
+  <h3>Feeds API</h3>
+  <table class="method-table">
+    <tr><th>Call</th><th>What it does</th></tr>
+    <tr>
+      <td class="m-name"><code>feeds.add(key, url, interval, extract, headers, method, body)</code></td>
+      <td class="m-desc">Start (or restart) a named polling feed. <code>extract</code> is a callable that receives the parsed JSON and returns the value to store. Omit it to store the full response dict.</td>
+    </tr>
+    <tr>
+      <td class="m-name"><code>feeds.stop("key")</code></td>
+      <td class="m-desc">Cancel and remove a feed by name.</td>
+    </tr>
+    <tr>
+      <td class="m-name"><code>feeds.stop_all()</code></td>
+      <td class="m-desc">Cancel every running feed.</td>
+    </tr>
+    <tr>
+      <td class="m-name"><code>feeds</code></td>
+      <td class="m-desc">Print active feeds and their current values (type this bare in the REPL).</td>
+    </tr>
+    <tr>
+      <td class="m-name"><code>composition.data.get("feed_key", default)</code></td>
+      <td class="m-desc">Read the latest value inside a pattern. Always supply a default.</td>
+    </tr>
+  </table>
+
+  <h3>Mapping data to music</h3>
+  <p>
+    Raw API numbers rarely map neatly to MIDI ranges. A simple linear rescale covers most cases:
+  </p>
+
+  <div class="code-block">
+    <pre><span class="kw">def</span> <span class="fn">scale</span>(<span class="var">val</span>, <span class="var">in_lo</span>, <span class="var">in_hi</span>, <span class="var">out_lo</span>, <span class="var">out_hi</span>):
+    <span class="kw">return</span> <span class="var">out_lo</span> + (<span class="var">val</span> - <span class="var">in_lo</span>) / (<span class="var">in_hi</span> - <span class="var">in_lo</span>) * (<span class="var">out_hi</span> - <span class="var">out_lo</span>)
+
+<span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="cm"># A stock price (say 100–300) mapped to pitch and velocity</span>
+    <span class="var">price</span> = <span class="var">composition</span>.<span class="var">data</span>.<span class="fn">get</span>(<span class="str">"feed_stock"</span>, <span class="num">200</span>)
+    <span class="var">pitch</span>    = <span class="fn">int</span>(<span class="fn">max</span>(<span class="num">36</span>, <span class="fn">min</span>(<span class="num">84</span>, <span class="fn">scale</span>(<span class="var">price</span>, <span class="num">100</span>, <span class="num">300</span>, <span class="num">36</span>, <span class="num">84</span>))))
+    <span class="var">velocity</span> = <span class="fn">int</span>(<span class="fn">max</span>(<span class="num">40</span>, <span class="fn">min</span>(<span class="num">120</span>, <span class="fn">scale</span>(<span class="var">price</span>, <span class="num">100</span>, <span class="num">300</span>, <span class="num">40</span>, <span class="num">120</span>))))
+    <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"x . x ."</span>, <span class="var">pitch</span>=<span class="var">pitch</span>, <span class="var">velocity</span>=<span class="var">velocity</span>)</pre>
+  </div>
+
+  <h3>Feeds with authentication and POST</h3>
+
+  <div class="code-block">
+    <pre><span class="cm"># GET with an Authorization header</span>
+<span class="fn">feeds</span>.<span class="fn">add</span>(
+    <span class="str">"gh_stars"</span>,
+    <span class="str">"https://api.github.com/repos/python/cpython"</span>,
+    <span class="var">interval</span>=<span class="num">60</span>,
+    <span class="var">headers</span>={<span class="str">"Accept"</span>: <span class="str">"application/vnd.github+json"</span>},
+    <span class="var">extract</span>=<span class="kw">lambda</span> <span class="var">r</span>: <span class="var">r</span>[<span class="str">"stargazers_count"</span>]
+)
+
+<span class="cm"># POST with a JSON body</span>
+<span class="fn">feeds</span>.<span class="fn">add</span>(
+    <span class="str">"sensor"</span>,
+    <span class="str">"https://my-api.example.com/query"</span>,
+    <span class="var">interval</span>=<span class="num">2</span>,
+    <span class="var">method</span>=<span class="str">"POST"</span>,
+    <span class="var">body</span>={<span class="str">"sensor_id"</span>: <span class="str">"A1"</span>, <span class="str">"field"</span>: <span class="str">"temperature"</span>},
+    <span class="var">extract</span>=<span class="kw">lambda</span> <span class="var">r</span>: <span class="var">r</span>[<span class="str">"value"</span>]
+)</pre>
+  </div>
+
+  <h3>Switching data sources on-the-fly</h3>
+  <p>
+    Calling <code>feeds.add()</code> with the same key replaces the existing feed — the old
+    polling task is cancelled and a new one starts immediately. This lets you swap data
+    sources mid-performance without touching any pattern code:
+  </p>
+
+  <div class="code-block">
+    <pre><span class="cm"># First set: ISS latitude</span>
+<span class="fn">feeds</span>.<span class="fn">add</span>(<span class="str">"signal"</span>, <span class="str">"http://api.open-notify.org/iss-now.json"</span>,
+         <span class="var">extract</span>=<span class="kw">lambda</span> <span class="var">r</span>: <span class="fn">float</span>(<span class="var">r</span>[<span class="str">"iss_position"</span>][<span class="str">"latitude"</span>]))
+
+<span class="cm"># Later in the set: swap to a different source, same key</span>
+<span class="fn">feeds</span>.<span class="fn">add</span>(<span class="str">"signal"</span>, <span class="str">"https://api.open-meteo.com/v1/forecast?latitude=51.5&longitude=-0.1&current=temperature_2m"</span>,
+         <span class="var">extract</span>=<span class="kw">lambda</span> <span class="var">r</span>: <span class="var">r</span>[<span class="str">"current"</span>][<span class="str">"temperature_2m"</span>])
+
+<span class="cm"># Pattern code never changes — it always reads "feed_signal"</span></pre>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title">No extra dependencies</div>
+    <p>
+      <code>DataFeeds</code> uses Python's built-in <code>urllib</code> — no <code>pip install</code>
+      required. Any public JSON API reachable from your machine will work.
+    </p>
+  </div>
+
 </section>
 
 </div><!-- /container -->
