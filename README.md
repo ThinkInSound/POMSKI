@@ -14,7 +14,7 @@
 [![Download for Windows](https://img.shields.io/badge/Download_for-Windows-5ea8ff?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/ThinkInSound/POMSKI/releases/tag/Windows)
 
 [![Watch the setup video](https://img.shields.io/badge/Watch-Setup_Video-FF0000?style=flat-square&logo=youtube&logoColor=white)](https://youtu.be/XUqHq8mggBk)
-[![Full tutorial](https://img.shields.io/badge/Read-Full_Tutorial-3fc8a0?style=flat-square)](https://thinkinsound.github.io/POMSKI/docs/tutorial.html)
+[![Full tutorial](https://img.shields.io/badge/Read-Full_Tutorial-3fc8a0?style=flat-square)](https://thinkinsound.github.io/POMSKI/)
 [![License](https://img.shields.io/badge/License-AGPL--3.0-9d6fff?style=flat-square)](LICENSE)
 
 </div>
@@ -33,7 +33,7 @@ You write a few lines of Python describing a drum beat, a bassline, a chord prog
 
 It sends MIDI, so it drives whatever you already use: Ableton Live, Logic, a hardware synth, a drum machine, softsynths — anything that speaks MIDI.
 
-**You do not need to be a programmer.** If you can write a shopping list, you can write a POMSKI pattern. The whole first section of the [tutorial](https://thinkinsound.github.io/POMSKI/docs/tutorial.html) is a Python primer written for musicians, not engineers.
+**You do not need to be a programmer.** If you can write a shopping list, you can write a POMSKI pattern. The whole first section of the [tutorial](https://thinkinsound.github.io/POMSKI/) is a Python primer written for musicians, not engineers.
 
 ---
 
@@ -137,7 +137,7 @@ composition.mute("bass")
 composition.target_bpm(96, bars=8, shape="ease_in_out")   # smooth 8-bar ramp
 ```
 
-There's much more — L-systems, cellular automata, 1/f noise, Markov chains, pitch bend, microtuning, and a Narmour-model melody generator. All of it is in the **[full tutorial and API reference](https://thinkinsound.github.io/POMSKI/docs/tutorial.html)**.
+There's much more — L-systems, cellular automata, 1/f noise, Markov chains, pitch bend, microtuning, and a Narmour-model melody generator. All of it is in the **[full tutorial and API reference](https://thinkinsound.github.io/POMSKI/)**.
 
 ---
 
@@ -210,7 +210,7 @@ live.clyphx("1/DEV(1) ON ; 2/ARM ON")
 
 The complete tutorial — Python primer for musicians, step-by-step track walkthrough, every `p.` method, the algorithmic composition library, and performance tips — lives here:
 
-### 📖 **[thinkinsound.github.io/POMSKI](https://thinkinsound.github.io/POMSKI/docs/tutorial.html)**
+### 📖 **[thinkinsound.github.io/POMSKI](https://thinkinsound.github.io/POMSKI/)**
 
 It's also built into the app: open the **Ref** tab and click **Open Full Tutorial**.
 
