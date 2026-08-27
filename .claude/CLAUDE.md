@@ -67,6 +67,7 @@ for immediate, reliable delivery.
 - **License**: AGPL-3.0
 - **MIDI channels**: 0-indexed. `channel=0` = MIDI ch 1, `channel=9` = drums
 - **REPL drum aliases**: `drums` = `gm_drums.GM_DRUM_MAP`; `pat` wrapper routes a positional dict to `drum_note_map`, so `@pat(9, 4, drums)` works (defined in `pomski_template.py` namespace override)
+- **Drum name strings**: must exactly match a `GM_DRUM_MAP` key (`gm_drums.py`) — there is no `"hh"` shorthand, it's `"hi_hat_closed"`/`"hi_hat_open"`/`"hi_hat_pedal"`. Notes 36–51 (`kick_1` through `ride_1`) cover a standard Ableton Drum Rack's default 16 pads; GM defines percussion 27–87 total. Using a name not in the map raises at note-resolution time, not at pattern-definition time.
 - **REPL namespace pre-imports**: `composition`, `subsequence`, `gm_drums`, `random`, `math`, `rich` (from `live_server.py` `_build_namespace`), plus `feeds`, `live`, `pat`, `drums` (from the `pomski_template.py` override). NOTE: `notes`/`midi_notes` are NOT injected — use `subsequence.constants.midi_notes` explicitly
 - **Terminal output**: console logging uses `rich.logging.RichHandler` (colour-coded by level); file log (`pomski.log`) stays plain. Console shows INFO+ only (DEBUG → file); `websockets`/`asyncio`/`mido` loggers capped at INFO. Startup banner "POMSKI has started up successfully. Have fun!" prints and browser auto-opens (dev + frozen) once `_web_ui_server` exists — MIDI device prompt happens earlier, at `Composition()` construction
 - **Drones**: `p.drone`/`p.drone_off`/`p.note_on`/`p.note_off`/`p.silence` implemented in `pattern_midi.py` via `CcEvent` with `message_type='note_on'/'note_off'` (CcEvent has `note`/`velocity` fields; sequencer tracks them in `active_notes` so stop cleans up)
@@ -99,6 +100,9 @@ p.fill(pitch, step=0.25)                              # fills all beats at fixed
 p.chord(chord_obj, root, velocity=90, sustain=False, duration=1.0, inversion=0, count=None, legato=None)
 p.strum(chord_obj, root, velocity=90, sustain=False, duration=1.0, inversion=0, count=None, offset=0.05, direction="up", legato=None)
 p.arpeggio(pitches, step=0.25, velocity=100, duration=None, direction="up")  # "up","down","up_down","random"
+# pitches MUST be a real list ([48,50,55,60]), NOT a Sonic-Pi-style string ("48 50 55 60") —
+# arpeggio() does `for p in pitches`, so a string iterates character-by-character and
+# _resolve_pitch(' ') throws ValueError on the first space. That notation is p.seq()-only.
 p.melody(state, step=0.25, velocity=90, duration=0.2, chord_tones=None)  # Narmour IR melody generator
 
 # ── Generative rhythm ─────────────────────────────────────────────────────────
@@ -108,6 +112,12 @@ p.cellular_1d(pitch, rule=30, generation=None, velocity=60, duration=0.1)   # Ru
 p.cellular_2d(pitches, rule="B368/S245", generation=None, velocity=60, duration=0.1, seed=1, density=0.5)
 # NOTE: pink_noise is NOT a p.* method — it's sequence_utils.pink_noise(steps, sources=16, seed=0) -> list[float]
 p.logistic(steps=16, r=3.9, x0=0.5, pitch_range=(48,72), velocity_range=(60,120), duration=0.25)  # r<3 stable, >3.57 chaotic
+p.lorenz(steps=16, pitch_range=(48,72), velocity=80, duration=0.25, s=10.0, r=28.0, b=2.667, dt=0.01)
+# s=sigma (Prandtl, reaction speed), r=rho (chaos driver, chaotic above ~24.7), b=beta (geometric factor)
+# velocity is ONE value for every note in the call — for per-note modulation, unroll the loop
+# yourself (copy the body from pattern_algorithmic.py) and read p.conductor.get() per step
+p.gray_scott(pitch=60, n=16, f=0.055, k=0.062, iterations=200, velocity_range=(40,120), duration=0.25)
+# n=grid size (= note count), f=feed rate, k=kill rate, iterations=simulation steps before reading the field
 p.bresenham_poly(parts, step=0.25, velocity=80)                # interlocking multi-voice grid
 p.ghost_fill(pitch, density=0.3, velocity=35, bias="uniform", no_overlap=True, grid=None, duration=0.1)
 p.thin(pitch, strategy="strength", amount=0.5, grid=None)      # musical inverse of ghost_fill
@@ -153,7 +163,11 @@ p.bar          # global bar count since playback started (int)
 p.cycle        # current loop/cycle count, 0-indexed
 p.rng          # seeded random.Random instance (deterministic when composition.seed() set)
 p.param(key, default)                                 # read tweakable param from composition.data
-p.signal(name)                                        # read conductor LFO/ramp at current bar
+p.signal(name)                                        # read conductor LFO/ramp — shorthand for p.conductor.get(name, p.bar*4)
+# p.signal() is fixed to beat 0 of the current bar — calling it once and reusing the value for
+# every note in the pattern only changes velocity/pitch/etc. per REBUILD (once per `length`
+# beats), not per note. For per-note modulation within one pattern call, read the signal at
+# each note's own beat instead: p.conductor.get(name, p.bar*4 + beat)
 
 # p.section properties (None when no form() active)
 p.section.name          # "verse", "chorus", etc.
@@ -172,6 +186,12 @@ composition.form_next(section_name)                           # override next se
 composition.form_jump(section_name)                           # jump immediately
 composition.freeze(bars=4)                                    # capture harmony → Progression
 composition.schedule(func, cycle_beats=4)                     # background polling/task loop
+# Works when called live from the REPL too (registers directly on the running sequencer) —
+# re-calling with the same function replaces its previous registration rather than stacking a
+# second one. func can take a `p` param (ScheduleContext): p.cycle is a call counter (0,1,2…),
+# so p.cycle * cycle_beats reconstructs the absolute beat for e.g. composition.conductor.get()
+# — useful for continuous OSC/device-param automation, which p.osc_ramp() can't do since
+# live.device_param() needs fixed leading args (track, device, param) osc_ramp can't carry.
 composition.seed(seed)                                        # deterministic RNG
 composition.running_patterns                                  # dict of active patterns
 composition.data                                              # shared state dict
