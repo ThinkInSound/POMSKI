@@ -817,13 +817,23 @@ try:
         _play_thread.daemon = True
         _play_thread.start()
 
+        _tutorial_window = None
+
         class _PomskiJsApi:
             """Bridge for UI actions WKWebView can't do itself (window.open
             with _blank is silently ignored in pywebview)."""
             def open_tutorial(self):
-                _webview.create_window('POMSKI Tutorial',
+                global _tutorial_window
+                if _tutorial_window is not None:
+                    _tutorial_window.show()
+                    return
+                _tutorial_window = _webview.create_window('POMSKI Tutorial',
                                        'http://127.0.0.1:8080/tutorial.html',
                                        width=1100, height=850, text_select=True)
+                def _on_closed():
+                    global _tutorial_window
+                    _tutorial_window = None
+                _tutorial_window.events.closed += _on_closed
 
         # Backend bring-up (imports already paid for by this point, but MIDI
         # port open + web/websocket server start still take a beat) used to
