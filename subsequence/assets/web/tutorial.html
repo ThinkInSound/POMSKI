@@ -1439,8 +1439,9 @@ mark.find-hl.current{background:var(--pink)}
     beat interval, independent of any pattern's length.
   </p>
   <p>
-    Run this once (from the REPL, or before <code>composition.play()</code>) — <b>not</b> inside a
-    pattern's builder function, or a new repeating task registers on every rebuild:
+    Run this once — from the REPL mid-session, or before <code>composition.play()</code>, either
+    works. Do <b>not</b> put it inside a pattern's builder function, since that runs once per
+    rebuild and would register a new repeating task every time:
   </p>
   <div class="code-block">
     <pre><span class="var">composition</span>.<span class="var">conductor</span>.<span class="fn">lfo</span>(<span class="str">"cutoff"</span>, <span class="var">cycle_beats</span>=<span class="num">8</span>, <span class="var">min_val</span>=<span class="num">0.1</span>, <span class="var">max_val</span>=<span class="num">0.9</span>)
