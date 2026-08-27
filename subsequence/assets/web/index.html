@@ -1284,7 +1284,24 @@ function handleMsg(msg){
   }
   if(msg.midi){handleMidiEvent(msg.midi);return;}
   if(msg.console_log_batch!==undefined){consoleLogBatch(msg.console_log_batch);return;}
-  if(msg.log!==undefined){log(msg.log,msg.level||'info');return;}
+  if(msg.log!==undefined){
+    log(msg.log,msg.level||'info');
+    // Pattern-builder rebuild errors (web_ui.py push_builder_error) look like
+    // "[ch1] Traceback ...\n  File \"<live>\", line 7, in ch1\nValueError: ...".
+    if(_errHlEnabled&&msg.level==='err'){
+      const nameMatch=msg.log.match(/^\[(\w+)\]/);
+      const lineMatches=[...msg.log.matchAll(/File "<live>", line (\d+)/g)];
+      if(nameMatch&&lineMatches.length&&_patternOffsets[nameMatch[1]]!==undefined){
+        const relLine=parseInt(lineMatches[lineMatches.length-1][1],10);
+        const absLine=_patternOffsets[nameMatch[1]]+relLine-1;
+        showErrorLine(absLine);
+        const ta=document.getElementById('codeEditor');
+        ta.scrollTop=Math.max(0,(absLine-3)*_editorLineHeightPx());
+        positionErrorLine();
+      }
+    }
+    return;
+  }
   // state broadcast
   updateTransport(msg);
   if(msg.link)updateLink(msg.link);
@@ -1534,11 +1551,21 @@ function positionErrorLine(){
 function clearErrorLine(){_errLine=null;positionErrorLine();}
 let _errLine=null;
 
+// A pattern's builder body doesn't run inside the REPL's exec() call — the
+// decorator just registers/hot-swaps it, and the sequencer calls it later,
+// asynchronously, on the next rebuild. So an error inside a pattern (the
+// common case) never comes back as repl_error; it arrives later as a
+// separate 'log' message ("[ch1] Traceback...", see web_ui.py
+// push_builder_error). Recording each defined pattern's starting line here
+// is what lets that later, disconnected error message still map back to
+// the right line in the editor.
+let _patternOffsets={};
 function evalCode(code){
   bufs[activeTab]=document.getElementById('codeEditor').value;
   if(code===undefined){code=bufs[activeTab].trim();_lastRunOffset=0;}
   if(!code)return;
   clearErrorLine();
+  for(const m of code.matchAll(/^def\s+(\w+)\s*\(/gm))_patternOffsets[m[1]]=_lastRunOffset;
   const lines=code.split('\n');
   const echoHl=highlightPython(lines[0])+(lines.length>1?`\n<span style="color:var(--text-dark)">··· ${lines.length-1} more line${lines.length>2?'s':''}</span>`:'');
   log(`<span class="hl-prompt">&gt;&gt;&gt;</span> <span class="hl-echo">${echoHl}</span>`,'cmd',true);
