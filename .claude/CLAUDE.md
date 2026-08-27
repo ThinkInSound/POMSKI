@@ -1,5 +1,8 @@
 # POMSKI — Claude Code Context
 
+Tracked in Subroutine under project key `POMSKI` (see `.subroutine`). Check `subroutine_changes()`
+and `subroutine_list(ready=true)` at the start of a session for open work.
+
 ## What this project is
 POMSKI is a live-coding music environment built on top of **subsequence** (AGPL-3.0).
 It adds a web UI, Ableton Live bridge, and REPL live-coding workflow on top of subsequence's

@@ -1,0 +1,7 @@
+# Which Subroutine project the work in this directory belongs to.
+# Written by 'subroutine use --here'. Safe to delete: without it, new items go
+# wherever they went before, and nothing already recorded changes.
+connection = "local"
+workspace = "personal"
+project_id = "01a04556-15fe-7c2f-ada6-a5880ad21dc2"  # POMSKI
+project = "POMSKI"
