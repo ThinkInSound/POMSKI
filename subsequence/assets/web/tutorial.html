@@ -452,6 +452,11 @@ mark.find-hl.current{background:var(--pink)}
     POMSKI is a Python-based live-coding environment for real-time MIDI composition.
     Write and rewrite patterns while the music plays — no stopping, no rendering, no waiting.
   </p>
+  <div class="callout info" style="margin-top:20px;text-align:left">
+    <div class="callout-title">Get POMSKI</div>
+    <p>Prebuilt apps for macOS and Windows — no Python install needed. Grab the latest release from
+    <a href="https://github.com/ThinkInSound/POMSKI/releases" target="_blank">the GitHub Releases page</a>.</p>
+  </div>
 </div>
 
 <!-- ─────────────────────────── WHY ─────────────────────────── -->
@@ -519,7 +524,6 @@ mark.find-hl.current{background:var(--pink)}
 
   <h3>Prerequisites</h3>
   <ul>
-    <li>Python 3.10 or newer</li>
     <li>A MIDI output device or virtual MIDI port (e.g. <strong>loopMIDI</strong> on Windows, <strong>IAC Driver</strong> on macOS)</li>
     <li>A DAW or synthesizer listening on that MIDI port</li>
     <li>Optional: <a href="https://github.com/AbletonOSC/AbletonOSC" target="_blank">AbletonOSC</a> for the Ableton Live bridge</li>
@@ -531,11 +535,45 @@ mark.find-hl.current{background:var(--pink)}
     it detects a loop. Check the LoopBe tray icon if MIDI goes silent unexpectedly.</p>
   </div>
 
-  <h3>Running the template</h3>
+  <h3>&#127823; macOS</h3>
+  <ol>
+    <li><a href="https://github.com/ThinkInSound/POMSKI/releases/tag/macOS-v1.1.1" target="_blank">Download POMSKI for macOS</a> and unzip it</li>
+    <li>Drag <code>POMSKI.app</code> into your <strong>Applications</strong> folder</li>
+    <li><strong>Right-click</strong> the app &rarr; <strong>Open</strong> &rarr; <strong>Open</strong></li>
+  </ol>
+  <div class="callout info">
+    <div class="callout-title">Why right-click the first time?</div>
+    <p>macOS will warn that POMSKI is "from an unidentified developer." That's expected — POMSKI is
+    free and open-source, and isn't signed with a paid Apple certificate. Right-click &rarr; Open tells
+    macOS you trust it. You only need to do this once; after that, double-click as normal.</p>
+  </div>
 
+  <h3>&#129497; Windows</h3>
+  <ol>
+    <li><a href="https://github.com/ThinkInSound/POMSKI/releases/tag/Windows" target="_blank">Download the installer</a></li>
+    <li>Run it — everything is bundled, no Python needed</li>
+    <li>Launch POMSKI from the Start menu or desktop shortcut</li>
+  </ol>
+  <p>&#128250; <a href="https://youtu.be/XUqHq8mggBk" target="_blank">Watch the setup video</a> — a full walkthrough of installing and running POMSKI on Windows.</p>
+
+  <h3>First launch</h3>
+  <p>POMSKI asks which <strong>MIDI output</strong> to send to, then opens its window.</p>
+  <div class="callout">
+    <div class="callout-title">The very first launch takes a little longer</div>
+    <p>Roughly 10–20 seconds, while POMSKI unpacks itself and installs its Ableton helper script.
+    Every launch after that is fast. Point your DAW or synth at the MIDI port you chose, hit
+    <strong>PLAY</strong>, and you're live.</p>
+  </div>
+
+  <h3>Running from source (developers)</h3>
+  <p>
+    Prefer to run from a Python checkout instead of the packaged app? Requires Python 3.10–3.13
+    (3.14 isn't supported yet — see <code>python-rtmidi</code>'s compatibility status).
+  </p>
   <div class="code-block">
     <div class="code-label">Terminal</div>
     <pre><span class="cm"># From the project directory:</span>
+<span class="var">pip</span> install -e .
 <span class="var">python</span> examples/pomski_template.py</pre>
   </div>
 
