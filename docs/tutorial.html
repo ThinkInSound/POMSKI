@@ -397,9 +397,33 @@ footer {
   letter-spacing: 1px;
   text-align: center;
 }
+.ctx-menu{position:fixed;z-index:5000;background:var(--bg-panel);border:1px solid var(--border-dim);border-radius:5px;box-shadow:0 6px 20px rgba(0,0,0,.45);padding:4px;font-family:var(--mono);font-size:11px;min-width:100px;display:none}
+.ctx-menu.show{display:block}
+.ctx-item{padding:6px 10px;border-radius:3px;cursor:pointer;color:var(--text);white-space:nowrap}
+.ctx-item:hover{background:var(--pink);color:#111}
+.ctx-item.disabled{color:var(--text-dark);cursor:default;pointer-events:none}
+.find-bar{position:fixed;top:12px;right:12px;z-index:6000;background:var(--bg-panel);border:1px solid var(--border-dim);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.45);padding:6px 8px;display:none;align-items:center;gap:6px;font-family:var(--mono);font-size:12px}
+.find-bar.show{display:flex}
+.find-bar input{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-family:var(--mono);font-size:12px;width:160px;outline:none}
+.find-bar input:focus{border-color:var(--pink)}
+.find-count{color:var(--text-dim);min-width:48px;text-align:center}
+.find-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;padding:2px 7px;border-radius:3px;font-family:var(--mono)}
+.find-btn:hover{background:var(--bg-hover);color:var(--text)}
+mark.find-hl{background:var(--yellow);color:#111;border-radius:2px;padding:0 1px}
+mark.find-hl.current{background:var(--pink)}
 </style>
 </head>
-<body>
+<body oncontextmenu="return showCtxMenu(event)">
+
+<div class="ctx-menu" id="ctxMenu"><div class="ctx-item" id="ctxCopy">Copy</div></div>
+
+<div class="find-bar" id="findBar">
+  <input type="text" id="findInput" placeholder="Find…" autocomplete="off" spellcheck="false">
+  <span class="find-count" id="findCount"></span>
+  <button class="find-btn" id="findPrev" title="Previous (Shift+Enter)">&uarr;</button>
+  <button class="find-btn" id="findNext" title="Next (Enter)">&darr;</button>
+  <button class="find-btn" id="findClose" title="Close (Esc)">&times;</button>
+</div>
 
 <nav>
   <span class="nav-logo">POMSKI</span>
@@ -639,6 +663,7 @@ footer {
     <tr><td class="m-name">p.rng</td><td><code>Random</code></td><td class="m-desc">A seeded random number generator. Use <code>p.rng.random()</code>, <code>p.rng.choice(list)</code>, <code>p.rng.randint(a,b)</code>. Reproducible — same seed every time the pattern restarts.</td></tr>
     <tr><td class="m-name">p.section</td><td><code>SectionInfo</code></td><td class="m-desc">Current form section (name, bar within section, total bars). <code>None</code> if no form is defined.</td></tr>
     <tr><td class="m-name">p.data</td><td><code>dict</code></td><td class="m-desc">Direct reference to <code>composition.data</code>. Use it to read Live values, signals, or cross-pattern state.</td></tr>
+    <tr><td class="m-name">p.param(name, default=None)</td><td><code>method</code></td><td class="m-desc">Reads this pattern's own tweak overrides — a separate mechanism from <code>p.data</code>/<code>composition.data</code>. Set live from the REPL with <code>composition.tweak("pattern_name", name=value)</code>; persists across rebuilds until <code>composition.clear_tweak("pattern_name")</code> removes it.</td></tr>
   </table>
 
   <div class="callout warn">
@@ -761,6 +786,88 @@ footer {
     <span class="var">p</span>.<span class="fn">velocity_shape</span>(<span class="var">low</span>=<span class="num">55</span>, <span class="var">high</span>=<span class="num">90</span>)  <span class="cm"># humanise velocity</span></pre>
   </div>
 
+  <h3>Drum names (GM_DRUM_MAP)</h3>
+  <p>
+    These are every name <code>drum_note_map=gm_drums.GM_DRUM_MAP</code> understands, with the MIDI
+    note each one maps to. If you'd rather skip names entirely, the plain MIDI note number works too
+    (<code>p.hit_steps(36, ...)</code> is the same hit as <code>p.hit_steps("kick_1", ...)</code>) —
+    but you still need <code>channel=9</code> either way, since that's what routes to the drum rack.
+  </p>
+  <p>
+    <b>Notes 36–51</b> — the range a standard Ableton Drum Rack's default 16 pads occupy — cover a
+    complete basic kit: kick, snare, hi-hats, toms, one crash, one ride.
+  </p>
+  <div class="scale-grid">
+    <div class="scale-pill">36 kick_1</div>
+    <div class="scale-pill">37 side_stick</div>
+    <div class="scale-pill">38 snare_1</div>
+    <div class="scale-pill">39 hand_clap</div>
+    <div class="scale-pill">40 snare_2</div>
+    <div class="scale-pill">41 low_floor_tom</div>
+    <div class="scale-pill">42 hi_hat_closed</div>
+    <div class="scale-pill">43 high_floor_tom</div>
+    <div class="scale-pill">44 hi_hat_pedal</div>
+    <div class="scale-pill">45 low_tom</div>
+    <div class="scale-pill">46 hi_hat_open</div>
+    <div class="scale-pill">47 low_mid_tom</div>
+    <div class="scale-pill">48 high_mid_tom</div>
+    <div class="scale-pill">49 crash_1</div>
+    <div class="scale-pill">50 high_tom</div>
+    <div class="scale-pill">51 ride_1</div>
+  </div>
+  <p>
+    Outside that range, GM also defines percussion from 27 up to 87 — Latin/world percussion,
+    a second crash/ride, cowbell, tambourine, etc. Only useful if your specific drum rack/instrument
+    has pads mapped past note 51; a stock Ableton Drum Rack usually doesn't.
+  </p>
+  <div class="scale-grid">
+    <div class="scale-pill">27 high_q</div>
+    <div class="scale-pill">28 slap</div>
+    <div class="scale-pill">29 scratch_push</div>
+    <div class="scale-pill">30 scratch_pull</div>
+    <div class="scale-pill">31 sticks</div>
+    <div class="scale-pill">32 square_click</div>
+    <div class="scale-pill">33 metronome_click</div>
+    <div class="scale-pill">34 metronome_bell</div>
+    <div class="scale-pill">35 kick_2</div>
+    <div class="scale-pill">52 chinese_cymbal</div>
+    <div class="scale-pill">53 ride_bell</div>
+    <div class="scale-pill">54 tambourine</div>
+    <div class="scale-pill">55 splash_cymbal</div>
+    <div class="scale-pill">56 cowbell</div>
+    <div class="scale-pill">57 crash_2</div>
+    <div class="scale-pill">58 vibraslap</div>
+    <div class="scale-pill">59 ride_2</div>
+    <div class="scale-pill">60 high_bongo</div>
+    <div class="scale-pill">61 low_bongo</div>
+    <div class="scale-pill">62 mute_high_conga</div>
+    <div class="scale-pill">63 open_high_conga</div>
+    <div class="scale-pill">64 low_conga</div>
+    <div class="scale-pill">65 high_timbale</div>
+    <div class="scale-pill">66 low_timbale</div>
+    <div class="scale-pill">67 high_agogo</div>
+    <div class="scale-pill">68 low_agogo</div>
+    <div class="scale-pill">69 cabasa</div>
+    <div class="scale-pill">70 maracas</div>
+    <div class="scale-pill">71 short_whistle</div>
+    <div class="scale-pill">72 long_whistle</div>
+    <div class="scale-pill">73 short_guiro</div>
+    <div class="scale-pill">74 long_guiro</div>
+    <div class="scale-pill">75 claves</div>
+    <div class="scale-pill">76 high_woodblock</div>
+    <div class="scale-pill">77 low_woodblock</div>
+    <div class="scale-pill">78 mute_cuica</div>
+    <div class="scale-pill">79 open_cuica</div>
+    <div class="scale-pill">80 mute_triangle</div>
+    <div class="scale-pill">81 open_triangle</div>
+    <div class="scale-pill">82 shaker</div>
+    <div class="scale-pill">83 jingle_bell</div>
+    <div class="scale-pill">84 bell_tree</div>
+    <div class="scale-pill">85 castanets</div>
+    <div class="scale-pill">86 mute_surdo</div>
+    <div class="scale-pill">87 open_surdo</div>
+  </div>
+
   <h3>The seq() shorthand</h3>
   <p>Write a melody in Sonic Pi style — space-separated pitch numbers with <code>_</code> for rests.</p>
 
@@ -824,6 +931,10 @@ footer {
       <td class="m-name">p.hit_steps() with range()</td>
       <td class="m-desc">For quick straight 8ths or 16ths: <code>range(0, 16, 2)</code> = every other step (8th notes). <code>range(16)</code> = all 16 steps.</td>
     </tr>
+    <tr>
+      <td class="m-name">p.fill(pitch, step, velocity, duration)</td>
+      <td class="m-desc">Repeat a note every <code>step</code> beats from the start of the pattern to its end — no step list needed. <code>p.fill("hi_hat_closed", step=0.25)</code> is a plain steady-16ths hi-hat, equivalent to <code>p.hit_steps("hi_hat_closed", range(16))</code> but works for any pattern length, not just 16 steps.</td>
+    </tr>
   </table>
 
   <h3>Modifiers — call these after placing notes</h3>
@@ -842,16 +953,16 @@ footer {
       <td class="m-desc">Snap all notes to the nearest pitch in a scale. Key is a note name (<code>"C"</code>, <code>"F#"</code>, <code>"Bb"</code>). Mode is a scale name (<code>"ionian"</code>, <code>"dorian"</code>, <code>"minor"</code>, <code>"harmonic_minor"</code>, etc.).</td>
     </tr>
     <tr>
-      <td class="m-name">p.quantize_m21(key, scale_name)</td>
-      <td class="m-desc">Like <code>p.quantize()</code> but unlocks Music21's full scale library. Use for ragas, octatonic, whole-tone, and other exotic scales. Requires <code>pip install music21</code>.</td>
+      <td class="m-name">p.quantize_m21(key, scale_name, scala_name=None)</td>
+      <td class="m-desc">Like <code>p.quantize()</code> but unlocks Music21's full scale library. Use for ragas, octatonic, whole-tone, and other exotic scales. Requires <code>pip install music21</code>. <code>scala_name</code> loads a microtonal tuning from music21's bundled Scala archive (3,935 files) instead — takes precedence over <code>scale_name</code> when given.</td>
     </tr>
     <tr>
       <td class="m-name">p.transpose(semitones)</td>
       <td class="m-desc">Shift all notes up or down by a fixed number of semitones. Combine with <code>p.cycle</code> for automatic transposition.</td>
     </tr>
     <tr>
-      <td class="m-name">p.shift(steps)</td>
-      <td class="m-desc">Move all notes forward or backward in time by <code>steps</code> 16th-note positions. Useful for polyrhythmic offset against other patterns.</td>
+      <td class="m-name">p.shift(steps, grid=None)</td>
+      <td class="m-desc">Move all notes forward or backward in time by <code>steps</code> grid positions (16th-notes by default — pass <code>grid</code> to use a different step-grid size). Useful for polyrhythmic offset against other patterns.</td>
     </tr>
     <tr>
       <td class="m-name">p.reverse()</td>
@@ -862,7 +973,7 @@ footer {
       <td class="m-desc">Re-scale all velocities to fit within a <code>low–high</code> range, preserving relative dynamics. Great for humanising step-sequenced drum patterns.</td>
     </tr>
     <tr>
-      <td class="m-name">p.thin(pitch, strategy, amount)</td>
+      <td class="m-name">p.thin(pitch, strategy, amount, grid=None, rng=None)</td>
       <td class="m-desc">Remove notes for a specific pitch or drum name based on rhythmic position. <code>amount=0.5</code> removes roughly half; <code>amount=1.0</code> removes all qualifying notes. Strategies: <code>"strength"</code> (default — weakest positions drop first), <code>"sixteenths"</code>, <code>"offbeat"</code>, <code>"e_and_a"</code>, <code>"downbeat"</code>, <code>"upbeat"</code>, <code>"uniform"</code>. Unlike <code>p.dropout()</code>, targets one instrument and respects rhythmic position.</td>
     </tr>
   </table>
@@ -1074,7 +1185,8 @@ footer {
     Not every signal should loop forever. <code>composition.conductor.line()</code> ramps from one
     value to another once over a fixed number of beats, then holds at <code>end_val</code> — good for
     a build-up, a filter sweep into a drop, or a fade. Set <code>loop=True</code> to have it repeat
-    the ramp instead of holding. <code>p.signal()</code> reads a <code>line()</code> exactly the same
+    the ramp instead of holding, or <code>start_beat</code> to delay when the ramp begins (default
+    0 — starts immediately). <code>p.signal()</code> reads a <code>line()</code> exactly the same
     way it reads an <code>lfo()</code>.
   </p>
 
@@ -1190,6 +1302,15 @@ footer {
     The Lorenz attractor is a set of differential equations that produces chaotic (never exactly
     repeating) but aesthetically coherent trajectories. POMSKI maps its x-axis values to pitch.
   </p>
+  <p>
+    <code>s</code> (sigma) is the Prandtl number — how fast the system reacts to imbalance;
+    higher values make it swing more sharply between states.
+    <code>r</code> (rho) is the Rayleigh number — the main driver of chaos; below ~24.7 the
+    system settles into stable orbits, at the classic <code>28.0</code> it's fully chaotic.
+    <code>b</code> (beta) is a geometric factor from the physical convection cell the equations
+    were derived from; it shapes how tightly the trajectory spirals. <code>dt</code> is the
+    simulation's time step — smaller values evolve the attractor more slowly per note.
+  </p>
 
   <div class="code-block">
     <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
@@ -1239,6 +1360,37 @@ footer {
     )</pre>
   </div>
 
+  <h3>1D &amp; 2D cellular automata</h3>
+  <p>
+    <code>p.cellular_1d()</code> is a general elementary CA (any of Wolfram's 256 rules — 30, 90,
+    and 110 are the classic ones), one pitch per call. <code>p.cellular_2d()</code> generalizes
+    <code>game_of_life()</code> above to any Life-like rule string, and is polyphonic — pitches is
+    a list, one row of the grid mapped to each.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">cellular_1d</span>(
+        <span class="num">60</span>,
+        <span class="var">rule</span>=<span class="num">110</span>,          <span class="cm"># 30=chaotic, 90=Sierpinski triangle, 110=Turing-complete</span>
+        <span class="var">generation</span>=<span class="var">p</span>.<span class="var">cycle</span> % <span class="num">16</span>,
+        <span class="var">no_overlap</span>=<span class="kw">False</span>,
+        <span class="var">dropout</span>=<span class="num">0.0</span>
+    )</pre>
+  </div>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="cm"># B368/S245: born with 3/6/8 neighbours, survives with 2/4/5 — "Morley" rule, less chaotic than standard Life</span>
+    <span class="var">p</span>.<span class="fn">cellular_2d</span>(
+        <span class="var">pitches</span>=[<span class="num">36</span>, <span class="num">48</span>, <span class="num">60</span>, <span class="num">72</span>],
+        <span class="var">rule</span>=<span class="str">"B368/S245"</span>,
+        <span class="var">seed</span>=<span class="num">1</span>, <span class="var">density</span>=<span class="num">0.5</span>
+    )</pre>
+  </div>
+
   <h3>Logistic map (chaos theory)</h3>
   <p>
     The logistic map (<code>x → r·x·(1−x)</code>) is one of the simplest equations that produces
@@ -1255,6 +1407,15 @@ footer {
     The Gray-Scott equations model chemical reactions creating Turing-like patterns —
     spots and stripes that emerge from uniform initial conditions. POMSKI maps the
     intensity field to note velocities, creating complex dynamic textures on a fixed pitch.
+  </p>
+  <p>
+    <code>n</code> is the grid size — how many cells the simulation runs on, which also sets
+    how many notes come out (one per cell). <code>f</code> (feed rate) controls how fast the
+    base chemical is replenished; <code>k</code> (kill rate) controls how fast the reaction
+    product is removed. Different <code>f</code>/<code>k</code> pairs produce different pattern
+    families (spots, stripes, waves) — <code>0.055</code>/<code>0.062</code> is a classic
+    spot-forming combination. <code>iterations</code> is how many simulation steps run before
+    the field is read — more lets the pattern fully develop before it's turned into velocities.
   </p>
 
   <div class="code-block">
@@ -1362,7 +1523,7 @@ footer {
     <tr><td class="m-name">live.scene_play(scene)</td><td class="m-desc">Fire a scene (launches all clips in that row).</td></tr>
     <tr><td class="m-name">live.track_volume(track, value)</td><td class="m-desc">Set track volume. <code>value</code> is 0.0–1.0.</td></tr>
     <tr><td class="m-name">live.track_mute(track, True/False)</td><td class="m-desc">Mute or unmute a track.</td></tr>
-    <tr><td class="m-name">live.device_param(track, device, param, value)</td><td class="m-desc">Set a device parameter (0.0–1.0).</td></tr>
+    <tr><td class="m-name">live.device_param(track, device, param, value)</td><td class="m-desc"><code>value</code> is always 0.0–1.0 — Live maps it to the parameter's real range (Hz, dB, etc). To find the <code>device</code>/<code>param</code> indices: right-click the parameter in Live → the Max for Live "Copy M4L path" item gives something like <code>live_set tracks 0 devices 0 parameters 28</code> — those three numbers are <code>track</code>, <code>device</code>, <code>param</code> directly, since AbletonOSC addresses the same Live Object Model tree.</td></tr>
     <tr><td class="m-name">live.set_tempo(bpm)</td><td class="m-desc">Change Live's tempo.</td></tr>
     <tr><td class="m-name">live.watch("track/0/volume")</td><td class="m-desc">Subscribe to a Live property. Its value is pushed to <code>composition.data["live_track_0_volume"]</code> continuously.</td></tr>
     <tr><td class="m-name">live.tracks</td><td class="m-desc">List of track names in the current Live set.</td></tr>
@@ -1382,6 +1543,39 @@ footer {
     <span class="var">vel</span> = <span class="fn">int</span>(<span class="var">vol</span> * <span class="num">127</span>)
     <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 _ 63 65 _ 67"</span>, <span class="var">velocity</span>=<span class="var">vel</span>)</pre>
   </div>
+
+  <h3>Continuous parameter automation (e.g. a filter sweep)</h3>
+  <p>
+    Calling <code>live.device_param(...)</code> inside a pattern only fires <b>once per rebuild</b> —
+    a pattern's builder function runs once per cycle (once every <code>length</code> beats), so the
+    parameter jumps once and holds until the next rebuild. For a device parameter that changes
+    <i>continuously</i> (a filter cutoff sweeping with an LFO, for example), use
+    <code>composition.schedule()</code> instead — it calls a function repeatedly on its own fast
+    beat interval, independent of any pattern's length.
+  </p>
+  <p>
+    Run this once — from the REPL mid-session, or before <code>composition.play()</code>, either
+    works. Do <b>not</b> put it inside a pattern's builder function, since that runs once per
+    rebuild and would register a new repeating task every time:
+  </p>
+  <div class="code-block">
+    <pre><span class="var">composition</span>.<span class="var">conductor</span>.<span class="fn">lfo</span>(<span class="str">"cutoff"</span>, <span class="var">cycle_beats</span>=<span class="num">8</span>, <span class="var">min_val</span>=<span class="num">0.1</span>, <span class="var">max_val</span>=<span class="num">0.9</span>)
+
+<span class="kw">def</span> <span class="fn">_update_cutoff</span>(<span class="var">p</span>):
+    <span class="cm"># p.cycle here is composition.schedule's own call counter (0, 1, 2…),</span>
+    <span class="cm"># not a pattern's p.cycle — multiply by cycle_beats to get the</span>
+    <span class="cm"># absolute transport beat the conductor signal needs.</span>
+    <span class="var">beat</span> = <span class="var">p</span>.<span class="var">cycle</span> * <span class="num">0.25</span>
+    <span class="var">cutoff</span> = <span class="var">composition</span>.<span class="var">conductor</span>.<span class="fn">get</span>(<span class="str">"cutoff"</span>, <span class="var">beat</span>)
+    <span class="var">live</span>.<span class="fn">device_param</span>(<span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>, <span class="var">cutoff</span>)
+
+<span class="var">composition</span>.<span class="fn">schedule</span>(<span class="var">_update_cutoff</span>, <span class="var">cycle_beats</span>=<span class="num">0.25</span>)  <span class="cm"># fires 4x per beat</span></pre>
+  </div>
+  <p>
+    Smaller <code>cycle_beats</code> = smoother sweep, more OSC traffic. <code>0.25</code> (16th-note
+    resolution) is plenty smooth for a filter cutoff; drop to <code>0.0625</code> or lower only if
+    you can hear stepping.
+  </p>
 
   <h3>ClyphX — trigger actions by track/clip naming</h3>
   <p>
@@ -1442,7 +1636,11 @@ footer {
   <table class="method-table">
     <tr><th>Shortcut</th><th>Action</th></tr>
     <tr><td class="m-name">Shift+Enter</td><td class="m-desc">Send the current code block (detected by double newlines above the cursor)</td></tr>
+    <tr><td class="m-name">Ctrl+Shift+Enter</td><td class="m-desc">Send the entire editor buffer</td></tr>
     <tr><td class="m-name">Ctrl+↑ / Ctrl+↓</td><td class="m-desc">Navigate command history (last 200 sent blocks)</td></tr>
+    <tr><td class="m-name">Cmd+= / Cmd+-</td><td class="m-desc">Zoom editor font size in/out. <code>Cmd+0</code> resets to default</td></tr>
+    <tr><td class="m-name">Cmd+F</td><td class="m-desc">Find in page (this tutorial and the main editor window both have their own find bar)</td></tr>
+    <tr><td class="m-name">Cmd+B / Cmd+I</td><td class="m-desc">Bold / italicize a comment line the cursor is inside — purely cosmetic for marking section headers, doesn't touch the actual text or affect what runs. No effect outside a comment.</td></tr>
   </table>
 
   <h3>Building in variation without thinking</h3>
@@ -1458,6 +1656,28 @@ footer {
     <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 63 65 67 65 63 67 70"</span>, <span class="var">velocity</span>=<span class="num">80</span>)
     <span class="var">p</span>.<span class="fn">dropout</span>(<span class="var">sparsity</span> * <span class="num">0.6</span>)   <span class="cm"># max 60% dropout</span>
     <span class="var">p</span>.<span class="fn">quantize</span>(<span class="str">"C"</span>, <span class="str">"dorian"</span>)</pre>
+  </div>
+
+  <h3>Ghost notes and thinning</h3>
+  <p>
+    <code>p.ghost_fill()</code> adds low-velocity micro-detail notes biased toward a rhythmic
+    position (off-beats, 16th subdivisions, etc). <code>p.thin()</code> does the opposite — it
+    removes notes from a specific instrument by rhythmic position, using the same bias
+    vocabulary. Together they're a finer-grained pair than <code>p.dropout()</code>, which is
+    position-blind and affects the whole pattern rather than one instrument.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">9</span>, <span class="var">length</span>=<span class="num">4</span>, <span class="var">drum_note_map</span>=<span class="var">gm_drums</span>.<span class="var">GM_DRUM_MAP</span>)
+<span class="kw">def</span> <span class="fn">ch10</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"kick_1"</span>, [<span class="num">0</span>, <span class="num">8</span>], <span class="var">velocity</span>=<span class="num">110</span>)
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"snare_1"</span>, [<span class="num">4</span>, <span class="num">12</span>], <span class="var">velocity</span>=<span class="num">100</span>)
+
+    <span class="cm"># Add ghost hi-hats around the anchors, biased to 16th subdivisions</span>
+    <span class="var">p</span>.<span class="fn">ghost_fill</span>(<span class="str">"hi_hat_closed"</span>, <span class="var">density</span>=<span class="num">0.4</span>, <span class="var">velocity</span>=(<span class="num">25</span>, <span class="num">45</span>), <span class="var">bias</span>=<span class="str">"sixteenths"</span>, <span class="var">no_overlap</span>=<span class="kw">True</span>)
+
+    <span class="cm"># Thin them back out on alternate cycles for a call-and-response feel</span>
+    <span class="var">p</span>.<span class="fn">every</span>(<span class="num">2</span>, <span class="kw">lambda</span> <span class="var">p</span>: <span class="var">p</span>.<span class="fn">thin</span>(<span class="str">"hi_hat_closed"</span>, <span class="var">strategy</span>=<span class="str">"strength"</span>, <span class="var">amount</span>=<span class="num">0.6</span>))</pre>
   </div>
 
   <h3>Transposing by section</h3>
@@ -1684,6 +1904,143 @@ const observer = new IntersectionObserver(entries => {
   });
 }, { rootMargin: '-30% 0px -60% 0px' });
 sections.forEach(s => observer.observe(s));
+
+// ── Right-click Copy menu ──────────────────────────────────────────
+// Replaces the native WKWebView right-click menu (irrelevant macOS
+// Services/AutoFill items) with a plain Copy item — read-only page,
+// no editable fields, so no Cut/Paste needed here.
+function showCtxMenu(e){
+  e.preventDefault();
+  const text=window.getSelection().toString();
+  const menu=document.getElementById('ctxMenu');
+  const copy=document.getElementById('ctxCopy');
+  copy.classList.toggle('disabled',!text);
+  copy.onclick=()=>{
+    if(text){
+      navigator.clipboard.writeText(text).catch(()=>{
+        const ta=document.createElement('textarea');
+        ta.value=text;
+        ta.style.position='fixed';ta.style.opacity='0';
+        document.body.appendChild(ta);
+        ta.select();
+        try{document.execCommand('copy');}catch(err){}
+        document.body.removeChild(ta);
+      });
+    }
+    menu.classList.remove('show');
+  };
+  menu.classList.add('show');
+  const w=120,h=40;
+  menu.style.left=Math.min(e.clientX,window.innerWidth-w)+'px';
+  menu.style.top=Math.min(e.clientY,window.innerHeight-h)+'px';
+  return false;
+}
+document.addEventListener('mousedown',e=>{
+  if(!e.target.closest('#ctxMenu'))document.getElementById('ctxMenu').classList.remove('show');
+});
+
+// ── Cmd+F find-in-page ──────────────────────────────────────────────
+// WKWebView's native find isn't wired up (no Edit menu bound to it in
+// the pywebview window), so this page implements its own find bar.
+(function(){
+  const bar=document.getElementById('findBar');
+  const input=document.getElementById('findInput');
+  const countEl=document.getElementById('findCount');
+  let marks=[], current=-1;
+
+  function clearHighlights(){
+    marks.forEach(m=>{
+      const parent=m.parentNode;
+      if(!parent) return;
+      parent.replaceChild(document.createTextNode(m.textContent),m);
+      parent.normalize();
+    });
+    marks=[];
+    current=-1;
+  }
+
+  function highlight(query){
+    clearHighlights();
+    if(!query){ countEl.textContent=''; return; }
+    const q=query.toLowerCase();
+    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{
+      acceptNode(node){
+        const p=node.parentElement;
+        if(!p) return NodeFilter.FILTER_REJECT;
+        if(p.closest('#findBar,#ctxMenu,script,style')) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const nodes=[];
+    let n;
+    while((n=walker.nextNode())) nodes.push(n);
+    nodes.forEach(node=>{
+      const text=node.textContent;
+      const lower=text.toLowerCase();
+      if(!lower.includes(q)) return;
+      const frag=document.createDocumentFragment();
+      let i=0;
+      while(true){
+        const idx=lower.indexOf(q,i);
+        if(idx===-1){ frag.appendChild(document.createTextNode(text.slice(i))); break; }
+        if(idx>i) frag.appendChild(document.createTextNode(text.slice(i,idx)));
+        const mark=document.createElement('mark');
+        mark.className='find-hl';
+        mark.textContent=text.slice(idx,idx+query.length);
+        frag.appendChild(mark);
+        marks.push(mark);
+        i=idx+query.length;
+      }
+      node.parentNode.replaceChild(frag,node);
+    });
+    if(marks.length){
+      current=0;
+      marks[0].classList.add('current');
+      marks[0].scrollIntoView({block:'center',behavior:'smooth'});
+    }
+    countEl.textContent=marks.length?`1/${marks.length}`:'0/0';
+  }
+
+  function goTo(delta){
+    if(!marks.length) return;
+    marks[current].classList.remove('current');
+    current=(current+delta+marks.length)%marks.length;
+    marks[current].classList.add('current');
+    marks[current].scrollIntoView({block:'center',behavior:'smooth'});
+    countEl.textContent=`${current+1}/${marks.length}`;
+  }
+
+  function open(){
+    bar.classList.add('show');
+    input.focus();
+    input.select();
+  }
+  function close(){
+    bar.classList.remove('show');
+    clearHighlights();
+    countEl.textContent='';
+    input.value='';
+  }
+
+  document.addEventListener('keydown',e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='f'){
+      e.preventDefault();
+      open();
+    }else if(e.key==='Escape'&&bar.classList.contains('show')){
+      close();
+    }
+  });
+  input.addEventListener('input',()=>highlight(input.value));
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      e.shiftKey?goTo(-1):goTo(1);
+    }
+  });
+  document.getElementById('findNext').addEventListener('click',()=>goTo(1));
+  document.getElementById('findPrev').addEventListener('click',()=>goTo(-1));
+  document.getElementById('findClose').addEventListener('click',close);
+})();
 </script>
 
 </body>
