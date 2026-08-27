@@ -10,7 +10,7 @@
 
 <br>
 
-[![Download for macOS](https://img.shields.io/badge/Download_for-macOS-ff5c8a?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/ThinkInSound/POMSKI/releases/tag/macOS-v1.1.0)
+[![Download for macOS](https://img.shields.io/badge/Download_for-macOS-ff5c8a?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/ThinkInSound/POMSKI/releases/tag/macOS-v1.1.1)
 [![Download for Windows](https://img.shields.io/badge/Download_for-Windows-5ea8ff?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/ThinkInSound/POMSKI/releases/tag/Windows)
 
 [![Watch the setup video](https://img.shields.io/badge/Watch-Setup_Video-FF0000?style=flat-square&logo=youtube&logoColor=white)](https://youtu.be/XUqHq8mggBk)
@@ -41,7 +41,7 @@ It sends MIDI, so it drives whatever you already use: Ableton Live, Logic, a har
 
 ### 🍎 macOS
 
-1. **[Download POMSKI for macOS](https://github.com/ThinkInSound/POMSKI/releases/tag/macOS-v1.1.0)** and unzip it
+1. **[Download POMSKI for macOS](https://github.com/ThinkInSound/POMSKI/releases/tag/macOS-v1.1.1)** and unzip it
 2. Drag `POMSKI.app` into your **Applications** folder
 3. **Right-click** the app → **Open** → **Open**
 
