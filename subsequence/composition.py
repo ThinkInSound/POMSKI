@@ -637,6 +637,7 @@ class Composition:
         self._section_progressions: typing.Dict[str, Progression] = {}
         self._pending_patterns: typing.List[_PendingPattern] = []
         self._pending_scheduled: typing.List[_PendingScheduled] = []
+        self._live_scheduled: typing.Dict[str, typing.Any] = {}
         self._form_state: typing.Optional[FormState] = None
         self._builder_bar: int = 0
         self._display: typing.Optional[subsequence.display.Display] = None
@@ -1541,13 +1542,24 @@ class Composition:
             else:
                 start_pulse = current_pulse
 
+            # Re-registering the same function (e.g. re-running a REPL block
+            # with a different cycle_beats) would otherwise stack a second,
+            # independent repeating callback on the sequencer rather than
+            # replacing the first — both fire forever after, each with its
+            # own out-of-sync cycle counter, stepping on each other's output
+            # (observed as a live-automated parameter jittering randomly).
+            old = self._live_scheduled.get(fn.__name__)
+
             async def _schedule () -> None:
-                await self._sequencer.schedule_callback_repeating(
+                if old is not None:
+                    old.cancelled = True
+                new = await self._sequencer.schedule_callback_repeating(
                     callback = wrapped,
                     interval_beats = cycle_beats,
                     start_pulse = start_pulse,
                     reschedule_lookahead = reschedule_lookahead
                 )
+                self._live_scheduled[fn.__name__] = new
 
             asyncio.run_coroutine_threadsafe(_schedule(), loop = self._main_loop)
             logger.info(f"Live-scheduled '{fn.__name__}' (every {cycle_beats} beats)")

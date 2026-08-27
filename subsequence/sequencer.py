@@ -93,6 +93,7 @@ class ScheduledCallback:
 	interval_pulses: int
 	lookahead_pulses: int
 	next_fire_pulse: int
+	cancelled: bool = False
 
 
 @dataclasses.dataclass
@@ -644,7 +645,7 @@ class Sequencer:
 			heapq.heappush(self.reschedule_queue, (scheduled_pattern.next_reschedule_pulse, counter, scheduled_pattern))
 
 
-	async def schedule_callback_repeating (self, callback: typing.Callable[[int], typing.Any], interval_beats: float, start_pulse: int = 0, reschedule_lookahead: float = 1) -> None:
+	async def schedule_callback_repeating (self, callback: typing.Callable[[int], typing.Any], interval_beats: float, start_pulse: int = 0, reschedule_lookahead: float = 1) -> ScheduledCallback:
 
 		"""
 		Schedule a repeating callback on a beat interval.
@@ -682,6 +683,8 @@ class Sequencer:
 		async with self.callback_lock:
 			counter = next(self._callback_counter)
 			heapq.heappush(self.callback_queue, (scheduled_callback.next_fire_pulse, counter, scheduled_callback))
+
+		return scheduled_callback
 
 
 	async def play (self) -> None:
@@ -1029,6 +1032,9 @@ class Sequencer:
 			while self.callback_queue and self.callback_queue[0][0] <= pulse:
 
 				_, _, scheduled_callback = heapq.heappop(self.callback_queue)
+
+				if scheduled_callback.cancelled:
+					continue  # dropped permanently — not re-queued
 
 				next_start_pulse = scheduled_callback.cycle_start_pulse + scheduled_callback.interval_pulses
 				scheduled_callback.cycle_start_pulse = next_start_pulse
