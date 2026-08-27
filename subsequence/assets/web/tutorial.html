@@ -397,9 +397,16 @@ footer {
   letter-spacing: 1px;
   text-align: center;
 }
+.ctx-menu{position:fixed;z-index:5000;background:var(--bg-panel);border:1px solid var(--border-dim);border-radius:5px;box-shadow:0 6px 20px rgba(0,0,0,.45);padding:4px;font-family:var(--mono);font-size:11px;min-width:100px;display:none}
+.ctx-menu.show{display:block}
+.ctx-item{padding:6px 10px;border-radius:3px;cursor:pointer;color:var(--text);white-space:nowrap}
+.ctx-item:hover{background:var(--pink);color:#111}
+.ctx-item.disabled{color:var(--text-dark);cursor:default;pointer-events:none}
 </style>
 </head>
-<body>
+<body oncontextmenu="return showCtxMenu(event)">
+
+<div class="ctx-menu" id="ctxMenu"><div class="ctx-item" id="ctxCopy">Copy</div></div>
 
 <nav>
   <span class="nav-logo">POMSKI</span>
@@ -1684,6 +1691,40 @@ const observer = new IntersectionObserver(entries => {
   });
 }, { rootMargin: '-30% 0px -60% 0px' });
 sections.forEach(s => observer.observe(s));
+
+// ── Right-click Copy menu ──────────────────────────────────────────
+// Replaces the native WKWebView right-click menu (irrelevant macOS
+// Services/AutoFill items) with a plain Copy item — read-only page,
+// no editable fields, so no Cut/Paste needed here.
+function showCtxMenu(e){
+  e.preventDefault();
+  const text=window.getSelection().toString();
+  const menu=document.getElementById('ctxMenu');
+  const copy=document.getElementById('ctxCopy');
+  copy.classList.toggle('disabled',!text);
+  copy.onclick=()=>{
+    if(text){
+      navigator.clipboard.writeText(text).catch(()=>{
+        const ta=document.createElement('textarea');
+        ta.value=text;
+        ta.style.position='fixed';ta.style.opacity='0';
+        document.body.appendChild(ta);
+        ta.select();
+        try{document.execCommand('copy');}catch(err){}
+        document.body.removeChild(ta);
+      });
+    }
+    menu.classList.remove('show');
+  };
+  menu.classList.add('show');
+  const w=120,h=40;
+  menu.style.left=Math.min(e.clientX,window.innerWidth-w)+'px';
+  menu.style.top=Math.min(e.clientY,window.innerHeight-h)+'px';
+  return false;
+}
+document.addEventListener('mousedown',e=>{
+  if(!e.target.closest('#ctxMenu'))document.getElementById('ctxMenu').classList.remove('show');
+});
 </script>
 
 </body>

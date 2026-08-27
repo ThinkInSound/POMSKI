@@ -183,16 +183,38 @@ composition.conductor.line("name", start_val=0, end_val=1, duration_beats=16, sh
 # read in pattern: vel = int(p.signal("name") * 80 + 40)
 
 # ── Live bridge (AbletonOSC) ──────────────────────────────────────────────────
-live.clip_play(track=0, clip=0)
-live.scene_play(2)
-live.track_volume(0, 0.9)
-live.track_mute(1, True)
-live.device_param(0, 0, 3, 0.7)
+live.play()                                    # transport start
+live.stop_transport()                          # transport stop
 live.set_tempo(128.0)
+live.clip_play(track=0, clip=0)
+live.clip_stop(track=0, clip=0)
+live.track_stop(track=0)                       # stop all clips on a track
+live.scene_play(2)
+live.track_volume(track=0, value=0.9)          # 0.0-1.0
+live.track_pan(track=0, value=0.0)             # -1.0 (left) to 1.0 (right)
+live.track_mute(track=1, muted=True)
+live.track_send(track=0, send=0, value=0.5)    # send slot index, 0.0-1.0
+live.device_param(track=0, device=0, param=3, value=0.7)  # device/param are indices
+                                                # in Live's UI order (0-indexed);
+                                                # value is ALWAYS 0.0-1.0 normalized —
+                                                # AbletonOSC/Live map it to the param's
+                                                # real range (Hz, dB, etc), you never
+                                                # pass the real-world value
 live.watch("track/0/volume")          # pushes to composition.data["live_track_0_volume"]
+live.send(address, *args)             # raw OSC — any /live/... path AbletonOSC supports
+live.clyphx("action string")          # fire an X-Clip action (see clyphx notes below)
 live.tracks                           # list of track names
 live.connected                        # bool
 ```
+
+**Finding device/param indices**: POMSKI has no built-in lookup — AbletonOSC doesn't expose a
+name→index query either. Reliable method: right-click the parameter in Live → the Max for Live
+LOM path item (e.g. "Copy M4L path") gives something like `live_set tracks 0 devices 0
+parameters 28` — those three numbers ARE `track`, `device`, `param` directly, since AbletonOSC
+addresses the same Live Object Model tree. This beats counting knobs visually, since LOM
+parameter order doesn't always match on-screen layout (chained macros, hidden params, rack
+chains can shift it). `track` is the track's position in Live's track list, 0-indexed, matching
+`live.tracks[track]`.
 
 ## Template pattern slots
 
