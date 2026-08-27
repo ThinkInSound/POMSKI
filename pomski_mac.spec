@@ -145,7 +145,7 @@ app = BUNDLE(
     icon=str(ROOT / "pomski.icns"),
     bundle_identifier="io.thinkinsound.pomski",
     info_plist={
-        "CFBundleShortVersionString": "1.0.0",
+        "CFBundleShortVersionString": "1.1.1",
         "CFBundleName": "POMSKI",
         "NSHighResolutionCapable": True,
         "LSMinimumSystemVersion": "10.15",
