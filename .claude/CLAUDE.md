@@ -35,9 +35,16 @@ pomski_template.py
 
 ## Ableton Link integration
 
-aalink.Link() crashes in a PyInstaller frozen process due to SxS activation context DLL
-redirection. Workaround: run aalink in a detached system-Python subprocess (`aalink_bridge.py`)
-and communicate via a local TCP socket.
+**This entire section is Windows-only.** aalink.Link() crashes in a PyInstaller frozen Windows
+process due to SxS activation context DLL redirection — a Windows-specific mechanism. Workaround:
+run aalink in a detached system-Python subprocess (`aalink_bridge.py`) and communicate via a
+local TCP socket. The whole `_LinkProxy`/bridge path below is gated behind
+`sys.platform == 'win32'` in `pomski_template.py`.
+
+**On macOS**, aalink works fine directly in a frozen process — no bridge needed. `pomski_mac.spec`
+bundles aalink into the app directly, and `composition.py`'s own `_run()` (line ~1939) imports and
+runs it in-process via its normal fallback path (the one used when nothing has pre-set
+`composition._link_thread_running`, which only the Windows bridge init does).
 
 **Key classes/objects in `pomski_template.py`:**
 
@@ -74,7 +81,7 @@ for immediate, reliable delivery.
 - **REPL namespace pre-imports**: `composition`, `subsequence`, `gm_drums`, `random`, `math`, `rich` (from `live_server.py` `_build_namespace`), plus `feeds`, `live`, `pat`, `drums` (from the `pomski_template.py` override). NOTE: `notes`/`midi_notes` are NOT injected — use `subsequence.constants.midi_notes` explicitly
 - **Terminal output**: console logging uses `rich.logging.RichHandler` (colour-coded by level); file log (`pomski.log`) stays plain. Console shows INFO+ only (DEBUG → file); `websockets`/`asyncio`/`mido` loggers capped at INFO. Startup banner "POMSKI has started up successfully. Have fun!" prints and browser auto-opens (dev + frozen) once `_web_ui_server` exists — MIDI device prompt happens earlier, at `Composition()` construction
 - **Drones**: `p.drone`/`p.drone_off`/`p.note_on`/`p.note_off`/`p.silence` implemented in `pattern_midi.py` via `CcEvent` with `message_type='note_on'/'note_off'` (CcEvent has `note`/`velocity` fields; sequencer tracks them in `active_notes` so stop cleans up)
-- **Known-failing tests (pre-existing on clean checkout)**: all three `test_midi_recording.py::test_save_recording_*` tests (save path broken) and `test_rescheduling.py::test_reschedule_lookahead_validation` (code clamps/warns where test expects raise)
+- **Known-failing tests (pre-existing on clean checkout, verified still failing)**: `test_midi_recording.py::test_save_recording_creates_valid_midi_file`, `::test_save_recording_delta_ticks_are_correct`, `::test_save_recording_skips_when_not_recording` (save path broken — NOT "all" save_recording tests: `::test_save_recording_skips_when_no_events` and `::test_save_recording_generates_timestamp_filename` currently pass) and `test_rescheduling.py::test_reschedule_lookahead_validation` (code clamps/warns where test expects raise)
 - **BPM ramp**: `composition.target_bpm(bpm, bars, shape)` wraps `sequencer.set_target_bpm()`; web UI `_get_state` reads `sequencer.current_bpm` (live ramp value), not static `comp.bpm`. Link/AbletonOSC peers are NOT ramped — call `set_bpm()` after ramp to propagate
 - **Live form fix**: `schedule_form` advance callback is registered unconditionally at startup and reads `composition._form_state` via getter each bar — forms defined/redefined via REPL after `play()` advance correctly (previously only wired if form existed at startup → stuck on first section)
 - `composition._is_live` — True after `composition.live()` is called
@@ -289,8 +296,6 @@ def melody(p):                        # → replaces ch1 (first empty slot)
 ## Known issues & fixed bugs
 
 - **Python 3.14 incompatibility**: `python-rtmidi` 1.5.8 (latest) does not support Python 3.14 — removed C API functions (`PyEval_CallObject`) cause compile-time failures. **POMSKI requires Python 3.10–3.13.** Workaround: use Python 3.13 or earlier. The upstream `python-rtmidi` project is tracking 3.14 support; monitor [their GitHub repo](https://github.com/SpotlightKid/python-rtmidi/) for updates. See [PomskiREADME.md](PomskiREADME.md#troubleshooting) troubleshooting section for install help.
-- **aalink / Link import**: removed from composition.py — the aalink C extension crashes the Windows ProactorEventLoop when concurrent coroutines run. `link()` still works via `subsequence.link_clock.LinkClock` (untouched).
-- **`subsequence.link_clock` import**: module does not exist at top-level — removed stray import.
 - **`FormState` NameError**: fixed by adding `from subsequence.form_state import FormState, SectionInfo`.
 - **Nested functions in REPL**: defining `def helper()` inside a `@composition.pattern` block causes client disconnect in the live server's exec() context. All ref tab examples use flat code only.
 - **New pattern doubling**: fixed — hot-swap now checks `_builder_fn.__name__` so re-running an auto-assigned pattern hot-swaps instead of spawning another slot.
@@ -313,28 +318,49 @@ def melody(p):                        # → replaces ch1 (first empty slot)
 
 ## Distribution build pipeline
 
+**macOS** (`pomski_mac.spec`, repo root) — single step, no bridge needed (aalink bundled directly):
+
+```
+pyinstaller pomski_mac.spec -y --clean   # → dist/POMSKI.app
+```
+
+**Windows** — `pomski.spec` and `pomski_installer.iss` live in `pomski_docs/`, not repo root.
 Build order matters — `aalink_bridge.spec` must run before `pomski.spec`:
 
 ```
 pyinstaller aalink_bridge.spec          # → dist/aalink_bridge.exe
-pyinstaller pomski.spec -y --clean      # → dist/POMSKI/  (bundles bridge exe)
-iscc pomski_installer.iss               # → Output/POMSKI_Setup.exe
+pyinstaller pomski_docs/pomski.spec -y --clean      # → dist/POMSKI/  (bundles bridge exe)
+iscc pomski_docs/pomski_installer.iss               # → Output/POMSKI_Setup.exe
 ```
+
+**`aalink_bridge.spec` does not exist anywhere in this repo or its git history** — `pomski.spec`
+references it but it was apparently never committed. Either the Windows builder generates/keeps it
+locally outside version control, or the Windows pipeline is currently non-reproducible from a
+fresh checkout of this repo alone. Unverified from here (macOS) — check before assuming the
+Windows build works as documented.
 
 | File | Purpose |
 |------|---------|
-| `aalink_bridge.spec` | Bridge exe — standalone onefile, aalink included |
-| `pomski.spec` | Main exe — icon embedded, bridge exe bundled via datas |
-| `pomski_installer.iss` | Inno Setup installer script |
-| `favicon.ico` | Multi-size ICO (16/32/48/64/128/256px) |
+| `aalink_bridge.spec` | **Missing from repo** — bridge exe, standalone onefile, aalink included |
+| `pomski_docs/pomski.spec` | Windows main exe — icon embedded, bridge exe bundled via datas |
+| `pomski_docs/pomski_installer.iss` | Inno Setup installer script (Windows) |
+| `pomski_mac.spec` | macOS app bundle — aalink direct, no bridge |
+| `favicon.ico` | Multi-size ICO (16/32/48/64/128/256px), Windows |
 
-**Installer notes:**
+**Windows installer notes:**
 - Installs to `Program Files\POMSKI`, requires admin/UAC
 - Logs written to `%LOCALAPPDATA%\POMSKI\` at runtime (Program Files is read-only)
 - `[Code]` Pascal block calls `SHChangeNotify` post-install to force shell icon cache refresh
 - `{userdesktop}` + `UsedUserAreasWarning=no` required for correct desktop shortcut with admin install
 - Web favicon embedded as base64 data URI in `index.html`
 - `aalink_bridge.exe` lives in `_internal/` inside the POMSKI dist folder
+
+**macOS notes:**
+- Logs written to `~/Library/Logs/POMSKI/`
+- Requires Apple Developer signing + notarization for distribution without a Gatekeeper warning
+  (see `pomski_docs/CLAUDE_MAC.md` for the codesign/notarytool commands — that file predates the
+  actual mac port and its own "create pomski_mac.spec" section is superseded by the real one at
+  repo root, but its signing/notarization/itch.io steps are still the only place those are written down)
 
 ## Ports
 
