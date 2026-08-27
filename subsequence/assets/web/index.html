@@ -104,6 +104,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .hl-k{color:var(--pink)}       /* keywords */
 .hl-s{color:var(--green)}      /* strings */
 .hl-c{color:var(--text-dim)}   /* comments */
+.hl-bold{font-weight:700}
+.hl-italic{font-style:italic}
 .hl-n{color:var(--orange)}     /* numbers */
 .hl-d{color:var(--purple)}     /* decorators */
 .hl-b{color:var(--teal)}       /* builtins */
@@ -1102,6 +1104,13 @@ let cmdHist=[], cmdIdx=-1;
 try{const _s=JSON.parse(localStorage.getItem('pomski_bufs')||'null');if(_s&&Array.isArray(_s.bufs)&&_s.bufs.length)window._initBufs=_s;}catch(_e){}
 const _ib=window._initBufs||{};
 let bufs=_ib.bufs||['','',''], tabNames=_ib.names||['buffer 1','buffer 2','buffer 3'], activeTab=_ib.tab||0;
+// Purely cosmetic — bold/italic mark specific comment lines (by 0-indexed
+// line number) in the syntax-highlight overlay only. Never touches the
+// actual buffer text, so it can't affect what gets executed. Keyed by line
+// index, so it drifts if lines are inserted/removed above the marked one —
+// acceptable for a "make this section header stand out" feature.
+let _boldLines=(_ib.bold||bufs.map(()=>[])).map(a=>new Set(a));
+let _italicLines=(_ib.italic||bufs.map(()=>[])).map(a=>new Set(a));
 let sigHist={}, sigCvs={}, sigRAF={}, patCol={}, colIdx=0, linkAvail=false;
 let lastRawBar=0, barOffset=0;
 let isRecording=false, recCountdown=null;
@@ -1136,7 +1145,7 @@ const _BI=new Set(['abs','all','any','bin','bool','bytearray','bytes','callable'
 // Groups: 1=triple-str  2=comment  3=string  4=decorator  5=number  6=word
 const _HL_RE=/("""[\s\S]*?"""|'''[\s\S]*?''')|(#[^\n]*)|([fFrRbBuU]{0,2}(?:"[^"\\]*(?:\\[\s\S][^"\\]*)*"|'[^'\\]*(?:\\[\s\S][^'\\]*)*'))|(@[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)|(\b(?:0[xXoObB][\w]+|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?[jJ]?)\b)|([A-Za-z_]\w*)/g;
 function _esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function highlightPython(code){
+function highlightPython(code,boldLines,italicLines){
   let out='',last=0,prevKw=null;
   _HL_RE.lastIndex=0;
   for(const m of code.matchAll(_HL_RE)){
@@ -1145,7 +1154,15 @@ function highlightPython(code){
     out+=_esc(gap);last=m.index+m[0].length;
     const[full,tri,cmt,str,deco,num,word]=m;
     if(tri||str){out+=`<span class="hl-s">${_esc(full)}</span>`;prevKw=null;}
-    else if(cmt){out+=`<span class="hl-c">${_esc(full)}</span>`;prevKw=null;}
+    else if(cmt){
+      let cls='hl-c';
+      if(boldLines||italicLines){
+        const line=code.slice(0,m.index).split('\n').length-1;
+        if(boldLines&&boldLines.has(line))cls+=' hl-bold';
+        if(italicLines&&italicLines.has(line))cls+=' hl-italic';
+      }
+      out+=`<span class="${cls}">${_esc(full)}</span>`;prevKw=null;
+    }
     else if(deco){out+=`<span class="hl-d">${_esc(full)}</span>`;prevKw=null;}
     else if(num){out+=`<span class="hl-n">${_esc(full)}</span>`;prevKw=null;}
     else if(word){
@@ -1161,7 +1178,7 @@ function updateHighlight(){
   const ta=document.getElementById('codeEditor'),hl=document.getElementById('editorHL');
   if(!hl)return;
   // Trailing space ensures pre height tracks textarea (browsers collapse trailing \n in pre)
-  hl.innerHTML=highlightPython(ta.value)+(ta.value.endsWith('\n')?' ':'');
+  hl.innerHTML=highlightPython(ta.value,_boldLines[activeTab],_italicLines[activeTab])+(ta.value.endsWith('\n')?' ':'');
   hl.scrollTop=ta.scrollTop;hl.scrollLeft=ta.scrollLeft;
 }
 document.getElementById('codeEditor').addEventListener('input',()=>{updateHighlight();clearErrorLine();});
@@ -1173,7 +1190,7 @@ document.getElementById('codeEditor').addEventListener('scroll',()=>{
 function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ── BUFFER TABS ──────────────────────────────────────────────────────────────
-function saveBuffers(){bufs[activeTab]=document.getElementById('codeEditor').value;try{localStorage.setItem('pomski_bufs',JSON.stringify({bufs,names:tabNames,tab:activeTab}));}catch(e){}}
+function saveBuffers(){bufs[activeTab]=document.getElementById('codeEditor').value;try{localStorage.setItem('pomski_bufs',JSON.stringify({bufs,names:tabNames,tab:activeTab,bold:_boldLines.map(s=>[...s]),italic:_italicLines.map(s=>[...s])}));}catch(e){}}
 window.addEventListener('beforeunload',saveBuffers);
 function renderTabs(){
   const bar=document.getElementById('tabBar'),add=document.getElementById('tabAdd');
@@ -1189,11 +1206,11 @@ function switchTab(i){bufs[activeTab]=document.getElementById('codeEditor').valu
 function removeTab(i){
   if(bufs.length<=1)return;
   bufs[activeTab]=document.getElementById('codeEditor').value;
-  bufs.splice(i,1);tabNames.splice(i,1);
+  bufs.splice(i,1);tabNames.splice(i,1);_boldLines.splice(i,1);_italicLines.splice(i,1);
   if(activeTab>=bufs.length)activeTab=bufs.length-1;
   else if(activeTab>i)activeTab--;
   document.getElementById('codeEditor').value=bufs[activeTab]||'';
-  renderTabs();saveBuffers();
+  renderTabs();updateHighlight();saveBuffers();
 }
 document.getElementById('tabBar').addEventListener('click',e=>{
   if(e.target.closest('.tab-close')){const t=e.target.closest('.tab');if(t)removeTab(+t.dataset.idx);return;}
@@ -1211,7 +1228,7 @@ document.getElementById('tabBar').addEventListener('dblclick',e=>{
 });
 document.getElementById('tabAdd').addEventListener('click',()=>{
   bufs[activeTab]=document.getElementById('codeEditor').value;
-  bufs.push('');tabNames.push('buffer '+(bufs.length));renderTabs();switchTab(bufs.length-1);saveBuffers();
+  bufs.push('');tabNames.push('buffer '+(bufs.length));_boldLines.push(new Set());_italicLines.push(new Set());renderTabs();switchTab(bufs.length-1);saveBuffers();
 });
 renderTabs();
 document.getElementById('codeEditor').value=bufs[activeTab]||'';
@@ -1543,7 +1560,28 @@ document.getElementById('codeEditor').addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.shiftKey&&!e.ctrlKey){e.preventDefault();evalCode(getBlock());}
   if(e.key==='Enter'&&e.shiftKey&&e.ctrlKey){e.preventDefault();evalCode();}
   if(e.key==='Tab'){e.preventDefault();const s=e.target,v=s.value,pos=s.selectionStart;s.value=v.slice(0,pos)+'    '+v.slice(s.selectionEnd);s.selectionStart=s.selectionEnd=pos+4;s.dispatchEvent(new Event('input',{bubbles:true}));}
+  if(e.metaKey&&(e.key==='b'||e.key==='B')){e.preventDefault();toggleCommentStyle('bold');}
+  if(e.metaKey&&(e.key==='i'||e.key==='I')){e.preventDefault();toggleCommentStyle('italic');}
 });
+// Cmd+B / Cmd+I — purely cosmetic bold/italic for a comment line the cursor
+// is inside, e.g. for visually marking section-header comments. No-op if
+// the cursor isn't in a comment (there's nothing sensible to bold in code
+// that actually executes).
+function toggleCommentStyle(kind){
+  const ta=document.getElementById('codeEditor');
+  const text=ta.value,pos=ta.selectionStart;
+  _HL_RE.lastIndex=0;
+  let inComment=false;
+  for(const m of text.matchAll(_HL_RE)){
+    if(m[2]&&pos>=m.index&&pos<=m.index+m[0].length){inComment=true;break;}
+  }
+  if(!inComment)return;
+  const line=text.slice(0,pos).split('\n').length-1;
+  const set=kind==='bold'?_boldLines[activeTab]:_italicLines[activeTab];
+  if(set.has(line))set.delete(line);else set.add(line);
+  updateHighlight();
+  saveBuffers();
+}
 {let _saveT=0;document.getElementById('codeEditor').addEventListener('input',()=>{clearTimeout(_saveT);_saveT=setTimeout(saveBuffers,1500);});}
 
 // ── EDITOR FONT ZOOM (Cmd +/-) ──────────────────────────────────────────────
