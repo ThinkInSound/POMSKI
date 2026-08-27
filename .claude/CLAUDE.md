@@ -116,8 +116,8 @@ p.melody(state, step=0.25, velocity=90, duration=0.2, chord_tones=None)  # Narmo
 # ── Generative rhythm ─────────────────────────────────────────────────────────
 p.markov(transitions, pitch_map, velocity=100, duration=0.1, step=0.25, start=None)  # transitions: {state: [(next, weight), ...]}
 p.lsystem(pitch_map, axiom, rules, generations=3, step=None, velocity=80, duration=0.2)
-p.cellular_1d(pitch, rule=30, generation=None, velocity=60, duration=0.1)   # Rules 30/90/110
-p.cellular_2d(pitches, rule="B368/S245", generation=None, velocity=60, duration=0.1, seed=1, density=0.5)
+p.cellular_1d(pitch, rule=30, generation=None, velocity=60, duration=0.1, no_overlap=False, dropout=0.0, rng=None)   # Rules 30/90/110
+p.cellular_2d(pitches, rule="B368/S245", generation=None, velocity=60, duration=0.1, no_overlap=False, dropout=0.0, seed=1, density=0.5, rng=None)
 # NOTE: pink_noise is NOT a p.* method — it's sequence_utils.pink_noise(steps, sources=16, seed=0) -> list[float]
 p.logistic(steps=16, r=3.9, x0=0.5, pitch_range=(48,72), velocity_range=(60,120), duration=0.25)  # r<3 stable, >3.57 chaotic
 p.lorenz(steps=16, pitch_range=(48,72), velocity=80, duration=0.25, s=10.0, r=28.0, b=2.667, dt=0.01)
@@ -126,16 +126,23 @@ p.lorenz(steps=16, pitch_range=(48,72), velocity=80, duration=0.25, s=10.0, r=28
 # yourself (copy the body from pattern_algorithmic.py) and read p.conductor.get() per step
 p.gray_scott(pitch=60, n=16, f=0.055, k=0.062, iterations=200, velocity_range=(40,120), duration=0.25)
 # n=grid size (= note count), f=feed rate, k=kill rate, iterations=simulation steps before reading the field
-p.bresenham_poly(parts, step=0.25, velocity=80)                # interlocking multi-voice grid
-p.ghost_fill(pitch, density=0.3, velocity=35, bias="uniform", no_overlap=True, grid=None, duration=0.1)
-p.thin(pitch, strategy="strength", amount=0.5, grid=None)      # musical inverse of ghost_fill
+p.bresenham_poly(parts, velocity=100, duration=0.1, grid=None, dropout=0.0, no_overlap=False, rng=None)
+# parts is a dict: {pitch: density_weight} e.g. {"kick_1": 0.25, "snare_1": 0.125} — each step
+# goes to exactly one voice (never overlapping), weights <1.0 leave the remainder as rests.
+# velocity can also be a dict ({pitch: velocity}) instead of one int for all voices.
+# NOTE: there is no `step` param — that was wrong in this reference; use `grid` instead.
+p.ghost_fill(pitch, density=0.3, velocity=35, bias="uniform", no_overlap=True, grid=None, duration=0.1, rng=None)
+p.thin(pitch, strategy="strength", amount=0.5, grid=None, rng=None)      # musical inverse of ghost_fill
 
 # ── Modifiers (call after placing notes) ──────────────────────────────────────
-p.randomize(timing=0.03, velocity=0.0)
+p.randomize(timing=0.03, velocity=0.0, rng=None)
 p.dropout(probability, rng=None)
-p.shift(steps)
+p.shift(steps, grid=None)                             # grid: step-grid size steps are measured in; defaults to pattern's grid
 p.quantize("C", "dorian")
 p.quantize_m21("C", "MelodicMinorScale")              # requires music21; full scale library
+# quantize_m21 also takes scala_name=None — pass a Scala tuning filename to use music21's
+# bundled Scala archive (3,935 microtonal tuning files) instead of scale_name; scala_name wins
+# if both are given
 p.transpose(semitones)
 p.invert(pivot=60)                                    # invert intervals around a pivot pitch
 p.reverse()                                           # reverse note order
@@ -149,8 +156,14 @@ p.groove(template, strength=1.0)                      # Groove template (or Groo
 
 # ── Pitch bend & portamento ───────────────────────────────────────────────────
 p.portamento(time=0.15, shape="linear", resolution=1, bend_range=2.0, wrap=True)
-p.slide(notes=None, steps=None, time=0.15, shape="linear", bend_range=2.0, extend=False)
-p.bend(note, amount, start=0.0, end=1.0, shape="linear", resolution=1)   # note/amount required
+p.slide(notes=None, steps=None, time=0.15, shape="linear", resolution=1, bend_range=2.0, wrap=True, extend=True)
+# extend defaults to True (this reference previously said False) — extending the preceding
+# note's duration to meet the slide target, no retrigger, is the actual 303-style default
+p.bend(note, amount, start=0.0, end=1.0, shape="linear", resolution=1)
+# `note` is a NOTE INDEX (0=first note placed, -1=last), NOT a MIDI pitch — raises IndexError
+# if out of range. `amount` is normalized -1.0..1.0 (not semitones); with the standard ±2
+# semitone pitch wheel range, 0.5 = 1 semitone. start/end are fractions of THAT note's own
+# duration (0.0=onset, 1.0=note end), not beat positions.
 
 # ── CC & OSC automation ───────────────────────────────────────────────────────
 p.cc_ramp(control, start, end, beat_start=0.0, beat_end=None, resolution=1, shape="linear")
@@ -170,7 +183,7 @@ p.silence(beat=0)                                     # CC 123 + CC 120 (all not
 p.bar          # global bar count since playback started (int)
 p.cycle        # current loop/cycle count, 0-indexed
 p.rng          # seeded random.Random instance (deterministic when composition.seed() set)
-p.param(key, default)                                 # read tweakable param from composition.data
+p.param(name, default=None)                           # read tweakable param from composition.data
 p.signal(name)                                        # read conductor LFO/ramp — shorthand for p.conductor.get(name, p.bar*4)
 # p.signal() is fixed to beat 0 of the current bar — calling it once and reusing the value for
 # every note in the pattern only changes velocity/pitch/etc. per REBUILD (once per `length`
@@ -192,7 +205,7 @@ composition.unmute("ch1")
 composition.target_bpm(bpm, bars=4, shape="ease_in_out")      # smooth BPM ramp
 composition.form_next(section_name)                           # override next section
 composition.form_jump(section_name)                           # jump immediately
-composition.freeze(bars=4)                                    # capture harmony → Progression
+composition.freeze(bars)                                      # capture harmony → Progression; bars is REQUIRED, no default
 composition.schedule(func, cycle_beats=4)                     # background polling/task loop
 # Works when called live from the REPL too (registers directly on the running sequencer) —
 # re-calling with the same function replaces its previous registration rather than stacking a
@@ -206,7 +219,7 @@ composition.data                                              # shared state dic
 
 # ── Conductor signals ─────────────────────────────────────────────────────────
 composition.conductor.lfo("name", shape="sine", cycle_beats=4)
-composition.conductor.line("name", start_val=0, end_val=1, duration_beats=16, shape="linear")
+composition.conductor.line("name", start_val=0, end_val=1, duration_beats=16, start_beat=0.0, loop=False, shape="linear")
 # shapes: "linear","sine","triangle","saw","square","ease_in","ease_out","ease_in_out","s_curve"
 # read in pattern: vel = int(p.signal("name") * 80 + 40)
 
