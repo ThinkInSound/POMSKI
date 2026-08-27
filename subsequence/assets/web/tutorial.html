@@ -952,16 +952,16 @@ mark.find-hl.current{background:var(--pink)}
       <td class="m-desc">Snap all notes to the nearest pitch in a scale. Key is a note name (<code>"C"</code>, <code>"F#"</code>, <code>"Bb"</code>). Mode is a scale name (<code>"ionian"</code>, <code>"dorian"</code>, <code>"minor"</code>, <code>"harmonic_minor"</code>, etc.).</td>
     </tr>
     <tr>
-      <td class="m-name">p.quantize_m21(key, scale_name)</td>
-      <td class="m-desc">Like <code>p.quantize()</code> but unlocks Music21's full scale library. Use for ragas, octatonic, whole-tone, and other exotic scales. Requires <code>pip install music21</code>.</td>
+      <td class="m-name">p.quantize_m21(key, scale_name, scala_name=None)</td>
+      <td class="m-desc">Like <code>p.quantize()</code> but unlocks Music21's full scale library. Use for ragas, octatonic, whole-tone, and other exotic scales. Requires <code>pip install music21</code>. <code>scala_name</code> loads a microtonal tuning from music21's bundled Scala archive (3,935 files) instead — takes precedence over <code>scale_name</code> when given.</td>
     </tr>
     <tr>
       <td class="m-name">p.transpose(semitones)</td>
       <td class="m-desc">Shift all notes up or down by a fixed number of semitones. Combine with <code>p.cycle</code> for automatic transposition.</td>
     </tr>
     <tr>
-      <td class="m-name">p.shift(steps)</td>
-      <td class="m-desc">Move all notes forward or backward in time by <code>steps</code> 16th-note positions. Useful for polyrhythmic offset against other patterns.</td>
+      <td class="m-name">p.shift(steps, grid=None)</td>
+      <td class="m-desc">Move all notes forward or backward in time by <code>steps</code> grid positions (16th-notes by default — pass <code>grid</code> to use a different step-grid size). Useful for polyrhythmic offset against other patterns.</td>
     </tr>
     <tr>
       <td class="m-name">p.reverse()</td>
@@ -972,7 +972,7 @@ mark.find-hl.current{background:var(--pink)}
       <td class="m-desc">Re-scale all velocities to fit within a <code>low–high</code> range, preserving relative dynamics. Great for humanising step-sequenced drum patterns.</td>
     </tr>
     <tr>
-      <td class="m-name">p.thin(pitch, strategy, amount)</td>
+      <td class="m-name">p.thin(pitch, strategy, amount, grid=None, rng=None)</td>
       <td class="m-desc">Remove notes for a specific pitch or drum name based on rhythmic position. <code>amount=0.5</code> removes roughly half; <code>amount=1.0</code> removes all qualifying notes. Strategies: <code>"strength"</code> (default — weakest positions drop first), <code>"sixteenths"</code>, <code>"offbeat"</code>, <code>"e_and_a"</code>, <code>"downbeat"</code>, <code>"upbeat"</code>, <code>"uniform"</code>. Unlike <code>p.dropout()</code>, targets one instrument and respects rhythmic position.</td>
     </tr>
   </table>
@@ -1184,7 +1184,8 @@ mark.find-hl.current{background:var(--pink)}
     Not every signal should loop forever. <code>composition.conductor.line()</code> ramps from one
     value to another once over a fixed number of beats, then holds at <code>end_val</code> — good for
     a build-up, a filter sweep into a drop, or a fade. Set <code>loop=True</code> to have it repeat
-    the ramp instead of holding. <code>p.signal()</code> reads a <code>line()</code> exactly the same
+    the ramp instead of holding, or <code>start_beat</code> to delay when the ramp begins (default
+    0 — starts immediately). <code>p.signal()</code> reads a <code>line()</code> exactly the same
     way it reads an <code>lfo()</code>.
   </p>
 
