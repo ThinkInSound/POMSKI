@@ -332,26 +332,32 @@ def melody(p):                        # → replaces ch1 (first empty slot)
 pyinstaller pomski_mac.spec -y --clean   # → dist/POMSKI.app
 ```
 
-**Windows** — `pomski.spec` and `pomski_installer.iss` live in `pomski_docs/`, not repo root.
-Build order matters — `aalink_bridge.spec` must run before `pomski.spec`:
+**Windows** — build order matters, `aalink_bridge.spec` must run before `pomski.spec`:
 
 ```
 pyinstaller aalink_bridge.spec          # → dist/aalink_bridge.exe
-pyinstaller pomski_docs/pomski.spec -y --clean      # → dist/POMSKI/  (bundles bridge exe)
-iscc pomski_docs/pomski_installer.iss               # → Output/POMSKI_Setup.exe
+pyinstaller pomski.spec -y --clean      # → dist/POMSKI/  (bundles bridge exe)
+iscc pomski_installer.iss               # → Output/POMSKI_Setup.exe
 ```
 
-**`aalink_bridge.spec` does not exist anywhere in this repo or its git history** — `pomski.spec`
-references it but it was apparently never committed. Either the Windows builder generates/keeps it
-locally outside version control, or the Windows pipeline is currently non-reproducible from a
-fresh checkout of this repo alone. Unverified from here (macOS) — check before assuming the
-Windows build works as documented.
+All three files live at **repo root**. They must stay there: every spec does
+`ROOT = Path(SPECPATH)` (the spec's *own* directory) and the `.iss` uses paths relative to itself
+(`favicon.ico`, `OutputDir=Output`, `SourceDir=dist\POMSKI`). They were previously moved into
+`pomski_docs/`, which silently broke every one of those paths — nothing errors at rest, the build
+just fails on a fresh checkout. Don't relocate them without rewriting the paths inside.
+
+`aalink_bridge.spec` was missing from the repo entirely until it was reconstructed — `pomski.spec`
+depended on an artifact nothing in version control could produce, so the Windows pipeline was not
+reproducible from a clean clone. Smoke-tested on macOS (frozen bridge connects back, completes the
+READY handshake, streams live tempo), which validates the spec logic and that aalink bundles into a
+frozen onefile correctly. The Windows-specific SxS/DLL behaviour it exists to work around is, by
+definition, only testable on Windows.
 
 | File | Purpose |
 |------|---------|
-| `aalink_bridge.spec` | **Missing from repo** — bridge exe, standalone onefile, aalink included |
-| `pomski_docs/pomski.spec` | Windows main exe — icon embedded, bridge exe bundled via datas |
-| `pomski_docs/pomski_installer.iss` | Inno Setup installer script (Windows) |
+| `aalink_bridge.spec` | Bridge exe — standalone onefile, aalink bundled (Windows only) |
+| `pomski.spec` | Windows main exe — icon embedded, bridge exe bundled via datas, aalink EXCLUDED |
+| `pomski_installer.iss` | Inno Setup installer script (Windows) |
 | `pomski_mac.spec` | macOS app bundle — aalink direct, no bridge |
 | `favicon.ico` | Multi-size ICO (16/32/48/64/128/256px), Windows |
 

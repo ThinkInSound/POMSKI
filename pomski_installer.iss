@@ -12,7 +12,7 @@
 ; Output: Output\POMSKI_Setup.exe
 
 #define AppName      "POMSKI"
-#define AppVersion   "1.0.2"
+#define AppVersion   "1.1.1"
 #define AppPublisher "ThinkInSound"
 #define AppURL       "https://github.com/ThinkInSound/POMSKI"
 #define AppExeName   "POMSKI.exe"
