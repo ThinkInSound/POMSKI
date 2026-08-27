@@ -1429,6 +1429,38 @@ mark.find-hl.current{background:var(--pink)}
     <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 _ 63 65 _ 67"</span>, <span class="var">velocity</span>=<span class="var">vel</span>)</pre>
   </div>
 
+  <h3>Continuous parameter automation (e.g. a filter sweep)</h3>
+  <p>
+    Calling <code>live.device_param(...)</code> inside a pattern only fires <b>once per rebuild</b> —
+    a pattern's builder function runs once per cycle (once every <code>length</code> beats), so the
+    parameter jumps once and holds until the next rebuild. For a device parameter that changes
+    <i>continuously</i> (a filter cutoff sweeping with an LFO, for example), use
+    <code>composition.schedule()</code> instead — it calls a function repeatedly on its own fast
+    beat interval, independent of any pattern's length.
+  </p>
+  <p>
+    Run this once (from the REPL, or before <code>composition.play()</code>) — <b>not</b> inside a
+    pattern's builder function, or a new repeating task registers on every rebuild:
+  </p>
+  <div class="code-block">
+    <pre><span class="var">composition</span>.<span class="var">conductor</span>.<span class="fn">lfo</span>(<span class="str">"cutoff"</span>, <span class="var">cycle_beats</span>=<span class="num">8</span>, <span class="var">min_val</span>=<span class="num">0.1</span>, <span class="var">max_val</span>=<span class="num">0.9</span>)
+
+<span class="kw">def</span> <span class="fn">_update_cutoff</span>(<span class="var">p</span>):
+    <span class="cm"># p.cycle here is composition.schedule's own call counter (0, 1, 2…),</span>
+    <span class="cm"># not a pattern's p.cycle — multiply by cycle_beats to get the</span>
+    <span class="cm"># absolute transport beat the conductor signal needs.</span>
+    <span class="var">beat</span> = <span class="var">p</span>.<span class="var">cycle</span> * <span class="num">0.25</span>
+    <span class="var">cutoff</span> = <span class="var">composition</span>.<span class="var">conductor</span>.<span class="fn">get</span>(<span class="str">"cutoff"</span>, <span class="var">beat</span>)
+    <span class="var">live</span>.<span class="fn">device_param</span>(<span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>, <span class="var">cutoff</span>)
+
+<span class="var">composition</span>.<span class="fn">schedule</span>(<span class="var">_update_cutoff</span>, <span class="var">cycle_beats</span>=<span class="num">0.25</span>)  <span class="cm"># fires 4x per beat</span></pre>
+  </div>
+  <p>
+    Smaller <code>cycle_beats</code> = smoother sweep, more OSC traffic. <code>0.25</code> (16th-note
+    resolution) is plenty smooth for a filter cutoff; drop to <code>0.0625</code> or lower only if
+    you can hear stepping.
+  </p>
+
   <h3>ClyphX — trigger actions by track/clip naming</h3>
   <p>
     POMSKI bundles the free <a href="https://github.com/ldrolez/clyphx-live11" target="_blank">ClyphX</a>
