@@ -1520,7 +1520,38 @@ class Composition:
                 schedule.
             defer: If True, skip the pulse-0 fire and defer the first
                 repeating call to just before the second cycle boundary.
+
+        Calling this after ``composition.play()`` (e.g. live from the REPL)
+        schedules the callback immediately on the running sequencer instead
+        of queuing it for startup — mirrors ``@composition.pattern``'s
+        live hot-add path. ``wait_for_initial`` has no meaning once already
+        playing (there's no startup to block), so it's treated the same as
+        ``defer`` in that case.
         """
+
+        if self._is_live and self._main_loop is not None:
+
+            accepts_ctx = _fn_has_parameter(fn, "p")
+            wrapped = _make_safe_callback(fn, accepts_context = accepts_ctx)
+            pulses_per_beat = self._sequencer.pulses_per_beat
+            current_pulse = self._sequencer.pulse_count
+
+            if defer or wait_for_initial:
+                start_pulse = current_pulse + int(cycle_beats * pulses_per_beat)
+            else:
+                start_pulse = current_pulse
+
+            async def _schedule () -> None:
+                await self._sequencer.schedule_callback_repeating(
+                    callback = wrapped,
+                    interval_beats = cycle_beats,
+                    start_pulse = start_pulse,
+                    reschedule_lookahead = reschedule_lookahead
+                )
+
+            asyncio.run_coroutine_threadsafe(_schedule(), loop = self._main_loop)
+            logger.info(f"Live-scheduled '{fn.__name__}' (every {cycle_beats} beats)")
+            return
 
         self._pending_scheduled.append(_PendingScheduled(fn, cycle_beats, reschedule_lookahead, wait_for_initial, defer))
 
