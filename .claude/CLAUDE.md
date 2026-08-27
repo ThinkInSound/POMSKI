@@ -104,6 +104,11 @@ p.arpeggio(pitches, step=0.25, velocity=100, duration=None, direction="up")  # "
 # arpeggio() does `for p in pitches`, so a string iterates character-by-character and
 # _resolve_pitch(' ') throws ValueError on the first space. That notation is p.seq()-only.
 p.melody(state, step=0.25, velocity=90, duration=0.2, chord_tones=None)  # Narmour IR melody generator
+# `state` is NOT a placeholder — it's a required subsequence.MelodicState(key="C", mode="ionian",
+# low=48, high=72, nir_strength=0.5, chord_weight=0.4) instance you construct yourself, ONCE, at
+# module level (outside any pattern function). Recreating it inside the pattern wipes its
+# melodic memory every rebuild, defeating the point. Passing a plain string/undefined name
+# throws NameError or AttributeError, not a helpful "you forgot to construct MelodicState".
 
 # ── Generative rhythm ─────────────────────────────────────────────────────────
 p.markov(transitions, pitch_map, velocity=100, duration=0.1, step=0.25, start=None)  # transitions: {state: [(next, weight), ...]}
