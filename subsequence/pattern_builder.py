@@ -372,7 +372,7 @@ class PatternBuilder(
 
 		Example:
 			```python
-			p.fill("hh", step=0.25)  # sixteenth notes
+			p.fill("hi_hat_closed", step=0.25)  # sixteenth notes
 			```
 		"""
 
