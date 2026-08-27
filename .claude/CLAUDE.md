@@ -42,9 +42,17 @@ local TCP socket. The whole `_LinkProxy`/bridge path below is gated behind
 `sys.platform == 'win32'` in `pomski_template.py`.
 
 **On macOS**, aalink works fine directly in a frozen process — no bridge needed. `pomski_mac.spec`
-bundles aalink into the app directly, and `composition.py`'s own `_run()` (line ~1939) imports and
-runs it in-process via its normal fallback path (the one used when nothing has pre-set
-`composition._link_thread_running`, which only the Windows bridge init does).
+bundles aalink into the app directly, and `pomski_template.py`'s own `_start_direct_link()` runs
+`aalink.Link` in-process on a daemon thread with its own asyncio loop (aalink needs a *running*
+loop, and `composition._main_loop` doesn't exist yet at that point in startup). It wraps the real
+Link in `_DirectLinkProxy`, which exposes the same shape web_ui.py's `_get_link_state()` reads off
+the Windows `_LinkProxy` (`enabled`/`tempo`/`num_peers` plus `_tempo`/`_num_peers`).
+
+**Neither platform uses `composition.py`'s own aalink init** (`_run()`, line ~1939):
+`pomski_template.py` sets `composition._link_thread_running = True` **unconditionally** (not inside
+the `win32` branch), which suppresses it everywhere. The `_run()` path is effectively dead code for
+anything launched via the template — it only runs for a bare `subsequence` script that never sets
+that flag. Dispatch is `if sys.platform == 'win32': <bridge>  else: _start_direct_link()`.
 
 **Key classes/objects in `pomski_template.py`:**
 

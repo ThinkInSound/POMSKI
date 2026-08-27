@@ -114,25 +114,6 @@ if getattr(sys, 'frozen', False) and sys.platform == 'darwin' and _marker_seen:
     except OSError:
         pass
 
-# Temporary diagnostics for the picker/relaunch hand-off — safe to remove
-# once this is confirmed working across launches.
-def _debug(msg: str) -> None:
-    try:
-        import datetime as _dt
-        with open(os.path.join(_LOG_DIR, 'picker_debug.log'), 'a', encoding='utf-8') as _pf:
-            _pf.write(f"{_dt.datetime.now().isoformat()} pid={os.getpid()} {msg}\n")
-    except Exception:
-        pass
-
-_debug(
-    f"startup frozen={getattr(sys,'frozen',False)} platform={sys.platform} "
-    f"marker_path={_WRAPPER_MARKER} marker_seen={_marker_seen} "
-    f"launched_via_wrapper={_launched_via_wrapper} "
-    f"stdin_isatty={sys.stdin.isatty()} "
-    f"POMSKI_RELAUNCHED={os.environ.get('POMSKI_RELAUNCHED')!r} "
-    f"POMSKI_LAUNCH_TTY={os.environ.get('POMSKI_LAUNCH_TTY')!r}"
-)
-
 def _run_midi_picker_and_relaunch() -> None:
     try:
         import mido
@@ -173,18 +154,14 @@ def _run_midi_picker_and_relaunch() -> None:
         pass
 
     print("\nStarting POMSKI…\n")
-    child = subprocess.Popen(
+    subprocess.Popen(
         [sys.executable] + sys.argv[1:],
         env=env,
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
-    _debug(f"picker: outputs={outputs} device={device!r} spawned_child_pid={child.pid} exiting")
     os._exit(0)
 
-_debug(
-    f"gate: will_run_picker={_launched_via_wrapper and sys.stdin.isatty() and os.environ.get('POMSKI_RELAUNCHED') != '1'}"
-)
 if (_launched_via_wrapper and sys.stdin.isatty()
         and os.environ.get('POMSKI_RELAUNCHED') != '1'):
     _run_midi_picker_and_relaunch()  # never returns
@@ -221,11 +198,24 @@ faulthandler.enable(file=_fault_file)
 # ── Crash logger ──────────────────────────────────────────────────────────────
 def _write_crash_log() -> None:
     log_path = os.path.join(_LOG_DIR, 'crash.log')
-    with open(log_path, 'w') as f:
-        traceback.print_exc(file=f)
-    print(f'\n[CRASH] Error log written to: {log_path}')
-    traceback.print_exc()
-    input('\nPress Enter to exit...')
+    try:
+        with open(log_path, 'w') as f:
+            traceback.print_exc(file=f)
+        print(f'\n[CRASH] Error log written to: {log_path}')
+        traceback.print_exc()
+    except Exception:
+        pass
+    # Only pause when someone is actually watching a terminal. The frozen
+    # app runs detached with stdin=DEVNULL (and no console at all once the
+    # launch Terminal closes), where input() raises EOFError — which would
+    # then propagate out of the except-BaseException handler that called us,
+    # replacing the real crash with a confusing EOFError and skipping the
+    # exit(1) below it.
+    try:
+        if sys.stdin and sys.stdin.isatty():
+            input('\nPress Enter to exit...')
+    except Exception:
+        pass
 
 def _asyncio_exception_handler(loop, context):
     msg = context.get('exception', context['message'])
@@ -778,7 +768,6 @@ try:
         closing it triggers neither a "still running" confirmation nor any
         risk of SIGHUP to a live process."""
         tty_path = os.environ.get('POMSKI_LAUNCH_TTY')
-        _debug(f"close_launch_terminal: tty_path={tty_path!r}")
         if sys.platform != 'darwin' or not tty_path:
             return
         import time
@@ -796,10 +785,9 @@ try:
         end tell
         '''
         try:
-            result = subprocess.run(['osascript', '-e', script], capture_output=True, timeout=5)
-            _debug(f"close_launch_terminal: osascript rc={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}")
+            subprocess.run(['osascript', '-e', script], capture_output=True, timeout=5)
         except Exception as _e:
-            _debug(f"close_launch_terminal: osascript raised {_e!r}")
+            logging.debug(f"Could not close launch Terminal: {_e!r}")
 
     # pywebview (WKWebView) renders the web UI in a native window, so no
     # browser is needed. macOS requires the GUI to own the main thread, so
