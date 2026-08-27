@@ -96,6 +96,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .editor-wrap.flash-err{box-shadow:inset 0 0 0 2px var(--red);transition:box-shadow 0s}
 /* Syntax-highlight overlay sits behind the textarea */
 #editorHL{position:absolute;top:0;left:0;right:0;bottom:0;margin:0;padding:16px;border:none;outline:none;font-family:var(--mono);font-size:13px;line-height:1.7;tab-size:4;white-space:pre-wrap;word-wrap:break-word;overflow:hidden;pointer-events:none;z-index:0;color:var(--text);background:transparent;box-sizing:border-box}
+#editorErrLine{position:absolute;left:0;right:0;height:22px;pointer-events:none;z-index:0;background:rgba(255,79,79,.16);border-left:3px solid var(--red);display:none}
 /* Textarea is transparent so highlight layer shows through */
 .code-editor{position:relative;z-index:1;width:100%;height:100%;background:transparent;border:none;outline:none;color:transparent;caret-color:var(--pink);font-family:var(--mono);font-size:13px;line-height:1.7;padding:16px;resize:none;tab-size:4}
 .code-editor::selection{background:rgba(157,111,255,.35)}
@@ -335,6 +336,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="tab-add" id="tabAdd">+</div>
       </div>
       <div class="editor-wrap">
+        <div id="editorErrLine" aria-hidden="true"></div>
         <pre id="editorHL" aria-hidden="true"></pre>
         <textarea class="code-editor" id="codeEditor" spellcheck="false"
           placeholder="# Write live code here&#10;# Shift+Enter or click Run to execute"></textarea>
@@ -1155,10 +1157,11 @@ function updateHighlight(){
   hl.innerHTML=highlightPython(ta.value)+(ta.value.endsWith('\n')?' ':'');
   hl.scrollTop=ta.scrollTop;hl.scrollLeft=ta.scrollLeft;
 }
-document.getElementById('codeEditor').addEventListener('input',updateHighlight);
+document.getElementById('codeEditor').addEventListener('input',()=>{updateHighlight();clearErrorLine();});
 document.getElementById('codeEditor').addEventListener('scroll',()=>{
   const ta=document.getElementById('codeEditor'),hl=document.getElementById('editorHL');
   if(hl){hl.scrollTop=ta.scrollTop;hl.scrollLeft=ta.scrollLeft;}
+  positionErrorLine();
 });
 function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
@@ -1225,7 +1228,23 @@ function handleMsg(msg){
     const ew=document.querySelector('.editor-wrap');
     ew.classList.remove('flash-ok','flash-err');
     void ew.offsetWidth;
-    if(msg.repl_error){log(`<pre class="ll-pre ll-err">${escHtml(msg.repl_error)}</pre>`,'err',true);ew.classList.add('flash-err');}
+    if(msg.repl_error){
+      log(`<pre class="ll-pre ll-err">${escHtml(msg.repl_error)}</pre>`,'err',true);
+      ew.classList.add('flash-err');
+      // "<live>" is the filename compile() is given for submitted code (see
+      // live_server.py _evaluate) — the last such frame is the line in the
+      // user's own block that failed, before the traceback dives into
+      // library internals with real filenames.
+      const lineMatches=[...msg.repl_error.matchAll(/File "<live>", line (\d+)/g)];
+      if(lineMatches.length){
+        const relLine=parseInt(lineMatches[lineMatches.length-1][1],10);
+        const absLine=_lastRunOffset+relLine-1;
+        showErrorLine(absLine);
+        const ta=document.getElementById('codeEditor');
+        ta.scrollTop=Math.max(0,(absLine-3)*_editorLineHeightPx());
+        positionErrorLine();
+      }
+    }
     else if(msg.repl_result==='OK'){log('=> OK','ok');ew.classList.add('flash-ok');}
     else{log(`<pre class="ll-pre">${highlightPython(msg.repl_result)}</pre>`,'info',true);ew.classList.add('flash-ok');}
     setTimeout(()=>ew.classList.remove('flash-ok','flash-err'),500);
@@ -1450,6 +1469,11 @@ function stopRecord(){
 // ── RUN CODE ──────────────────────────────────────────────────────────────────
 let allMuted=false, isPlaying=true;
 
+// Absolute editor line (0-indexed) that the most recent run's code started
+// on — a Shift+Enter block rarely starts at line 1, but the traceback line
+// number the server sends back is always relative to just that submitted
+// block, so this offset is what maps it back to a real editor line.
+let _lastRunOffset=0;
 function getBlock(){
   const ta=document.getElementById('codeEditor');
   const val=ta.value, pos=ta.selectionStart;
@@ -1462,13 +1486,35 @@ function getBlock(){
   while(e<val.length){if(val[e]==='\n'&&val[e+1]==='\n')break;e++;}
   // Select the block so the user can see what ran
   ta.setSelectionRange(s,e);
+  _lastRunOffset=val.slice(0,s).split('\n').length-1;
   return val.slice(s,e).trim();
 }
 
+// ── ERROR LINE HIGHLIGHT ────────────────────────────────────────────────────
+// Mirrors the #editorHL overlay technique: an absolutely-positioned bar
+// synced to the textarea's scroll position, sized to one line-height.
+function _editorLineHeightPx(){return _editorFontSize*1.7;}
+function showErrorLine(lineIdx){
+  _errLine=lineIdx;
+  positionErrorLine();
+}
+function positionErrorLine(){
+  const bar=document.getElementById('editorErrLine');
+  if(_errLine==null){bar.style.display='none';return;}
+  const ta=document.getElementById('codeEditor');
+  const lh=_editorLineHeightPx();
+  bar.style.top=(16+_errLine*lh-ta.scrollTop)+'px';
+  bar.style.height=lh+'px';
+  bar.style.display='block';
+}
+function clearErrorLine(){_errLine=null;positionErrorLine();}
+let _errLine=null;
+
 function evalCode(code){
   bufs[activeTab]=document.getElementById('codeEditor').value;
-  if(code===undefined)code=bufs[activeTab].trim();
+  if(code===undefined){code=bufs[activeTab].trim();_lastRunOffset=0;}
   if(!code)return;
+  clearErrorLine();
   const lines=code.split('\n');
   const echoHl=highlightPython(lines[0])+(lines.length>1?`\n<span style="color:var(--text-dark)">··· ${lines.length-1} more line${lines.length>2?'s':''}</span>`:'');
   log(`<span class="hl-prompt">&gt;&gt;&gt;</span> <span class="hl-echo">${echoHl}</span>`,'cmd',true);
@@ -1510,6 +1556,7 @@ let _editorFontSize=EDITOR_FONT_DEFAULT,_editorFontRAF=null;
 function _applyEditorFontSize(){
   document.getElementById('codeEditor').style.fontSize=_editorFontSize+'px';
   document.getElementById('editorHL').style.fontSize=_editorFontSize+'px';
+  positionErrorLine();
   _editorFontRAF=null;
 }
 function _setEditorFontSize(px){
