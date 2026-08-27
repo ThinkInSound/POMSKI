@@ -2195,6 +2195,8 @@ class Composition:
                     data = composition_ref.data
                 )
 
+                _web_ui = getattr(composition_ref, '_web_ui_server', None)
+
                 try:
 
                     if self._wants_chord and composition_ref._harmonic_state is not None:
@@ -2205,12 +2207,14 @@ class Composition:
                     else:
                         self._builder_fn(builder)
 
+                    if _web_ui is not None:
+                        _web_ui.clear_builder_error(self._builder_fn.__name__)
+
                 except Exception:
                     import traceback as _tb
                     _tb_str = _tb.format_exc()
                     print(f"[REBUILD ERROR] {self._builder_fn.__name__}: {_tb_str}", flush=True)
                     logger.exception("Error in pattern builder '%s' (cycle %d) - pattern will be silent this cycle", self._builder_fn.__name__, current_cycle)
-                    _web_ui = getattr(composition_ref, '_web_ui_server', None)
                     if _web_ui is not None:
                         _web_ui.push_builder_error(self._builder_fn.__name__, _tb_str)
 

@@ -40,6 +40,7 @@ class WebUI:
         self._cached_patterns: typing.List[typing.Dict[str, typing.Any]] = []
         self._midi_queue: queue.SimpleQueue = queue.SimpleQueue()
         self._builder_error_queue: queue.SimpleQueue = queue.SimpleQueue()
+        self._last_builder_error: typing.Dict[str, str] = {}
         self._console_log_queue: queue.SimpleQueue = queue.SimpleQueue()
         self._repl_tasks: typing.Set[asyncio.Task] = set()
         self._data_snap: typing.FrozenSet = frozenset()
@@ -355,8 +356,32 @@ class WebUI:
             logger.error(f"WebSocket server error: {e}")
 
     def push_builder_error(self, pattern_name: str, tb: str) -> None:
-        """Called from the sequencer thread when a pattern builder raises."""
-        self._builder_error_queue.put_nowait(f"[{pattern_name}] {tb.strip()}")
+        """Called from the sequencer thread when a pattern builder raises.
+
+        A broken pattern re-raises the same exception every cycle it's
+        rebuilt (every bar, or faster), so without dedup this floods the log
+        with one traceback per cycle forever. Dedup key excludes the final
+        "ExceptionType: message" line's message text (keeping only the
+        exception class) since a runaway value inside the pattern (e.g. a
+        string being concatenated each cycle) can make that text different
+        every time even though it's the same underlying bug at the same
+        line.
+        """
+        tb = tb.strip()
+        lines = tb.split('\n')
+        key = '\n'.join(lines[:-1]) + '\n' + lines[-1].split(':', 1)[0] if lines else tb
+        if self._last_builder_error.get(pattern_name) == key:
+            return
+        self._last_builder_error[pattern_name] = key
+        if len(tb) > 4000:
+            tb = tb[:4000] + f"\n... [truncated, {len(tb)} chars total]"
+        self._builder_error_queue.put_nowait(f"[{pattern_name}] {tb}")
+
+    def clear_builder_error(self, pattern_name: str) -> None:
+        """Called once a pattern rebuilds successfully, so if it breaks again
+        with the exact same error later it's reported instead of staying
+        suppressed by the dedup in push_builder_error()."""
+        self._last_builder_error.pop(pattern_name, None)
 
     def push_console_log(self, time: str, name: str, message: str, level: str = 'info') -> None:
         """Called from the logging handler thread to mirror console output."""

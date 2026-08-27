@@ -477,6 +477,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 <span class="toggle-lbl" id="lightToggleLbl">Off</span>
               </div>
             </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;margin-top:8px">
+              <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">Highlight error line in editor</span>
+              <div class="toggle-wrap">
+                <div class="toggle" id="errHlToggle" onclick="toggleErrHl()"></div>
+                <span class="toggle-lbl" id="errHlToggleLbl">On</span>
+              </div>
+            </div>
           </div>
 
           <!-- MIDI output timing -->
@@ -1235,7 +1242,7 @@ function handleMsg(msg){
       // live_server.py _evaluate) — the last such frame is the line in the
       // user's own block that failed, before the traceback dives into
       // library internals with real filenames.
-      const lineMatches=[...msg.repl_error.matchAll(/File "<live>", line (\d+)/g)];
+      const lineMatches=_errHlEnabled?[...msg.repl_error.matchAll(/File "<live>", line (\d+)/g)]:[];
       if(lineMatches.length){
         const relLine=parseInt(lineMatches[lineMatches.length-1][1],10);
         const absLine=_lastRunOffset+relLine-1;
@@ -1831,6 +1838,21 @@ if(localStorage.getItem('pomski_light')==='1'){
   document.body.classList.add('light');
   document.getElementById('lightToggle').classList.add('on');
   document.getElementById('lightToggleLbl').textContent='On';
+}
+
+// Some prefer errors to fail unnoticeably during a performance rather than
+// have the editor flag the exact line — default on, opt out in Prefs.
+let _errHlEnabled=localStorage.getItem('pomski_err_highlight')!=='0';
+function toggleErrHl(){
+  _errHlEnabled=!_errHlEnabled;
+  document.getElementById('errHlToggle').classList.toggle('on',_errHlEnabled);
+  document.getElementById('errHlToggleLbl').textContent=_errHlEnabled?'On':'Off';
+  localStorage.setItem('pomski_err_highlight',_errHlEnabled?'1':'0');
+  if(!_errHlEnabled)clearErrorLine();
+}
+if(_errHlEnabled){
+  document.getElementById('errHlToggle').classList.add('on');
+  document.getElementById('errHlToggleLbl').textContent='On';
 }
 
 // ── LIVE CLIP LAUNCHER ────────────────────────────────────────────────────────
