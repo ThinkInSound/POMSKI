@@ -785,6 +785,88 @@ mark.find-hl.current{background:var(--pink)}
     <span class="var">p</span>.<span class="fn">velocity_shape</span>(<span class="var">low</span>=<span class="num">55</span>, <span class="var">high</span>=<span class="num">90</span>)  <span class="cm"># humanise velocity</span></pre>
   </div>
 
+  <h3>Drum names (GM_DRUM_MAP)</h3>
+  <p>
+    These are every name <code>drum_note_map=gm_drums.GM_DRUM_MAP</code> understands, with the MIDI
+    note each one maps to. If you'd rather skip names entirely, the plain MIDI note number works too
+    (<code>p.hit_steps(36, ...)</code> is the same hit as <code>p.hit_steps("kick_1", ...)</code>) —
+    but you still need <code>channel=9</code> either way, since that's what routes to the drum rack.
+  </p>
+  <p>
+    <b>Notes 36–51</b> — the range a standard Ableton Drum Rack's default 16 pads occupy — cover a
+    complete basic kit: kick, snare, hi-hats, toms, one crash, one ride.
+  </p>
+  <div class="scale-grid">
+    <div class="scale-pill">36 kick_1</div>
+    <div class="scale-pill">37 side_stick</div>
+    <div class="scale-pill">38 snare_1</div>
+    <div class="scale-pill">39 hand_clap</div>
+    <div class="scale-pill">40 snare_2</div>
+    <div class="scale-pill">41 low_floor_tom</div>
+    <div class="scale-pill">42 hi_hat_closed</div>
+    <div class="scale-pill">43 high_floor_tom</div>
+    <div class="scale-pill">44 hi_hat_pedal</div>
+    <div class="scale-pill">45 low_tom</div>
+    <div class="scale-pill">46 hi_hat_open</div>
+    <div class="scale-pill">47 low_mid_tom</div>
+    <div class="scale-pill">48 high_mid_tom</div>
+    <div class="scale-pill">49 crash_1</div>
+    <div class="scale-pill">50 high_tom</div>
+    <div class="scale-pill">51 ride_1</div>
+  </div>
+  <p>
+    Outside that range, GM also defines percussion from 27 up to 87 — Latin/world percussion,
+    a second crash/ride, cowbell, tambourine, etc. Only useful if your specific drum rack/instrument
+    has pads mapped past note 51; a stock Ableton Drum Rack usually doesn't.
+  </p>
+  <div class="scale-grid">
+    <div class="scale-pill">27 high_q</div>
+    <div class="scale-pill">28 slap</div>
+    <div class="scale-pill">29 scratch_push</div>
+    <div class="scale-pill">30 scratch_pull</div>
+    <div class="scale-pill">31 sticks</div>
+    <div class="scale-pill">32 square_click</div>
+    <div class="scale-pill">33 metronome_click</div>
+    <div class="scale-pill">34 metronome_bell</div>
+    <div class="scale-pill">35 kick_2</div>
+    <div class="scale-pill">52 chinese_cymbal</div>
+    <div class="scale-pill">53 ride_bell</div>
+    <div class="scale-pill">54 tambourine</div>
+    <div class="scale-pill">55 splash_cymbal</div>
+    <div class="scale-pill">56 cowbell</div>
+    <div class="scale-pill">57 crash_2</div>
+    <div class="scale-pill">58 vibraslap</div>
+    <div class="scale-pill">59 ride_2</div>
+    <div class="scale-pill">60 high_bongo</div>
+    <div class="scale-pill">61 low_bongo</div>
+    <div class="scale-pill">62 mute_high_conga</div>
+    <div class="scale-pill">63 open_high_conga</div>
+    <div class="scale-pill">64 low_conga</div>
+    <div class="scale-pill">65 high_timbale</div>
+    <div class="scale-pill">66 low_timbale</div>
+    <div class="scale-pill">67 high_agogo</div>
+    <div class="scale-pill">68 low_agogo</div>
+    <div class="scale-pill">69 cabasa</div>
+    <div class="scale-pill">70 maracas</div>
+    <div class="scale-pill">71 short_whistle</div>
+    <div class="scale-pill">72 long_whistle</div>
+    <div class="scale-pill">73 short_guiro</div>
+    <div class="scale-pill">74 long_guiro</div>
+    <div class="scale-pill">75 claves</div>
+    <div class="scale-pill">76 high_woodblock</div>
+    <div class="scale-pill">77 low_woodblock</div>
+    <div class="scale-pill">78 mute_cuica</div>
+    <div class="scale-pill">79 open_cuica</div>
+    <div class="scale-pill">80 mute_triangle</div>
+    <div class="scale-pill">81 open_triangle</div>
+    <div class="scale-pill">82 shaker</div>
+    <div class="scale-pill">83 jingle_bell</div>
+    <div class="scale-pill">84 bell_tree</div>
+    <div class="scale-pill">85 castanets</div>
+    <div class="scale-pill">86 mute_surdo</div>
+    <div class="scale-pill">87 open_surdo</div>
+  </div>
+
   <h3>The seq() shorthand</h3>
   <p>Write a melody in Sonic Pi style — space-separated pitch numbers with <code>_</code> for rests.</p>
 
