@@ -402,11 +402,28 @@ footer {
 .ctx-item{padding:6px 10px;border-radius:3px;cursor:pointer;color:var(--text);white-space:nowrap}
 .ctx-item:hover{background:var(--pink);color:#111}
 .ctx-item.disabled{color:var(--text-dark);cursor:default;pointer-events:none}
+.find-bar{position:fixed;top:12px;right:12px;z-index:6000;background:var(--bg-panel);border:1px solid var(--border-dim);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.45);padding:6px 8px;display:none;align-items:center;gap:6px;font-family:var(--mono);font-size:12px}
+.find-bar.show{display:flex}
+.find-bar input{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-family:var(--mono);font-size:12px;width:160px;outline:none}
+.find-bar input:focus{border-color:var(--pink)}
+.find-count{color:var(--text-dim);min-width:48px;text-align:center}
+.find-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;padding:2px 7px;border-radius:3px;font-family:var(--mono)}
+.find-btn:hover{background:var(--bg-hover);color:var(--text)}
+mark.find-hl{background:var(--yellow);color:#111;border-radius:2px;padding:0 1px}
+mark.find-hl.current{background:var(--pink)}
 </style>
 </head>
 <body oncontextmenu="return showCtxMenu(event)">
 
 <div class="ctx-menu" id="ctxMenu"><div class="ctx-item" id="ctxCopy">Copy</div></div>
+
+<div class="find-bar" id="findBar">
+  <input type="text" id="findInput" placeholder="Find…" autocomplete="off" spellcheck="false">
+  <span class="find-count" id="findCount"></span>
+  <button class="find-btn" id="findPrev" title="Previous (Shift+Enter)">&uarr;</button>
+  <button class="find-btn" id="findNext" title="Next (Enter)">&darr;</button>
+  <button class="find-btn" id="findClose" title="Close (Esc)">&times;</button>
+</div>
 
 <nav>
   <span class="nav-logo">POMSKI</span>
@@ -831,6 +848,10 @@ footer {
       <td class="m-name">p.hit_steps() with range()</td>
       <td class="m-desc">For quick straight 8ths or 16ths: <code>range(0, 16, 2)</code> = every other step (8th notes). <code>range(16)</code> = all 16 steps.</td>
     </tr>
+    <tr>
+      <td class="m-name">p.fill(pitch, step, velocity, duration)</td>
+      <td class="m-desc">Repeat a note every <code>step</code> beats from the start of the pattern to its end — no step list needed. <code>p.fill("hh", step=0.25)</code> is a plain steady-16ths hi-hat, equivalent to <code>p.hit_steps("hh", range(16))</code> but works for any pattern length, not just 16 steps.</td>
+    </tr>
   </table>
 
   <h3>Modifiers — call these after placing notes</h3>
@@ -1197,6 +1218,15 @@ footer {
     The Lorenz attractor is a set of differential equations that produces chaotic (never exactly
     repeating) but aesthetically coherent trajectories. POMSKI maps its x-axis values to pitch.
   </p>
+  <p>
+    <code>s</code> (sigma) is the Prandtl number — how fast the system reacts to imbalance;
+    higher values make it swing more sharply between states.
+    <code>r</code> (rho) is the Rayleigh number — the main driver of chaos; below ~24.7 the
+    system settles into stable orbits, at the classic <code>28.0</code> it's fully chaotic.
+    <code>b</code> (beta) is a geometric factor from the physical convection cell the equations
+    were derived from; it shapes how tightly the trajectory spirals. <code>dt</code> is the
+    simulation's time step — smaller values evolve the attractor more slowly per note.
+  </p>
 
   <div class="code-block">
     <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
@@ -1262,6 +1292,15 @@ footer {
     The Gray-Scott equations model chemical reactions creating Turing-like patterns —
     spots and stripes that emerge from uniform initial conditions. POMSKI maps the
     intensity field to note velocities, creating complex dynamic textures on a fixed pitch.
+  </p>
+  <p>
+    <code>n</code> is the grid size — how many cells the simulation runs on, which also sets
+    how many notes come out (one per cell). <code>f</code> (feed rate) controls how fast the
+    base chemical is replenished; <code>k</code> (kill rate) controls how fast the reaction
+    product is removed. Different <code>f</code>/<code>k</code> pairs produce different pattern
+    families (spots, stripes, waves) — <code>0.055</code>/<code>0.062</code> is a classic
+    spot-forming combination. <code>iterations</code> is how many simulation steps run before
+    the field is read — more lets the pattern fully develop before it's turned into velocities.
   </p>
 
   <div class="code-block">
@@ -1369,7 +1408,7 @@ footer {
     <tr><td class="m-name">live.scene_play(scene)</td><td class="m-desc">Fire a scene (launches all clips in that row).</td></tr>
     <tr><td class="m-name">live.track_volume(track, value)</td><td class="m-desc">Set track volume. <code>value</code> is 0.0–1.0.</td></tr>
     <tr><td class="m-name">live.track_mute(track, True/False)</td><td class="m-desc">Mute or unmute a track.</td></tr>
-    <tr><td class="m-name">live.device_param(track, device, param, value)</td><td class="m-desc">Set a device parameter (0.0–1.0).</td></tr>
+    <tr><td class="m-name">live.device_param(track, device, param, value)</td><td class="m-desc"><code>value</code> is always 0.0–1.0 — Live maps it to the parameter's real range (Hz, dB, etc). To find the <code>device</code>/<code>param</code> indices: right-click the parameter in Live → the Max for Live "Copy M4L path" item gives something like <code>live_set tracks 0 devices 0 parameters 28</code> — those three numbers are <code>track</code>, <code>device</code>, <code>param</code> directly, since AbletonOSC addresses the same Live Object Model tree.</td></tr>
     <tr><td class="m-name">live.set_tempo(bpm)</td><td class="m-desc">Change Live's tempo.</td></tr>
     <tr><td class="m-name">live.watch("track/0/volume")</td><td class="m-desc">Subscribe to a Live property. Its value is pushed to <code>composition.data["live_track_0_volume"]</code> continuously.</td></tr>
     <tr><td class="m-name">live.tracks</td><td class="m-desc">List of track names in the current Live set.</td></tr>
@@ -1725,6 +1764,109 @@ function showCtxMenu(e){
 document.addEventListener('mousedown',e=>{
   if(!e.target.closest('#ctxMenu'))document.getElementById('ctxMenu').classList.remove('show');
 });
+
+// ── Cmd+F find-in-page ──────────────────────────────────────────────
+// WKWebView's native find isn't wired up (no Edit menu bound to it in
+// the pywebview window), so this page implements its own find bar.
+(function(){
+  const bar=document.getElementById('findBar');
+  const input=document.getElementById('findInput');
+  const countEl=document.getElementById('findCount');
+  let marks=[], current=-1;
+
+  function clearHighlights(){
+    marks.forEach(m=>{
+      const parent=m.parentNode;
+      if(!parent) return;
+      parent.replaceChild(document.createTextNode(m.textContent),m);
+      parent.normalize();
+    });
+    marks=[];
+    current=-1;
+  }
+
+  function highlight(query){
+    clearHighlights();
+    if(!query){ countEl.textContent=''; return; }
+    const q=query.toLowerCase();
+    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{
+      acceptNode(node){
+        const p=node.parentElement;
+        if(!p) return NodeFilter.FILTER_REJECT;
+        if(p.closest('#findBar,#ctxMenu,script,style')) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const nodes=[];
+    let n;
+    while((n=walker.nextNode())) nodes.push(n);
+    nodes.forEach(node=>{
+      const text=node.textContent;
+      const lower=text.toLowerCase();
+      if(!lower.includes(q)) return;
+      const frag=document.createDocumentFragment();
+      let i=0;
+      while(true){
+        const idx=lower.indexOf(q,i);
+        if(idx===-1){ frag.appendChild(document.createTextNode(text.slice(i))); break; }
+        if(idx>i) frag.appendChild(document.createTextNode(text.slice(i,idx)));
+        const mark=document.createElement('mark');
+        mark.className='find-hl';
+        mark.textContent=text.slice(idx,idx+query.length);
+        frag.appendChild(mark);
+        marks.push(mark);
+        i=idx+query.length;
+      }
+      node.parentNode.replaceChild(frag,node);
+    });
+    if(marks.length){
+      current=0;
+      marks[0].classList.add('current');
+      marks[0].scrollIntoView({block:'center',behavior:'smooth'});
+    }
+    countEl.textContent=marks.length?`1/${marks.length}`:'0/0';
+  }
+
+  function goTo(delta){
+    if(!marks.length) return;
+    marks[current].classList.remove('current');
+    current=(current+delta+marks.length)%marks.length;
+    marks[current].classList.add('current');
+    marks[current].scrollIntoView({block:'center',behavior:'smooth'});
+    countEl.textContent=`${current+1}/${marks.length}`;
+  }
+
+  function open(){
+    bar.classList.add('show');
+    input.focus();
+    input.select();
+  }
+  function close(){
+    bar.classList.remove('show');
+    clearHighlights();
+    countEl.textContent='';
+    input.value='';
+  }
+
+  document.addEventListener('keydown',e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='f'){
+      e.preventDefault();
+      open();
+    }else if(e.key==='Escape'&&bar.classList.contains('show')){
+      close();
+    }
+  });
+  input.addEventListener('input',()=>highlight(input.value));
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      e.shiftKey?goTo(-1):goTo(1);
+    }
+  });
+  document.getElementById('findNext').addEventListener('click',()=>goTo(1));
+  document.getElementById('findPrev').addEventListener('click',()=>goTo(-1));
+  document.getElementById('findClose').addEventListener('click',close);
+})();
 </script>
 
 </body>
