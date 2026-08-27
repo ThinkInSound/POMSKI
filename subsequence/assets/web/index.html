@@ -537,6 +537,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div class="ref-item"><code>composition.running_patterns</code><span class="ref-desc">Dict of active pattern objects</span></div>
               <div class="ref-item"><code>composition.form_next()</code><span class="ref-desc">Advance to next section now</span></div>
               <div class="ref-item"><code>composition.form_jump(<span class="ref-arg">"name"</span>)</code><span class="ref-desc">Jump to named section</span></div>
+              <div class="ref-item"><code>composition.tweak(<span class="ref-arg">"pattern_name"</span>, <span class="ref-arg">name</span>=<span class="ref-arg">value</span>)</code><span class="ref-desc">Set override(s), read inside via p.param()</span></div>
+              <div class="ref-item"><code>composition.clear_tweak(<span class="ref-arg">"pattern_name"</span>)</code><span class="ref-desc">Remove tweak(s) — no names clears all</span></div>
             </div>
           </div>
 
@@ -562,7 +564,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div class="ref-item"><code>p.hit_steps(<span class="ref-arg">pitch</span>, steps=<span class="ref-arg">[0,4,8]</span>, velocity=<span class="ref-arg">100</span>)</code><span class="ref-desc">16-step grid indices</span></div>
               <div class="ref-item"><code>p.sequence(steps=<span class="ref-arg">[0,4,8,12]</span>, pitches=<span class="ref-arg">[60,62,64,65]</span>)</code></div>
               <div class="ref-item"><code>p.seq(<span class="ref-arg">"60 ~ 62 ~ 64"</span>, velocity=<span class="ref-arg">80</span>)</code><span class="ref-desc">Mini-notation</span></div>
-              <div class="ref-item"><code>p.arpeggio(<span class="ref-arg">pitches</span>, step=<span class="ref-arg">0.25</span>, direction=<span class="ref-arg">"up"</span>)</code></div>
+              <div class="ref-item"><code>p.arpeggio(<span class="ref-arg">pitches</span>, step=<span class="ref-arg">0.25</span>, direction=<span class="ref-arg">"up"</span>)</code><span class="ref-desc">pitches must be a list, e.g. [60,64,67] — not a "60 64 67" string</span></div>
               <div class="ref-item"><code>p.chord(<span class="ref-arg">chord</span>, root=<span class="ref-arg">60</span>, velocity=<span class="ref-arg">90</span>)</code></div>
               <div class="ref-item"><code>p.strum(<span class="ref-arg">chord</span>, root=<span class="ref-arg">60</span>, offset=<span class="ref-arg">0.05</span>)</code></div>
             </div>
@@ -579,8 +581,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div class="ref-item"><code>p.dropout(<span class="ref-arg">0.2</span>)</code><span class="ref-desc">Remove 20% of notes randomly</span></div>
               <div class="ref-item"><code>p.transpose(<span class="ref-arg">n</span>)</code> &nbsp; <code>p.reverse()</code> &nbsp; <code>p.invert()</code></div>
               <div class="ref-item"><code>p.double_time()</code> &nbsp; <code>p.half_time()</code></div>
-              <div class="ref-item"><code>p.shift(<span class="ref-arg">steps</span>)</code> &nbsp; <code>p.quantize(<span class="ref-arg">"C"</span>, <span class="ref-arg">"dorian"</span>)</code></div>
+              <div class="ref-item"><code>p.shift(<span class="ref-arg">steps</span>, grid=<span class="ref-arg">None</span>)</code> &nbsp; <code>p.quantize(<span class="ref-arg">"C"</span>, <span class="ref-arg">"dorian"</span>)</code></div>
               <div class="ref-item"><code>p.every(<span class="ref-arg">4</span>, lambda p: p.reverse())</code></div>
+              <div class="ref-item"><code>p.ghost_fill(<span class="ref-arg">pitch</span>, density=<span class="ref-arg">0.3</span>, velocity=<span class="ref-arg">35</span>, bias=<span class="ref-arg">"uniform"</span>)</code><span class="ref-desc">Probability-biased ghost notes</span></div>
+              <div class="ref-item ref-indent"><span class="ref-desc">bias: "uniform" "offbeat" "sixteenths" "before" "after" "downbeat" "upbeat" "e_and_a"</span></div>
+              <div class="ref-item"><code>p.thin(<span class="ref-arg">pitch</span>, strategy=<span class="ref-arg">"strength"</span>, amount=<span class="ref-arg">0.5</span>)</code><span class="ref-desc">Inverse of ghost_fill — removes notes by rhythmic position</span></div>
             </div>
           </div>
 
@@ -592,6 +597,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div class="ref-item"><code>p.grid</code><span class="ref-desc">Number of grid slots</span></div>
               <div class="ref-item"><code>p.signal(<span class="ref-arg">"name"</span>)</code><span class="ref-desc">Conductor LFO value 0–1</span></div>
               <div class="ref-item"><code>p.rng</code><span class="ref-desc">Seeded random instance</span></div>
+              <div class="ref-item"><code>p.param(<span class="ref-arg">"name"</span>, default=<span class="ref-arg">None</span>)</code><span class="ref-desc">Read this pattern's own tweak override — NOT composition.data (see composition.tweak below)</span></div>
             </div>
           </div>
 
@@ -700,7 +706,7 @@ def euclid_grow(p):
           <div class="ref-section">
             <div class="ref-title">Algorithmic palette — Cellular &amp; Chaos</div>
             <div class="ref-body">
-              <div class="ref-item"><code><span class="ref-arg"># 1D Cellular automaton — Rule 30 / 110</span></code></div>
+              <div class="ref-item"><code><span class="ref-arg"># 1D Cellular automaton — Rule 30 / 110, hand-rolled (no library call)</span></code></div>
               <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
 def cellular(p):
     def ca(rule_num, width=16):
@@ -712,6 +718,10 @@ def cellular(p):
         return row
     for i,v in enumerate(ca(30)):
         if v: p.note(60+i, beat=i*0.25)</code></div>
+
+              <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Same thing via the built-in methods (also handle overlap/dropout/rng for you)</span></code></div>
+              <div class="ref-item"><code>p.cellular_1d(<span class="ref-arg">pitch</span>, rule=<span class="ref-arg">30</span>, velocity=<span class="ref-arg">60</span>, no_overlap=<span class="ref-arg">False</span>, dropout=<span class="ref-arg">0.0</span>)</code><span class="ref-desc">1D — rules 30/90/110 classic</span></div>
+              <div class="ref-item"><code>p.cellular_2d(<span class="ref-arg">pitches</span>, rule=<span class="ref-arg">"B368/S245"</span>, seed=<span class="ref-arg">1</span>, density=<span class="ref-arg">0.5</span>)</code><span class="ref-desc">2D Life-like, polyphonic — pitches is a list, one row per pitch</span></div>
 
               <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Lorenz attractor — chaotic pitch sequencing</span></code></div>
               <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
@@ -890,6 +900,7 @@ def ch4(p):
               <div class="ref-item"><code>live.clip_stop(<span class="ref-arg">track</span>, <span class="ref-arg">clip</span>)</code><span class="ref-desc">Stop clip slot</span></div>
               <div class="ref-item"><code>live.scene_play(<span class="ref-arg">scene</span>)</code><span class="ref-desc">Fire entire scene row</span></div>
               <div class="ref-item"><code>live.device_param(<span class="ref-arg">track</span>, <span class="ref-arg">device</span>, <span class="ref-arg">param</span>, <span class="ref-arg">0.5</span>)</code><span class="ref-desc">Normalised 0–1</span></div>
+              <div class="ref-item"><span class="ref-tag">i</span> Find track/device/param indices: right-click the parameter in Live → "Copy M4L path" gives <code>tracks 0 devices 0 parameters 28</code></div>
               <div class="ref-item"><code>live.send("/live/track/set/arm", <span class="ref-arg">track</span>, 1)</code><span class="ref-desc">Arm track for recording</span></div>
               <div class="ref-item"><code>live.send("/live/song/create_midi_track", -1)</code><span class="ref-desc">Add MIDI track at end</span></div>
             </div>

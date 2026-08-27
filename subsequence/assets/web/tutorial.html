@@ -663,6 +663,7 @@ mark.find-hl.current{background:var(--pink)}
     <tr><td class="m-name">p.rng</td><td><code>Random</code></td><td class="m-desc">A seeded random number generator. Use <code>p.rng.random()</code>, <code>p.rng.choice(list)</code>, <code>p.rng.randint(a,b)</code>. Reproducible — same seed every time the pattern restarts.</td></tr>
     <tr><td class="m-name">p.section</td><td><code>SectionInfo</code></td><td class="m-desc">Current form section (name, bar within section, total bars). <code>None</code> if no form is defined.</td></tr>
     <tr><td class="m-name">p.data</td><td><code>dict</code></td><td class="m-desc">Direct reference to <code>composition.data</code>. Use it to read Live values, signals, or cross-pattern state.</td></tr>
+    <tr><td class="m-name">p.param(name, default=None)</td><td><code>method</code></td><td class="m-desc">Reads this pattern's own tweak overrides — a separate mechanism from <code>p.data</code>/<code>composition.data</code>. Set live from the REPL with <code>composition.tweak("pattern_name", name=value)</code>; persists across rebuilds until <code>composition.clear_tweak("pattern_name")</code> removes it.</td></tr>
   </table>
 
   <div class="callout warn">
@@ -1359,6 +1360,37 @@ mark.find-hl.current{background:var(--pink)}
     )</pre>
   </div>
 
+  <h3>1D &amp; 2D cellular automata</h3>
+  <p>
+    <code>p.cellular_1d()</code> is a general elementary CA (any of Wolfram's 256 rules — 30, 90,
+    and 110 are the classic ones), one pitch per call. <code>p.cellular_2d()</code> generalizes
+    <code>game_of_life()</code> above to any Life-like rule string, and is polyphonic — pitches is
+    a list, one row of the grid mapped to each.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">cellular_1d</span>(
+        <span class="num">60</span>,
+        <span class="var">rule</span>=<span class="num">110</span>,          <span class="cm"># 30=chaotic, 90=Sierpinski triangle, 110=Turing-complete</span>
+        <span class="var">generation</span>=<span class="var">p</span>.<span class="var">cycle</span> % <span class="num">16</span>,
+        <span class="var">no_overlap</span>=<span class="kw">False</span>,
+        <span class="var">dropout</span>=<span class="num">0.0</span>
+    )</pre>
+  </div>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">0</span>, <span class="var">length</span>=<span class="num">4</span>)
+<span class="kw">def</span> <span class="fn">ch1</span>(<span class="var">p</span>):
+    <span class="cm"># B368/S245: born with 3/6/8 neighbours, survives with 2/4/5 — "Morley" rule, less chaotic than standard Life</span>
+    <span class="var">p</span>.<span class="fn">cellular_2d</span>(
+        <span class="var">pitches</span>=[<span class="num">36</span>, <span class="num">48</span>, <span class="num">60</span>, <span class="num">72</span>],
+        <span class="var">rule</span>=<span class="str">"B368/S245"</span>,
+        <span class="var">seed</span>=<span class="num">1</span>, <span class="var">density</span>=<span class="num">0.5</span>
+    )</pre>
+  </div>
+
   <h3>Logistic map (chaos theory)</h3>
   <p>
     The logistic map (<code>x → r·x·(1−x)</code>) is one of the simplest equations that produces
@@ -1624,6 +1656,28 @@ mark.find-hl.current{background:var(--pink)}
     <span class="var">p</span>.<span class="fn">seq</span>(<span class="str">"60 63 65 67 65 63 67 70"</span>, <span class="var">velocity</span>=<span class="num">80</span>)
     <span class="var">p</span>.<span class="fn">dropout</span>(<span class="var">sparsity</span> * <span class="num">0.6</span>)   <span class="cm"># max 60% dropout</span>
     <span class="var">p</span>.<span class="fn">quantize</span>(<span class="str">"C"</span>, <span class="str">"dorian"</span>)</pre>
+  </div>
+
+  <h3>Ghost notes and thinning</h3>
+  <p>
+    <code>p.ghost_fill()</code> adds low-velocity micro-detail notes biased toward a rhythmic
+    position (off-beats, 16th subdivisions, etc). <code>p.thin()</code> does the opposite — it
+    removes notes from a specific instrument by rhythmic position, using the same bias
+    vocabulary. Together they're a finer-grained pair than <code>p.dropout()</code>, which is
+    position-blind and affects the whole pattern rather than one instrument.
+  </p>
+
+  <div class="code-block">
+    <pre><span class="dec">@composition.pattern</span>(<span class="var">channel</span>=<span class="num">9</span>, <span class="var">length</span>=<span class="num">4</span>, <span class="var">drum_note_map</span>=<span class="var">gm_drums</span>.<span class="var">GM_DRUM_MAP</span>)
+<span class="kw">def</span> <span class="fn">ch10</span>(<span class="var">p</span>):
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"kick_1"</span>, [<span class="num">0</span>, <span class="num">8</span>], <span class="var">velocity</span>=<span class="num">110</span>)
+    <span class="var">p</span>.<span class="fn">hit_steps</span>(<span class="str">"snare_1"</span>, [<span class="num">4</span>, <span class="num">12</span>], <span class="var">velocity</span>=<span class="num">100</span>)
+
+    <span class="cm"># Add ghost hi-hats around the anchors, biased to 16th subdivisions</span>
+    <span class="var">p</span>.<span class="fn">ghost_fill</span>(<span class="str">"hi_hat_closed"</span>, <span class="var">density</span>=<span class="num">0.4</span>, <span class="var">velocity</span>=(<span class="num">25</span>, <span class="num">45</span>), <span class="var">bias</span>=<span class="str">"sixteenths"</span>, <span class="var">no_overlap</span>=<span class="kw">True</span>)
+
+    <span class="cm"># Thin them back out on alternate cycles for a call-and-response feel</span>
+    <span class="var">p</span>.<span class="fn">every</span>(<span class="num">2</span>, <span class="kw">lambda</span> <span class="var">p</span>: <span class="var">p</span>.<span class="fn">thin</span>(<span class="str">"hi_hat_closed"</span>, <span class="var">strategy</span>=<span class="str">"strength"</span>, <span class="var">amount</span>=<span class="num">0.6</span>))</pre>
   </div>
 
   <h3>Transposing by section</h3>

@@ -183,7 +183,11 @@ p.silence(beat=0)                                     # CC 123 + CC 120 (all not
 p.bar          # global bar count since playback started (int)
 p.cycle        # current loop/cycle count, 0-indexed
 p.rng          # seeded random.Random instance (deterministic when composition.seed() set)
-p.param(name, default=None)                           # read tweakable param from composition.data
+p.param(name, default=None)
+# Reads this pattern's OWN _tweaks dict, NOT composition.data — a separate mechanism entirely.
+# Set via composition.tweak(pattern_name, **kwargs) from the REPL; persists across rebuilds
+# until composition.clear_tweak(pattern_name, *names) removes it (all tweaks if no names given).
+# composition.get_tweaks(pattern_name) reads the current dict back.
 p.signal(name)                                        # read conductor LFO/ramp — shorthand for p.conductor.get(name, p.bar*4)
 # p.signal() is fixed to beat 0 of the current bar — calling it once and reusing the value for
 # every note in the pattern only changes velocity/pitch/etc. per REBUILD (once per `length`
@@ -216,6 +220,9 @@ composition.schedule(func, cycle_beats=4)                     # background polli
 composition.seed(seed)                                        # deterministic RNG
 composition.running_patterns                                  # dict of active patterns
 composition.data                                              # shared state dict
+composition.tweak(pattern_name, **kwargs)                     # set per-pattern override(s), read via p.param()
+composition.clear_tweak(pattern_name, *param_names)           # remove tweak(s); no names = clear all for that pattern
+composition.get_tweaks(pattern_name)                          # current tweaks dict for a pattern
 
 # ── Conductor signals ─────────────────────────────────────────────────────────
 composition.conductor.lfo("name", shape="sine", cycle_beats=4)
