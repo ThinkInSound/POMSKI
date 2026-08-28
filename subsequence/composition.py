@@ -2256,10 +2256,24 @@ class Composition:
                 except Exception:
                     import traceback as _tb
                     _tb_str = _tb.format_exc()
-                    print(f"[REBUILD ERROR] {self._builder_fn.__name__}: {_tb_str}", flush=True)
-                    logger.exception("Error in pattern builder '%s' (cycle %d) - pattern will be silent this cycle", self._builder_fn.__name__, current_cycle)
-                    if _web_ui is not None:
-                        _web_ui.push_builder_error(self._builder_fn.__name__, _tb_str)
+                    _err_line = _tb_str.strip().splitlines()[-1]
+                    _sig = (self._builder_fn.__name__, _err_line)
+
+                    # Builders fail identically every cycle until the user
+                    # fixes the code — report in full once, then a cheap
+                    # one-liner (a rich traceback render every rebuild
+                    # stalls the event loop and strobes the web UI).
+                    if getattr(self, '_last_error_sig', None) != _sig:
+                        self._last_error_sig = _sig
+                        print(f"[REBUILD ERROR] {self._builder_fn.__name__}: {_tb_str}", flush=True)
+                        logger.exception("Error in pattern builder '%s' (cycle %d) - pattern will be silent this cycle", self._builder_fn.__name__, current_cycle)
+                        if _web_ui is not None:
+                            _web_ui.push_builder_error(self._builder_fn.__name__, _tb_str)
+                    else:
+                        logger.warning("Pattern builder '%s' still failing (cycle %d): %s", self._builder_fn.__name__, current_cycle, _err_line)
+
+                else:
+                    self._last_error_sig = None
 
                 # If this rebuild produced notes, unsilence the channel so the
                 # new pattern plays immediately (e.g. after a clear_pattern).
