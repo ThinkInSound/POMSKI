@@ -176,6 +176,7 @@ class LiveServer:
 
 		import subsequence
 		import subsequence.constants.instruments.gm_drums as gm_drums
+		import subsequence.constants.midi_notes as midi_notes
 
 		safe_builtins = {name: getattr(builtins, name) for name in dir(builtins)}
 
@@ -189,6 +190,8 @@ class LiveServer:
 			"composition": self._composition,
 			"subsequence": subsequence,
 			"gm_drums": gm_drums,
+			"notes": midi_notes,
+			"midi_notes": midi_notes,
 			"random": random,
 			"math": math,
 			"rich": rich,
