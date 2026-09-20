@@ -350,7 +350,17 @@ class WebUI:
 
     async def _start_ws_server(self) -> None:
         try:
-            self._ws_server = await websockets.asyncio.server.serve(self._handle_client, "0.0.0.0", self.ws_port)
+            # host=None (not "0.0.0.0") - asyncio's create_server binds BOTH
+            # IPv4 and IPv6 wildcard sockets when host is None/empty, one
+            # socket per family. "0.0.0.0" only ever binds IPv4. macOS
+            # commonly resolves the hostname "localhost" to the IPv6
+            # loopback (::1) first, and WebKit's WebSocket connection
+            # establishment - unlike its HTTP fetch path, which has real
+            # Happy Eyeballs fallback - doesn't reliably retry the other
+            # address family, so an IPv4-only server here makes ws://localhost
+            # fail outright even though ws://127.0.0.1 to the same process
+            # works fine.
+            self._ws_server = await websockets.asyncio.server.serve(self._handle_client, None, self.ws_port)
             asyncio.create_task(self._broadcast_loop())
         except Exception as e:
             logger.error(f"WebSocket server error: {e}")
