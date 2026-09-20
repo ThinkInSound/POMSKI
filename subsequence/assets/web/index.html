@@ -2075,6 +2075,11 @@ const VIZ_CONDUCTOR_TRAIL_MS=4500,VIZ_NEAR_DIST=95;
 const VIZ_ECHO_INTERVAL_MS=1200,VIZ_ECHO_LIFE_MS=3600,VIZ_ECHO_MAX=4;
 const VIZ_MOTE_SPEED=0.045,VIZ_MOTE_MAX=5;
 let _vizEchoes=[],_vizLastEchoT=0,_vizMotes=[];
+// Beat markers ride the pendulum trail itself: a dot dropped at the pen's
+// current position every time the beat counter actually advances (global_
+// beat is 1-indexed - beat 1 is the downbeat), so reading along the trail
+// tells you where in the bar each point in its recent history fell.
+let _vizBeatMarkers=[],_vizLastMarkedBeat=null;
 function _vizMoteDir(p){
   const n=Math.hypot(p[0],p[1],p[2]);
   return n>1?[p[0]/n,p[1]/n,p[2]/n]:[0,0,1];
@@ -2099,6 +2104,36 @@ const VIZ_CHORDS=[['maj7',[0,4,7,11]],['dom7',[0,4,7,10]],['min7',[0,3,7,10]],
   ['m7b5',[0,3,6,10]],['maj',[0,4,7]],['min',[0,3,7]],['aug',[0,4,8]],
   ['dim',[0,3,6]],['sus2',[0,2,7]],['sus4',[0,5,7]]];
 const VIZ_CHORD_SUFFIX={maj:'',min:'m',dim:'dim',aug:'aug',maj7:'maj7',dom7:'7',min7:'m7',m7b5:'m7b5',sus2:'sus2',sus4:'sus4'};
+// Circle of fifths: each step is +7 semitones (mod 12) from the last,
+// starting on C - the standard ordering (C G D A E B F# Db Ab Eb Bb F).
+// A chord's root maps to its position around that circle, then to an
+// angle - a flattened version of the reference image's move (a circle's
+// points corresponded, position for position, onto a rising helix). Here
+// it's a falling text column instead of a helix, but the mechanism is the
+// same: circular position becomes a periodic left-right offset, not a
+// straight line.
+const VIZ_FIFTHS_ORDER=[0,7,2,9,4,11,6,1,8,3,10,5];
+function _vizFifthsAngle(pitchClass){return(VIZ_FIFTHS_ORDER.indexOf(pitchClass)/12)*Math.PI*2;}
+const VIZ_CHORD_RAIN_MS=7000,VIZ_CHORD_RAIN_MAX=14,VIZ_CHORD_RAIN_COL_W=64;
+let _vizChordRain=[],_vizLastChordLabel=null;
+// Scrolling pitch/velocity heatmap, bottom strip. X is time (newest at the
+// right edge, scrolling left, oldest exits at the left - a standard
+// scope/strip-chart convention). Y is two-level: pitch CLASS picks a coarse
+// lane (12 lanes bottom-to-top, C to B, octave discarded so each lane gets
+// real pixel height instead of ~1px per raw semitone), then velocity picks
+// the exact position within that lane - louder sits higher in its own
+// lane, quieter lower. So pitch and velocity both genuinely drive
+// position, not just color.
+// 400 was too low for anything but a sparse composition - several patterns
+// running dense 16th-note material can rack up well over 400 onsets within
+// the 8s window, so the cap itself was truncating dots partway through
+// their life (the "dying halfway across the screen" symptom), not the
+// fade math. Raised well past anything a real composition should hit.
+const VIZ_HEAT_WINDOW_MS=8000,VIZ_HEAT_STRIP_H=90,VIZ_HEAT_MAX=3000;
+// How slowly a node's own dot fades after firing, and how close to
+// invisible it settles once it has.
+const VIZ_NODE_FADE_MS=3500,VIZ_NODE_REST_OPACITY=0.1;
+let _vizHeatDots=[];
 function _vizDetectChord(pitchClasses){
   const set=new Set(pitchClasses);
   if(set.size<2)return null;
@@ -2111,7 +2146,7 @@ function _vizDetectChord(pitchClasses){
         best={root,name,size:ivs.length,extra};
     }
   }
-  return best?VIZ_NOTE_NAMES[best.root]+VIZ_CHORD_SUFFIX[best.name]:null;
+  return best?{label:VIZ_NOTE_NAMES[best.root]+VIZ_CHORD_SUFFIX[best.name],root:best.root}:null;
 }
 let _vizClusters=new Map(); // name -> cluster state, persists across ticks
 let _vizConductorTrail=[];
@@ -2150,6 +2185,24 @@ function _vizBallVec(x,y){
   const s=1/Math.sqrt(d);return[vx*s,-vy*s,0];
 }
 function _vizDist3(a,b){return Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);}
+// The circle an arm's tip actually sweeps - same center/radius/plane
+// (center, r, u, v) as the arm itself - sampled and projected point by
+// point since it's tilted in 3D, not a flat ellipse a 2D approximation
+// could get away with.
+function _vizOrbitPath(center,r,u,v,cx,cy,segments){
+  let d='',started=false;
+  for(let i=0;i<=segments;i++){
+    const ang=(i/segments)*Math.PI*2;
+    const world=[center[0]+r*(Math.cos(ang)*u[0]+Math.sin(ang)*v[0]),
+                 center[1]+r*(Math.cos(ang)*u[1]+Math.sin(ang)*v[1]),
+                 center[2]+r*(Math.cos(ang)*u[2]+Math.sin(ang)*v[2])];
+    const s=_vizProject(world,cx,cy);
+    if(!s){started=false;continue;}
+    d+=(started?'L':'M')+s.x.toFixed(1)+' '+s.y.toFixed(1);
+    started=true;
+  }
+  return d;
+}
 // Fibonacci sphere: n points spread evenly over a sphere's surface.
 function _vizSpherePoints(n,r){
   if(n<=1)return[[0,0,0]];
@@ -2315,13 +2368,16 @@ function _vizFrame(){
     E.idle.textContent='NO CYCLES RUNNING';
     _vizSet(E.idle,{x:cx,y:cy,display:'inline'});
     [E.hulls,E.hullTags,E.hullTexts,E.edges,E.nodeDots,E.pings,E.labels,E.legendRows,
-     E.armLines,E.cursors,E.echoTrails,E.motes,E.moteLabels].forEach(p=>_vizHideFrom(p,0));
+     E.armLines,E.cursors,E.echoTrails,E.motes,E.moteLabels,E.chordRain,
+     E.heatDots,E.heatLabels,E.orbits,E.beatMarkers].forEach(p=>_vizHideFrom(p,0));
+    E.heatBorder.setAttribute('display','none');
     _vizSet(E.conductorTrail,{d:''});
     E.penLabel.setAttribute('display','none');
     return;
   }
   E.idle.setAttribute('display','none');
-  // Ping any node whose step the playhead just crossed.
+  // Ping any node whose step the playhead just crossed - same real onset
+  // also feeds the scrolling pitch/velocity heatmap strip below.
   if(_vizLastPulse!=null&&pulse>_vizLastPulse){
     clusters.forEach(cl=>{
       const L=cl.lengthPulses,jumped=(pulse-_vizLastPulse)>=L;
@@ -2330,8 +2386,10 @@ function _vizFrame(){
         if(!(jumped||_vizCrossed(n.s,p0,p1)))return;
         const node=cl.nodes.find(nd=>nd.pitch===n.p);
         if(node){node.pingT=now;node.lastV=n.v;}
+        _vizHeatDots.push({pc:((n.p%12)+12)%12,v:n.v,color:cl.color,born:now});
       });
     });
+    if(_vizHeatDots.length>VIZ_HEAT_MAX)_vizHeatDots.splice(0,_vizHeatDots.length-VIZ_HEAT_MAX);
   }
   _vizLastPulse=pulse;
   // Perceived chord: every pitch actually sounding right now, across every
@@ -2339,18 +2397,39 @@ function _vizFrame(){
   // template - the harmony in the room, not any one pattern's own notes.
   let totalNodes=0;
   const activePitchClasses=[];
+  const originColorByPC={}; // pitch class -> color of a cluster currently sounding it
   clusters.forEach(cl=>{
     totalNodes+=cl.nodes.length;
     const loopPulse=(((pulse%cl.lengthPulses)+cl.lengthPulses)%cl.lengthPulses);
     cl.notes.forEach(n=>{
       const d=Math.max(n.d,1);
-      if(n.s<=loopPulse&&loopPulse<n.s+d)activePitchClasses.push(((n.p%12)+12)%12);
+      if(n.s<=loopPulse&&loopPulse<n.s+d){
+        const pc=((n.p%12)+12)%12;
+        activePitchClasses.push(pc);
+        if(!(pc in originColorByPC))originColorByPC[pc]=cl.color;
+      }
     });
   });
   const chord=_vizDetectChord(activePitchClasses);
   E.headR.textContent=clusters.length+(clusters.length===1?' CYCLE':' CYCLES')+
-    '   '+totalNodes+' NODES'+(chord?'   '+chord:'');
+    '   '+totalNodes+' NODES';
   _vizSet(E.headR,{x:w-16});
+  // Chord rain: only spawn on an actual change, not every tick the same
+  // chord keeps sounding - a sustained chord shouldn't flood the column.
+  // Resets on silence so the same chord can retrigger after a real gap.
+  // Colored by whichever cluster is actually sounding the chord's root -
+  // "channel of origin" - snapshotted at spawn since a drop's identity
+  // shouldn't shift color mid-fall if the chord changes again immediately.
+  if(chord){
+    if(chord.label!==_vizLastChordLabel)_vizChordRain.push({
+      text:chord.label,root:chord.root,born:now,
+      color:originColorByPC[chord.root]||'var(--text)'
+    });
+    _vizLastChordLabel=chord.label;
+  }else{
+    _vizLastChordLabel=null;
+  }
+  if(_vizChordRain.length>VIZ_CHORD_RAIN_MAX)_vizChordRain.splice(0,_vizChordRain.length-VIZ_CHORD_RAIN_MAX);
   // ── CONDUCTOR: one arm per cluster, harmonic radii, longest cycle first -
   // scaled to actually reach across the lattice, so its curve threads
   // through the cluster field rather than floating separately from it.
@@ -2372,15 +2451,47 @@ function _vizFrame(){
     if(sp&&sn)_vizSet(_vizTake(E.armLines,E.gChain,'line',i,{'stroke-width':1}),
       {x1:sp.x.toFixed(1),y1:sp.y.toFixed(1),x2:sn.x.toFixed(1),y2:sn.y.toFixed(1),
        stroke:cl.color,'stroke-opacity':0.3});
+    // The orbit this cluster's arm actually sweeps - dotted, faint, drawn
+    // from the same pivot/radius/plane as the arm so it reads as "this is
+    // the path," not a separate decoration.
+    _vizSet(_vizTake(E.orbits,E.gChain,'path',i,{fill:'none','stroke-dasharray':'2,5','stroke-width':1}),
+      {d:_vizOrbitPath(P,r,u,v,cx,cy,28),stroke:cl.color,'stroke-opacity':0.22});
     P=N;
   });
   _vizHideFrom(E.armLines,ranked.length);
+  _vizHideFrom(E.orbits,ranked.length);
   clusters.forEach(cl=>{
     const d=_vizDist3(P,cl.center);
     if(d<VIZ_NEAR_DIST)nearBoost.set(cl.name,1-d/VIZ_NEAR_DIST);
   });
   _vizConductorTrail.push({p:P.slice(),t:now});
   while(_vizConductorTrail.length&&now-_vizConductorTrail[0].t>VIZ_CONDUCTOR_TRAIL_MS)_vizConductorTrail.shift();
+  // Drop a beat marker at the pen's current spot exactly when the beat
+  // counter advances - reading along the trail then shows bar/beat
+  // position directly, not just where the pen has physically been.
+  const beatKey=_vizBar+':'+_vizBeat;
+  if(beatKey!==_vizLastMarkedBeat){
+    _vizBeatMarkers.push({p:P.slice(),beat:_vizBeat,t:now});
+    _vizLastMarkedBeat=beatKey;
+    if(_vizBeatMarkers.length>80)_vizBeatMarkers.shift();
+  }
+  let bmi=0;
+  _vizBeatMarkers=_vizBeatMarkers.filter(mk=>{
+    const age=now-mk.t;
+    if(age>=VIZ_CONDUCTOR_TRAIL_MS)return false;
+    const s=_vizProject(mk.p,cx,cy);
+    if(!s)return true; // behind the camera right now - keep it, may swing back into view
+    const fade=1-age/VIZ_CONDUCTOR_TRAIL_MS;
+    const downbeat=mk.beat===1; // global_beat is 1-indexed - beat 1 is the downbeat
+    _vizSet(_vizTake(E.beatMarkers,E.gChain,'circle',bmi++,{}),
+      {cx:s.x.toFixed(1),cy:s.y.toFixed(1),r:(downbeat?4:2).toFixed(1),
+       fill:downbeat?(ranked[0]?ranked[0].color:'var(--text)'):'none',
+       stroke:ranked[0]?ranked[0].color:'var(--text)','stroke-width':1,
+       'fill-opacity':(downbeat?fade*0.9:0).toFixed(2),
+       'stroke-opacity':(fade*0.7).toFixed(2)});
+    return true;
+  });
+  _vizHideFrom(E.beatMarkers,bmi);
   // Feedback: every so often, freeze a copy of the trail-so-far and let it
   // fade on its own, longer-lived than the live trail - a delayed echo of
   // the same gesture, the way audio feedback repeats a decaying copy of
@@ -2444,7 +2555,7 @@ function _vizFrame(){
   // the pen's current position rather than just deleted, so the stream
   // never runs dry.
   const dominant=[...nearBoost.entries()].sort((a,b)=>b[1]-a[1])[0];
-  const moteLabel=chord||(dominant?dominant[0]:(ranked[0]?ranked[0].name:''));
+  const moteLabel=(chord?chord.label:null)||(dominant?dominant[0]:(ranked[0]?ranked[0].name:''));
   while(_vizMotes.length<VIZ_MOTE_MAX){
     const mote={};_vizRespawnMote(mote,P,now,moteLabel);_vizMotes.push(mote);
   }
@@ -2547,9 +2658,14 @@ function _vizFrame(){
   allNodes.forEach(item=>{
     const{cl,node,sx,sy,scale,pinging,pingAge,boost}=item;
     const r=Math.max(2,(2.5+Math.sqrt(node.count)*2+(node.avgV/127)*2)*scale);
+    // Continuous decay, not a binary switch: bright right after a ping,
+    // easing down over VIZ_NODE_FADE_MS to a near-transparent rest state -
+    // a node that's never fired stays ghostly until its first onset.
+    const brightness=Math.max(0,1-pingAge/VIZ_NODE_FADE_MS);
+    const dotOpacity=Math.min(1,VIZ_NODE_REST_OPACITY+(0.95-VIZ_NODE_REST_OPACITY)*brightness+boost*0.25);
     _vizSet(_vizTake(E.nodeDots,E.gNodes,'circle',ni++,{}),
       {cx:sx.toFixed(1),cy:sy.toFixed(1),r:r.toFixed(1),fill:cl.color,
-       'fill-opacity':(pinging?0.95:0.5+boost*0.3).toFixed(2)});
+       'fill-opacity':dotOpacity.toFixed(2)});
     if(pinging){
       const t=pingAge/VIZ_PING_MS;
       _vizSet(_vizTake(E.pings,E.gEdges,'circle',pi++,{fill:'none','stroke-width':1}),
@@ -2571,6 +2687,58 @@ function _vizFrame(){
        stroke:cl.color,'stroke-width':1});
   });
   _vizHideFrom(E.cursors,cui);
+  // Chord rain: falls down a single column at the right edge. Each entry's
+  // horizontal position within that column is fixed at spawn from its
+  // root's circle-of-fifths angle, so entries land in a repeating side-to-
+  // side pattern down the column rather than a dead-straight line -
+  // adjacent chords a fifth apart land close together, a tritone away
+  // lands on the opposite side.
+  const railX=w-34-72;
+  let cri=0;
+  _vizChordRain=_vizChordRain.filter(drop=>{
+    const age=now-drop.born;
+    if(age>=VIZ_CHORD_RAIN_MS)return false;
+    const t=age/VIZ_CHORD_RAIN_MS;
+    const ang=_vizFifthsAngle(drop.root);
+    const x=railX+Math.cos(ang)*(VIZ_CHORD_RAIN_COL_W/2);
+    const y=-16+t*(h+32);
+    const fade=t<0.08?t/0.08:t>0.85?(1-t)/0.15:1;
+    _vizSet(_vizTake(E.chordRain,E.gLabels,'text',cri++,{'text-anchor':'middle','font-size':10}),
+      {x:x.toFixed(1),y:y.toFixed(1),fill:drop.color,'fill-opacity':Math.max(0,Math.min(1,fade*0.9)).toFixed(2)})
+      .textContent=drop.text;
+    return true;
+  });
+  _vizHideFrom(E.chordRain,cri);
+  // Heatmap strip, bottom of the window.
+  const laneH=VIZ_HEAT_STRIP_H/12;
+  E.heatBorder.removeAttribute('display');
+  _vizSet(E.heatBorder,{x1:0,y1:h-VIZ_HEAT_STRIP_H,x2:w,y2:h-VIZ_HEAT_STRIP_H});
+  let hli=0;
+  for(let pc=0;pc<12;pc++){
+    _vizSet(_vizTake(E.heatLabels,E.gLabels,'text',hli++,{'font-size':7,'text-anchor':'start'}),
+      {x:4,y:(h-pc*laneH-laneH/2).toFixed(1),fill:'var(--text-dark)','fill-opacity':0.6})
+      .textContent=VIZ_NOTE_NAMES[pc];
+  }
+  _vizHideFrom(E.heatLabels,hli);
+  // Flat fill only - the rim+specular-highlight treatment doubled the
+  // element count (a real cost once thousands of dots accumulate) and
+  // looked muddy at this size rather than reading as depth. Reverted.
+  let hdi=0;
+  _vizHeatDots=_vizHeatDots.filter(dot=>{
+    const age=now-dot.born;
+    if(age>=VIZ_HEAT_WINDOW_MS)return false;
+    const t=age/VIZ_HEAT_WINDOW_MS;
+    const x=w-t*w;
+    const laneBottom=h-dot.pc*laneH;
+    const y=laneBottom-(dot.v/127)*laneH;
+    const fade=t>0.85?(1-t)/0.15:1;
+    const r=2+(dot.v/127)*3;
+    _vizSet(_vizTake(E.heatDots,E.gLabels,'circle',hdi++,{}),
+      {cx:x.toFixed(1),cy:y.toFixed(1),r:r.toFixed(1),fill:dot.color,
+       'fill-opacity':Math.max(0,Math.min(1,fade*0.85)).toFixed(2)});
+    return true;
+  });
+  _vizHideFrom(E.heatDots,hdi);
   // Legend, top-left: swatch, name, node count, live phase bar.
   legendRows.sort((a,b)=>a.name<b.name?-1:1);
   legendRows.forEach((cl,i)=>{
@@ -2598,7 +2766,9 @@ function _vizMakeLegendRow(E,i){
   E.legendRows[i]=row;return row;
 }
 function _vizAxisGizmo(E,w,h){
-  const ox=w-42,oy=h-42,len=18;
+  // Sits in the 3D viewing area proper - above the heatmap strip along the
+  // bottom, not overlapping it.
+  const ox=w-42,oy=h-VIZ_HEAT_STRIP_H-42,len=18;
   [[len,0,0],[0,len,0],[0,0,len]].forEach((ax,i)=>{
     const r=_qRot(_vizCam.q,ax);
     _vizSet(E.gizmo[i].line,{x1:ox,y1:oy,x2:(ox+r[0]).toFixed(1),y2:(oy+r[1]).toFixed(1)});
@@ -2636,8 +2806,10 @@ function _vizInit(){
   _vizEls={gDither,gHulls,gChain,gEdges,gMotes,gNodes,gLabels,gUI,
     hulls:[],hullTags:[],hullTexts:[],edges:[],pings:[],nodeDots:[],cursors:[],
     labels:[],legendRows:[],armLines:[],conductorLinks:[],echoTrails:[],
-    motes:[],moteLabels:[],
+    motes:[],moteLabels:[],chordRain:[],heatDots:[],heatLabels:[],
+    orbits:[],beatMarkers:[],
     corners:_vizNode(gUI,'path',{fill:'none',stroke:'var(--text-dark)','stroke-width':1}),
+    heatBorder:_vizNode(gUI,'line',{stroke:'var(--border-dim)','stroke-width':1}),
     conductorTrail:_vizNode(gChain,'path',{fill:'none','stroke-width':1,'stroke-opacity':0.35}),
     pen:_vizNode(gUI,'circle',{r:2.5,fill:'var(--text)'}),
     penLabel:_vizNode(gUI,'text',Object.assign({'font-size':8,fill:'var(--text)','fill-opacity':0.6},mono)),
@@ -2674,6 +2846,18 @@ function _vizInit(){
     _vizCam.dist=Math.max(300,Math.min(3200,_vizCam.dist*(1+Math.sign(e.deltaY)*0.08)));
   },{passive:false});
   _vizSyncCamUI();
+  // window's own resize event never fires when just the right-hand panel
+  // gets dragged wider/narrower - only an actual browser/app window resize
+  // does. That left the viewBox sized to whatever the panel measured at
+  // the moment the tab was first opened, and SVG's default
+  // preserveAspectRatio then letterboxed the (stale, usually smaller)
+  // logical content into the middle of the now differently-sized element
+  // - which is exactly the "dots never reach the edges" symptom. A
+  // ResizeObserver on the element itself fires for any size change,
+  // regardless of what caused it.
+  try{
+    new ResizeObserver(_vizResize).observe(_vizSvg);
+  }catch(e){/* ResizeObserver unavailable - falls back to window resize only */}
   _vizResize();
   if(!_vizRAF)_vizRAF=requestAnimationFrame(_vizFrame);
 }
