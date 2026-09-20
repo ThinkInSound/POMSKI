@@ -91,16 +91,34 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .tab-rename{background:transparent;border:none;border-bottom:1px solid var(--pink);outline:none;color:var(--text);font-family:var(--mono);font-size:10px;min-width:40px;max-width:120px;padding:0;caret-color:var(--pink)}
 
 /* Code editor */
-.editor-wrap{flex:1;min-height:0;background:var(--bg-input);transition:box-shadow .4s ease-out;position:relative;overflow:hidden}
+/* z-index:0 (not just position:relative) is required here: relative
+   positioning alone does NOT establish a stacking context without an
+   explicit z-index, so the visualizer's z-index:-1 layer (see .editor-viz)
+   was escaping this element entirely and painting against whatever
+   stacking context exists further up the DOM tree instead - real
+   dimensions, real content, RAF running, genuinely invisible because it
+   wasn't stacking where it visually appears to live at all. */
+.editor-wrap{flex:1;min-height:0;background:var(--bg-input);transition:box-shadow .4s ease-out;position:relative;z-index:0;overflow:hidden}
 .editor-wrap.flash-ok{box-shadow:inset 0 0 0 2px var(--green);transition:box-shadow 0s}
 .editor-wrap.flash-err{box-shadow:inset 0 0 0 2px var(--red);transition:box-shadow 0s}
 /* Syntax-highlight overlay sits behind the textarea */
 #editorHL{position:absolute;top:0;left:0;right:0;bottom:0;margin:0;padding:16px;border:none;outline:none;font-family:var(--mono);font-size:13px;line-height:1.7;tab-size:4;white-space:pre-wrap;word-wrap:break-word;overflow:hidden;pointer-events:none;z-index:0;color:var(--text);background:transparent;box-sizing:border-box}
 #editorErrLine{position:absolute;left:0;right:0;height:22px;pointer-events:none;z-index:0;background:rgba(255,79,79,.16);border-left:3px solid var(--red);display:none}
-.viz-controls{position:absolute;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:2}
-.viz-btn{font-family:var(--mono);font-size:8px;letter-spacing:1px;padding:3px 7px;background:var(--bg-panel);color:var(--text-dim);border:1px solid var(--border-dim);border-radius:2px;cursor:pointer}
-.viz-btn:hover{color:var(--text);border-color:var(--border)}
-.viz-btn.on{color:var(--text);border-color:var(--purple)}
+/* z-index:-1, not a small positive number like the other overlays: this
+   needs to sit BELOW #editorHL(0)/.code-editor(1) so the visualization
+   shows through transparent text/background, not on top of the code.
+   .editor-wrap has its own position:relative + overflow:hidden, so this
+   still paints above the wrap's own background and stays clipped to it -
+   a negative z-index only reorders siblings within that stacking context,
+   it doesn't escape it. Toggled by Cmd+, (see _vizOverlayOn). */
+/* width/height:100% alongside the inset properties, not just top/left/
+   right/bottom:0 alone: SVG is a "replaced element" like <img>, and
+   WebKit doesn't reliably stretch a replaced element to fill its
+   containing block from inset-only absolute positioning the way it does
+   for a plain div - explains a consistent, resize-poll-immune cutoff at
+   whatever height the SVG happened to intrinsically settle on, regardless
+   of the window's actual current size. */
+.editor-viz{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;z-index:-1;pointer-events:none;display:none}
 .pat-glow{transition:text-shadow .1s ease-out,filter .1s ease-out;border-radius:2px}
 .mini-active{border-radius:2px;padding:0 1px;margin:0 -1px}
 /* Textarea is transparent so highlight layer shows through */
@@ -344,6 +362,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="tab-add" id="tabAdd">+</div>
       </div>
       <div class="editor-wrap">
+        <svg id="visualSvg" class="editor-viz" aria-hidden="true"></svg>
         <div id="editorErrLine" aria-hidden="true"></div>
         <pre id="editorHL" aria-hidden="true"></pre>
         <textarea class="code-editor" id="codeEditor" spellcheck="false"
@@ -369,7 +388,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     <div class="right-panel" id="rightPanel">
       <div class="panel-tabs">
         <div class="panel-tab active" data-panel="log">Log</div>
-        <div class="panel-tab" data-panel="visual">Visual</div>
         <div class="panel-tab" data-panel="signals">Signals</div>
         <div class="panel-tab" data-panel="patterns">Patterns</div>
         <div class="panel-tab" data-panel="prefs">Prefs</div>
@@ -388,16 +406,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             <input type="checkbox" id="quickCx"><span>CX</span>
           </label>
           <button class="log-send" onclick="sendQuick()">Send</button>
-        </div>
-      </div>
-
-      <!-- VISUAL -->
-      <div class="panel-view" id="view-visual" style="position:relative">
-        <svg id="visualSvg" style="width:100%;height:100%;display:block;background:var(--bg-input);touch-action:none"></svg>
-        <div class="viz-controls">
-          <button class="viz-btn" id="vizArcballBtn" onclick="_vizCam.arcball=!_vizCam.arcball;_vizSyncCamUI()">ARCBALL OFF</button>
-          <button class="viz-btn" id="vizOrbitBtn" onclick="_vizCam.orbit=!_vizCam.orbit;_vizSyncCamUI()">ORBIT ON</button>
-          <button class="viz-btn" onclick="_vizCamReset()">RESET</button>
         </div>
       </div>
 
@@ -1860,7 +1868,6 @@ document.querySelectorAll('.panel-tab').forEach(tab=>{
     document.querySelectorAll('.panel-view').forEach(v=>v.classList.remove('active'));
     tab.classList.add('active');document.getElementById('view-'+tab.dataset.panel).classList.add('active');
     if(tab.dataset.panel==='prefs')refreshMidi();
-    if(tab.dataset.panel==='visual')_vizInit();
     if(tab.dataset.panel==='log'&&_consoleAtBottom){
       const out=document.getElementById('consoleOut');
       out.scrollTop=out.scrollHeight;
@@ -2152,6 +2159,7 @@ let _vizClusters=new Map(); // name -> cluster state, persists across ticks
 let _vizConductorTrail=[];
 let _vizClock=null,_vizLastPulse=null,_vizBar=0,_vizBeat=0,_vizBpm=120;
 let _vizSvg=null,_vizEls=null,_vizRAF=null,_vizW=0,_vizH=0;
+let _vizOverlayOn=false;
 let _vizCam={q:[1,0,0,0],dist:1100,fov:900,orbit:true,arcball:false};
 let _vizDrag=null;
 // ── quaternion + projection ──────────────────────────────────────────────────
@@ -2316,19 +2324,38 @@ function _tickVisual(msg){
   });
   [..._vizClusters.keys()].forEach(name=>{if(!seen.has(name))_vizClusters.delete(name);});
 }
-function _vizResize(){
+let _vizDitherRAF=null;
+// Checked every frame (see _vizFrame), not just on ResizeObserver/window-
+// resize events: Safari's own devtools panel resizing the viewport didn't
+// reliably fire the observer in testing (editor text resized correctly,
+// the visualizer's own measurement didn't), so relying on any single event
+// source to catch every possible resize path proved fragile. Polling once
+// per frame is cheap - it's a getBoundingClientRect() read and an early
+// return when nothing changed - and turns "did something resize" from an
+// event we hope fires into a fact checked 60 times a second regardless of
+// cause. `force` skips the no-change short-circuit, for callers (init,
+// explicit resize handlers) that need the full path to run unconditionally.
+function _vizSyncSize(force){
   if(!_vizSvg)return;
   const rect=_vizSvg.getBoundingClientRect();
-  _vizW=Math.max(1,Math.round(rect.width));_vizH=Math.max(1,Math.round(rect.height));
+  const newW=Math.max(1,Math.round(rect.width)),newH=Math.max(1,Math.round(rect.height));
+  if(!force&&newW===_vizW&&newH===_vizH)return;
+  _vizW=newW;_vizH=newH;
   _vizSvg.setAttribute('viewBox','0 0 '+_vizW+' '+_vizH);
   const m=10,len=9,w=_vizW,h=_vizH;
   if(_vizEls){
     _vizSet(_vizEls.corners,{d:'M'+m+' '+(m+len)+'V'+m+'H'+(m+len)+
       'M'+(w-m-len)+' '+m+'H'+(w-m)+'V'+(m+len)+'M'+m+' '+(h-m-len)+'V'+(h-m)+'H'+(m+len)+
       'M'+(w-m-len)+' '+(h-m)+'H'+(w-m)+'V'+(h-m-len)});
-    _vizBuildDither();
+    // Rebuilding 1000+ dither dots synchronously on every one of those
+    // per-frame checks would be real, wasted work - deferred a frame and
+    // coalesced so a rapid flurry of size changes (dragging a panel edge)
+    // rebuilds it once when things settle, not once per detected change.
+    if(_vizDitherRAF)cancelAnimationFrame(_vizDitherRAF);
+    _vizDitherRAF=requestAnimationFrame(()=>{_vizDitherRAF=null;_vizBuildDither();});
   }
 }
+function _vizResize(){_vizSyncSize(true);}
 // Ordered (Bayer 4x4) dither, the same halftone-screen construction as a
 // printed dot matrix - a static texture layer, sparse enough to read as
 // grain rather than noise.
@@ -2355,8 +2382,8 @@ function _vizBuildDither(){
 function _vizFrame(){
   if(!_vizSvg){_vizRAF=null;return;}
   _vizRAF=requestAnimationFrame(_vizFrame);
-  const view=document.getElementById('view-visual');
-  if(!view||!view.classList.contains('active'))return;
+  if(!_vizOverlayOn)return;
+  _vizSyncSize();
   const E=_vizEls,w=_vizW,h=_vizH,cx=w/2,cy=h/2;
   const now=performance.now(),pulse=_vizPulseNow();
   if(_vizCam.orbit&&!_vizDrag)_vizCam.q=_qNorm(_qMul(_qAxis(0,1,0,0.0018),_vizCam.q));
@@ -2739,18 +2766,23 @@ function _vizFrame(){
     return true;
   });
   _vizHideFrom(E.heatDots,hdi);
-  // Legend, top-left: swatch, name, node count, live phase bar.
+  // Legend, top-right now: this used to be the only thing drawn here, top-
+  // left, in a dedicated tab with no competing content. Now it renders
+  // behind real code text that starts at the left margin, so it lives on
+  // the right edge instead - same 16px margin convention, same internal
+  // layout, just mirrored (block spans w-186 to w-16 rather than 16 to 186).
   legendRows.sort((a,b)=>a.name<b.name?-1:1);
+  const lx=w-186;
   legendRows.forEach((cl,i)=>{
     const row=E.legendRows[i]||_vizMakeLegendRow(E,i);
     row.g.removeAttribute('display');
     const y=42+i*13;
     const phase=(((pulse%cl.lengthPulses)+cl.lengthPulses)%cl.lengthPulses)/cl.lengthPulses;
-    _vizSet(row.swatch,{x:16,y:y-3,fill:cl.color});
-    _vizSet(row.name,{x:28,y});row.name.textContent=cl.name.slice(0,10);
-    _vizSet(row.count,{x:130,y});row.count.textContent=String(cl.nodes.length).padStart(3);
-    _vizSet(row.barBg,{x:142,y:y-3.5});
-    _vizSet(row.barFg,{x:143,y:y-2.5,width:Math.max(1,44*phase).toFixed(1),fill:cl.color});
+    _vizSet(row.swatch,{x:lx,y:y-3,fill:cl.color});
+    _vizSet(row.name,{x:lx+12,y});row.name.textContent=cl.name.slice(0,10);
+    _vizSet(row.count,{x:lx+114,y});row.count.textContent=String(cl.nodes.length).padStart(3);
+    _vizSet(row.barBg,{x:lx+126,y:y-3.5});
+    _vizSet(row.barFg,{x:lx+127,y:y-2.5,width:Math.max(1,44*phase).toFixed(1),fill:cl.color});
   });
   for(let i=legendRows.length;i<E.legendRows.length;i++)E.legendRows[i].g.setAttribute('display','none');
 }
@@ -2822,14 +2854,23 @@ function _vizInit(){
       text.textContent=label;
       return{line,text};
     })};
-  _vizSvg.addEventListener('pointerdown',e=>{
-    if(!_vizCam.arcball)return;
+  // Arcball drag/dolly listen on document, not on #visualSvg: the layer is
+  // pointer-events:none (has to be - it sits behind live editor text, a
+  // plain click or scroll there must reach the textarea, not the camera).
+  // Gated on the Cmd modifier instead of a persistent arcball-mode toggle,
+  // so holding Cmd while dragging/scrolling controls the camera and
+  // everything else (typing, clicking, normal scrolling of the code)
+  // passes through untouched. Wired once here, but checks _vizOverlayOn
+  // every time so it's inert whenever the layer's toggled off.
+  document.addEventListener('pointerdown',e=>{
+    if(!_vizOverlayOn||!e.metaKey||!_vizSvg)return;
+    e.preventDefault();
     const r=_vizSvg.getBoundingClientRect();
     _vizDrag=_vizBallVec(e.clientX-r.left,e.clientY-r.top);
-    _vizSvg.setPointerCapture(e.pointerId);
   });
-  _vizSvg.addEventListener('pointermove',e=>{
-    if(!_vizDrag)return;
+  document.addEventListener('pointermove',e=>{
+    if(!_vizDrag||!_vizSvg)return;
+    e.preventDefault();
     const r=_vizSvg.getBoundingClientRect();
     const v1=_vizBallVec(e.clientX-r.left,e.clientY-r.top),v0=_vizDrag;
     const ax=[v0[1]*v1[2]-v0[2]*v1[1],v0[2]*v1[0]-v0[0]*v1[2],v0[0]*v1[1]-v0[1]*v1[0]];
@@ -2839,13 +2880,13 @@ function _vizInit(){
     _vizDrag=v1;
   });
   const endDrag=()=>{_vizDrag=null;};
-  _vizSvg.addEventListener('pointerup',endDrag);
-  _vizSvg.addEventListener('pointercancel',endDrag);
-  _vizSvg.addEventListener('wheel',e=>{
+  document.addEventListener('pointerup',endDrag);
+  document.addEventListener('pointercancel',endDrag);
+  document.addEventListener('wheel',e=>{
+    if(!_vizOverlayOn||!e.metaKey)return;
     e.preventDefault();
     _vizCam.dist=Math.max(300,Math.min(3200,_vizCam.dist*(1+Math.sign(e.deltaY)*0.08)));
   },{passive:false});
-  _vizSyncCamUI();
   // window's own resize event never fires when just the right-hand panel
   // gets dragged wider/narrower - only an actual browser/app window resize
   // does. That left the viewBox sized to whatever the panel measured at
@@ -2862,6 +2903,27 @@ function _vizInit(){
   if(!_vizRAF)_vizRAF=requestAnimationFrame(_vizFrame);
 }
 window.addEventListener('resize',_vizResize);
+// Cmd+Option+V toggles the visualizer as a background layer behind the
+// editor text (z-index:-1 on #visualSvg, living inside .editor-wrap itself
+// now - no separate tab). Cmd+, was the first choice but that's the
+// universal macOS/browser-chrome "Preferences" reservation - every app and
+// every browser claims it at the native menu level before a web page's own
+// JS ever sees the keystroke, confirmed by it failing identically in plain
+// Safari with no pywebview involved at all. Cmd+Option dodges both that
+// class of OS/browser reservation and the Emacs-style Ctrl-only text-
+// navigation bindings Cocoa text fields honor by default (this editor's
+// own textarea included). e.code (physical key), not just e.key, since
+// Option alone would normally compose an accented character - checking
+// code sidesteps that regardless of whether Cmd suppresses it as expected.
+function _vizToggleOverlay(){
+  _vizOverlayOn=!_vizOverlayOn;
+  const svg=document.getElementById('visualSvg');
+  if(svg)svg.style.display=_vizOverlayOn?'block':'none';
+  if(_vizOverlayOn)_vizInit(); // lazy - first call does real setup, later calls just resize
+}
+document.addEventListener('keydown',e=>{
+  if(e.metaKey&&e.altKey&&(e.code==='KeyV'||e.key==='v'||e.key==='V')){e.preventDefault();_vizToggleOverlay();}
+});
 // The editor used to breathe its letter-spacing with note density. It read
 // as the text wiggling while you were trying to work in it, so it's gone -
 // this clears any spacing a previous session's build left applied.

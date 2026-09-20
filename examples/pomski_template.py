@@ -907,7 +907,7 @@ try:
         # tab buffers) at every launch before the page even loads. That made
         # buffer contents look saved mid-session (localStorage still works
         # in-memory) but reset to blank on the next app launch.
-        _webview.start(func=_on_gui_ready, private_mode=False, debug=True)  # TEMP: makes the window inspectable via Safari's Develop menu for diagnosis
+        _webview.start(func=_on_gui_ready, private_mode=False)
 
         # Window closed: request a clean sequencer shutdown (notes off),
         # then exit. os._exit is the backstop for anything non-daemon.
