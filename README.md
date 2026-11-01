@@ -11,7 +11,7 @@
 <br>
 
 [![Download for macOS](https://img.shields.io/badge/Download_for-macOS-ff5c8a?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/ThinkInSound/POMSKI/releases/tag/macOS-v1.2.0)
-[![Download for Windows](https://img.shields.io/badge/Download_for-Windows-5ea8ff?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/ThinkInSound/POMSKI/releases/tag/Windows)
+[![Download for Windows](https://img.shields.io/badge/Download_for-Windows-5ea8ff?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/ThinkInSound/POMSKI/releases/tag/Windows-v1.2.0)
 
 [![Watch the setup video](https://img.shields.io/badge/Watch-Setup_Video-FF0000?style=flat-square&logo=youtube&logoColor=white)](https://youtu.be/XUqHq8mggBk)
 [![Full tutorial](https://img.shields.io/badge/Read-Full_Tutorial-3fc8a0?style=flat-square)](https://thinkinsound.github.io/POMSKI/)
@@ -49,7 +49,7 @@ It sends MIDI, so it drives whatever you already use: Ableton Live, Logic, a har
 
 ### 🪟 Windows
 
-1. **[Download the installer](https://github.com/ThinkInSound/POMSKI/releases/tag/Windows)**
+1. **[Download the installer](https://github.com/ThinkInSound/POMSKI/releases/tag/Windows-v1.2.0)**
 2. Run it — everything is bundled, no Python needed
 3. Launch POMSKI from the Start menu or desktop shortcut
 
