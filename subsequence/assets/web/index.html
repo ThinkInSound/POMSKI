@@ -746,7 +746,7 @@ def cellular(p):
 
               <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Same thing via the built-in methods (also handle overlap/dropout/rng for you)</span></code></div>
               <div class="ref-item"><code>p.cellular_1d(<span class="ref-arg">pitch</span>, rule=<span class="ref-arg">30</span>, velocity=<span class="ref-arg">60</span>, no_overlap=<span class="ref-arg">False</span>, dropout=<span class="ref-arg">0.0</span>)</code><span class="ref-desc">1D — rules 30/90/110 classic</span></div>
-              <div class="ref-item"><code>p.cellular_2d(<span class="ref-arg">pitches</span>, rule=<span class="ref-arg">"B368/S245"</span>, seed=<span class="ref-arg">1</span>, density=<span class="ref-arg">0.5</span>)</code><span class="ref-desc">2D Life-like, polyphonic — pitches is a list, one row per pitch</span></div>
+              <div class="ref-item"><code>p.cellular_2d(<span class="ref-arg">pitches</span>, rule=<span class="ref-arg">"B368/S245"</span>, seed=<span class="ref-arg">42</span>, density=<span class="ref-arg">0.5</span>)</code><span class="ref-desc">2D Life-like, polyphonic — pitches is a list, one row per pitch (seed=1 means a single centre cell, not random — dies out under this rule)</span></div>
 
               <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Lorenz attractor — chaotic pitch sequencing</span></code></div>
               <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
@@ -1918,6 +1918,19 @@ function drawSig(name){
 // ── PATTERNS ──────────────────────────────────────────────────────────────────
 const NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 function midiToName(n){return NOTE_NAMES[n%12]+(Math.floor(n/12)-1);}
+// A pattern's note pulses (p.notes[].s) are local to its own cycle (0..length_pulses),
+// but the sequencer schedules it starting at whatever absolute pulse was current at
+// (re)schedule time (e.g. a live hot-swap starts at sequencer.pulse_count, not a
+// multiple of length_pulses) — so playheadPulse%length_pulses alone drifts out of
+// phase with real MIDI output. cycle_start_pulse (sent per-pattern) corrects it.
+function _loopPulse(p,playheadPulse){
+  if(!p.length_pulses)return 0;
+  return _phaseMod(playheadPulse-(p.cycle_start_pulse||0),p.length_pulses);
+}
+function _phaseMod(pulse,length){
+  if(!length)return 0;
+  return ((pulse%length)+length)%length;
+}
 function updatePatterns(patterns){
   const list=document.getElementById('patList');
   const incoming=new Set(patterns.map(p=>p.name));
@@ -1953,7 +1966,7 @@ function updatePatterns(patterns){
       notesEl.innerHTML='<span style="font-family:var(--mono);font-size:9px;color:var(--text-dark)">—</span>';
       notesEl.dataset.key='';
     }else{
-      const loopPulse=p.length_pulses>0?playheadPulse%p.length_pulses:0;
+      const loopPulse=_loopPulse(p,playheadPulse);
       const activeNow=new Set(p.notes.filter(n=>{const d=Math.max(n.d,1);return n.s<=loopPulse&&loopPulse<n.s+d;}).map(n=>n.p));
       // collect unique pitches in order of first appearance
       const seen=new Set(); const pitches=[];
@@ -2293,6 +2306,7 @@ function _tickVisual(msg){
     if(!cl){cl=_vizClusters.set(p.name,{name:p.name,nodes:[],sig:''}).get(p.name);}
     cl.color=patCol[p.name]||'#7fe3c0';
     cl.lengthPulses=p.length_pulses;
+    cl.cycleStartPulse=p.cycle_start_pulse||0;
     cl.center=_vizLatticePos(i,live.length);
     cl.notes=p.notes;
     const byPitch={};
@@ -2407,8 +2421,8 @@ function _vizFrame(){
   // also feeds the scrolling pitch/velocity heatmap strip below.
   if(_vizLastPulse!=null&&pulse>_vizLastPulse){
     clusters.forEach(cl=>{
-      const L=cl.lengthPulses,jumped=(pulse-_vizLastPulse)>=L;
-      const p0=(((_vizLastPulse%L)+L)%L),p1=(((pulse%L)+L)%L);
+      const L=cl.lengthPulses,off=cl.cycleStartPulse||0,jumped=(pulse-_vizLastPulse)>=L;
+      const p0=_phaseMod(_vizLastPulse-off,L),p1=_phaseMod(pulse-off,L);
       cl.notes.forEach(n=>{
         if(!(jumped||_vizCrossed(n.s,p0,p1)))return;
         const node=cl.nodes.find(nd=>nd.pitch===n.p);
@@ -2427,7 +2441,7 @@ function _vizFrame(){
   const originColorByPC={}; // pitch class -> color of a cluster currently sounding it
   clusters.forEach(cl=>{
     totalNodes+=cl.nodes.length;
-    const loopPulse=(((pulse%cl.lengthPulses)+cl.lengthPulses)%cl.lengthPulses);
+    const loopPulse=_phaseMod(pulse-(cl.cycleStartPulse||0),cl.lengthPulses);
     cl.notes.forEach(n=>{
       const d=Math.max(n.d,1);
       if(n.s<=loopPulse&&loopPulse<n.s+d){
@@ -2467,7 +2481,7 @@ function _vizFrame(){
   const nearBoost=new Map(); // cluster name -> 0..1, how close the pen is
   ranked.forEach((cl,i)=>{
     const r=(weights[i]/wsum)*maxR;
-    const phase=(((pulse%cl.lengthPulses)+cl.lengthPulses)%cl.lengthPulses)/cl.lengthPulses;
+    const phase=_phaseMod(pulse-(cl.cycleStartPulse||0),cl.lengthPulses)/cl.lengthPulses;
     const ang=phase*Math.PI*2-Math.PI/2;
     const tilt=(i/Math.max(1,ranked.length))*Math.PI*0.7;
     const u=[Math.cos(tilt),0,Math.sin(tilt)],v=[0,1,0];
@@ -2626,7 +2640,7 @@ function _vizFrame(){
     cl.centerProj=_vizProject(cl.center,cx,cy);
     cl.boost=boost;
     legendRows.push(cl);
-    const loopPulse=(((pulse%cl.lengthPulses)+cl.lengthPulses)%cl.lengthPulses);
+    const loopPulse=_phaseMod(pulse-(cl.cycleStartPulse||0),cl.lengthPulses);
     const cursorLocal=_vizClusterCursor(cl,loopPulse);
     if(cursorLocal){
       const cw=[cl.center[0]+cursorLocal[0],cl.center[1]+cursorLocal[1],cl.center[2]+cursorLocal[2]];
@@ -2777,7 +2791,7 @@ function _vizFrame(){
     const row=E.legendRows[i]||_vizMakeLegendRow(E,i);
     row.g.removeAttribute('display');
     const y=42+i*13;
-    const phase=(((pulse%cl.lengthPulses)+cl.lengthPulses)%cl.lengthPulses)/cl.lengthPulses;
+    const phase=_phaseMod(pulse-(cl.cycleStartPulse||0),cl.lengthPulses)/cl.lengthPulses;
     _vizSet(row.swatch,{x:lx,y:y-3,fill:cl.color});
     _vizSet(row.name,{x:lx+12,y});row.name.textContent=cl.name.slice(0,10);
     _vizSet(row.count,{x:lx+114,y});row.count.textContent=String(cl.nodes.length).padStart(3);
@@ -3072,7 +3086,7 @@ function _wrapMiniNotation(html,rawText,patterns){
     const patName=_mnEnclosingPattern(rawLines,li);
     const p=patName?patByName[patName]:null;
     if(!p||!p.length_pulses||pulsesPerBeat<=0)continue;
-    const loopBeat=(playheadPulse%p.length_pulses)/pulsesPerBeat;
+    const loopBeat=_loopPulse(p,playheadPulse)/pulsesPerBeat;
     const events=_mnParse(notation,p.length_pulses/pulsesPerBeat);
     const active=events.find(ev=>ev.time<=loopBeat&&loopBeat<ev.time+ev.duration);
     if(!active)continue;
@@ -3164,7 +3178,7 @@ function _wrapHitSteps(html,rawText,patterns){
     while((nm=numRe.exec(stepsMatch[1])))tokens.push({s:listStart+nm.index,e:listStart+nm.index+nm[0].length});
     if(!tokens.length)continue;
     const matchingNotes=(p.notes||[]).filter(n=>n.p===pitch); // broadcast order == steps-list order
-    const loopPulse=playheadPulse%p.length_pulses;
+    const loopPulse=_loopPulse(p,playheadPulse);
     tokens.forEach((tok,idx)=>{
       const note=matchingNotes[idx];
       if(!note)return;

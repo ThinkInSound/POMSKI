@@ -548,12 +548,28 @@ class WebUI:
         current_bar = state["global_bar"]
         if current_bar != self._last_bar:
             self._last_bar = current_bar
+            # A pattern's steps are keyed by pulse position relative to its OWN
+            # cycle (0..length_pulses), but it's actually scheduled in the
+            # sequencer's absolute-pulse event queue starting at whatever
+            # pulse_count was current when it was (re)scheduled — e.g. a live
+            # hot-swap/new-pattern schedules start_pulse=sequencer.pulse_count,
+            # not a multiple of length_pulses. Without this offset the client
+            # can't correctly compute "which local step is playing right now"
+            # from playhead_pulse alone — the pill/lattice highlight drifts out
+            # of phase with real MIDI output by however many pulses had elapsed
+            # at hot-swap time.
+            cycle_start_by_id: typing.Dict[int, int] = {}
+            seq_obj = comp.sequencer
+            if seq_obj is not None:
+                for _, _, scheduled_pattern in getattr(seq_obj, "reschedule_queue", []):
+                    cycle_start_by_id[id(scheduled_pattern.pattern)] = scheduled_pattern.cycle_start_pulse
             self._cached_patterns = []
             for name, pattern in comp.running_patterns.items():
                 pattern_data: typing.Dict[str, typing.Any] = {
                     "name": name,
                     "muted": getattr(pattern, "_muted", False),
                     "length_pulses": int(pattern.length * state["pulses_per_beat"]),
+                    "cycle_start_pulse": cycle_start_by_id.get(id(pattern), 0),
                     "drum_map": getattr(pattern, "_drum_note_map", None),
                     "notes": []
                 }
