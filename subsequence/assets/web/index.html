@@ -91,12 +91,36 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .tab-rename{background:transparent;border:none;border-bottom:1px solid var(--pink);outline:none;color:var(--text);font-family:var(--mono);font-size:10px;min-width:40px;max-width:120px;padding:0;caret-color:var(--pink)}
 
 /* Code editor */
-.editor-wrap{flex:1;min-height:0;background:var(--bg-input);transition:box-shadow .4s ease-out;position:relative;overflow:hidden}
+/* z-index:0 (not just position:relative) is required here: relative
+   positioning alone does NOT establish a stacking context without an
+   explicit z-index, so the visualizer's z-index:-1 layer (see .editor-viz)
+   was escaping this element entirely and painting against whatever
+   stacking context exists further up the DOM tree instead - real
+   dimensions, real content, RAF running, genuinely invisible because it
+   wasn't stacking where it visually appears to live at all. */
+.editor-wrap{flex:1;min-height:0;background:var(--bg-input);transition:box-shadow .4s ease-out;position:relative;z-index:0;overflow:hidden}
 .editor-wrap.flash-ok{box-shadow:inset 0 0 0 2px var(--green);transition:box-shadow 0s}
 .editor-wrap.flash-err{box-shadow:inset 0 0 0 2px var(--red);transition:box-shadow 0s}
 /* Syntax-highlight overlay sits behind the textarea */
 #editorHL{position:absolute;top:0;left:0;right:0;bottom:0;margin:0;padding:16px;border:none;outline:none;font-family:var(--mono);font-size:13px;line-height:1.7;tab-size:4;white-space:pre-wrap;word-wrap:break-word;overflow:hidden;pointer-events:none;z-index:0;color:var(--text);background:transparent;box-sizing:border-box}
 #editorErrLine{position:absolute;left:0;right:0;height:22px;pointer-events:none;z-index:0;background:rgba(255,79,79,.16);border-left:3px solid var(--red);display:none}
+/* z-index:-1, not a small positive number like the other overlays: this
+   needs to sit BELOW #editorHL(0)/.code-editor(1) so the visualization
+   shows through transparent text/background, not on top of the code.
+   .editor-wrap has its own position:relative + overflow:hidden, so this
+   still paints above the wrap's own background and stays clipped to it -
+   a negative z-index only reorders siblings within that stacking context,
+   it doesn't escape it. Toggled by Cmd+, (see _vizOverlayOn). */
+/* width/height:100% alongside the inset properties, not just top/left/
+   right/bottom:0 alone: SVG is a "replaced element" like <img>, and
+   WebKit doesn't reliably stretch a replaced element to fill its
+   containing block from inset-only absolute positioning the way it does
+   for a plain div - explains a consistent, resize-poll-immune cutoff at
+   whatever height the SVG happened to intrinsically settle on, regardless
+   of the window's actual current size. */
+.editor-viz{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;z-index:-1;pointer-events:none;display:none}
+.pat-glow{transition:text-shadow .1s ease-out,filter .1s ease-out;border-radius:2px}
+.mini-active{border-radius:2px;padding:0 1px;margin:0 -1px}
 /* Textarea is transparent so highlight layer shows through */
 .code-editor{position:relative;z-index:1;width:100%;height:100%;background:transparent;border:none;outline:none;color:transparent;caret-color:var(--pink);font-family:var(--mono);font-size:13px;line-height:1.7;padding:16px;resize:none;tab-size:4}
 .code-editor::selection{background:rgba(157,111,255,.35)}
@@ -241,7 +265,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .ref-item{font-family:var(--mono);font-size:10px;color:var(--text);display:flex;align-items:baseline;flex-wrap:wrap;gap:6px;line-height:1.5;min-width:0;width:100%}
 .ref-item code{color:var(--text);font-family:var(--mono);font-size:10px;min-width:0;word-break:break-word}
 .ref-item.ref-indent{overflow-x:auto;width:100%;display:block}
-.ref-item.ref-indent code{white-space:pre-wrap;word-break:break-word;display:block}100%{background:transparent}}
+.ref-item.ref-indent code{white-space:pre-wrap;word-break:break-word;display:block}
 .ref-indent{padding-left:14px}
 .ref-arg{color:var(--orange)}
 .ref-desc{font-family:var(--sans);font-size:9px;color:var(--text-dark);margin-left:4px;flex-shrink:0}
@@ -338,6 +362,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="tab-add" id="tabAdd">+</div>
       </div>
       <div class="editor-wrap">
+        <svg id="visualSvg" class="editor-viz" aria-hidden="true"></svg>
         <div id="editorErrLine" aria-hidden="true"></div>
         <pre id="editorHL" aria-hidden="true"></pre>
         <textarea class="code-editor" id="codeEditor" spellcheck="false"
@@ -721,7 +746,7 @@ def cellular(p):
 
               <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Same thing via the built-in methods (also handle overlap/dropout/rng for you)</span></code></div>
               <div class="ref-item"><code>p.cellular_1d(<span class="ref-arg">pitch</span>, rule=<span class="ref-arg">30</span>, velocity=<span class="ref-arg">60</span>, no_overlap=<span class="ref-arg">False</span>, dropout=<span class="ref-arg">0.0</span>)</code><span class="ref-desc">1D — rules 30/90/110 classic</span></div>
-              <div class="ref-item"><code>p.cellular_2d(<span class="ref-arg">pitches</span>, rule=<span class="ref-arg">"B368/S245"</span>, seed=<span class="ref-arg">1</span>, density=<span class="ref-arg">0.5</span>)</code><span class="ref-desc">2D Life-like, polyphonic — pitches is a list, one row per pitch</span></div>
+              <div class="ref-item"><code>p.cellular_2d(<span class="ref-arg">pitches</span>, rule=<span class="ref-arg">"B368/S245"</span>, seed=<span class="ref-arg">42</span>, density=<span class="ref-arg">0.5</span>)</code><span class="ref-desc">2D Life-like, polyphonic — pitches is a list, one row per pitch (seed=1 means a single centre cell, not random — dies out under this rule)</span></div>
 
               <div class="ref-item" style="margin-top:4px"><code><span class="ref-arg"># Lorenz attractor — chaotic pitch sequencing</span></code></div>
               <div class="ref-item ref-indent"><code>@composition.pattern(channel=0, length=4)  # ← channel=0 = MIDI ch 1
@@ -1109,7 +1134,13 @@ document.addEventListener('mousedown',e=>{
 // which happens continuously as log lines stream in — closing the menu
 // moments after opening it for no reason a user would recognize.
 
-const WS_PORT=8765, WS_HOST=window.location.hostname||'localhost', HIST_LEN=180;
+// Fallback is 127.0.0.1, not 'localhost' - pomski_template.py deliberately
+// loads this page via 127.0.0.1 specifically because WKWebView on macOS can
+// stall or fail resolving the hostname "localhost" even though it's
+// loopback (see _on_gui_ready() there). If location.hostname ever comes
+// back empty in that same WKWebView context, falling back to the one
+// hostname already known to be unreliable there defeats the whole point.
+const WS_PORT=8765, WS_HOST=window.location.hostname||'127.0.0.1', HIST_LEN=180;
 let ws=null, bpm=120, lastBeat=-1;
 let cmdHist=[], cmdIdx=-1;
 try{const _s=JSON.parse(localStorage.getItem('pomski_bufs')||'null');if(_s&&Array.isArray(_s.bufs)&&_s.bufs.length)window._initBufs=_s;}catch(_e){}
@@ -1185,11 +1216,17 @@ function highlightPython(code,boldLines,italicLines){
   }
   return out+_esc(code.slice(last));
 }
+let _livePatternNames=new Set(),_livePatternNamesKey='',_lastPatterns=[];
 function updateHighlight(){
   const ta=document.getElementById('codeEditor'),hl=document.getElementById('editorHL');
   if(!hl)return;
+  const val=ta.value;
+  let html=highlightPython(val,_boldLines[activeTab],_italicLines[activeTab]);
+  html=_wrapGlowLines(html,val);
+  html=_wrapMiniNotation(html,val,_lastPatterns);
+  html=_wrapHitSteps(html,val,_lastPatterns);
   // Trailing space ensures pre height tracks textarea (browsers collapse trailing \n in pre)
-  hl.innerHTML=highlightPython(ta.value,_boldLines[activeTab],_italicLines[activeTab])+(ta.value.endsWith('\n')?' ':'');
+  hl.innerHTML=html+(val.endsWith('\n')?' ':'');
   hl.scrollTop=ta.scrollTop;hl.scrollLeft=ta.scrollLeft;
 }
 document.getElementById('codeEditor').addEventListener('input',()=>{updateHighlight();clearErrorLine();});
@@ -1304,11 +1341,30 @@ function handleMsg(msg){
       const lineMatches=[...msg.log.matchAll(/File "<live>", line (\d+)/g)];
       if(nameMatch&&lineMatches.length&&_patternOffsets[nameMatch[1]]!==undefined){
         const relLine=parseInt(lineMatches[lineMatches.length-1][1],10);
-        const absLine=_patternOffsets[nameMatch[1]]+relLine-1;
-        showErrorLine(absLine);
-        const ta=document.getElementById('codeEditor');
-        ta.scrollTop=Math.max(0,(absLine-3)*_editorLineHeightPx());
-        positionErrorLine();
+        // _patternOffsets[name] is where `def name(` sat in the buffer AT
+        // THE TIME it was last run — a snapshot that goes stale the moment
+        // the user edits anything above it without re-running. Traceback
+        // line numbers are absolute within that originally-compiled block,
+        // so re-anchor to where the def sits in the CURRENT buffer instead:
+        // find its live line, then apply the same within-function offset
+        // the traceback implies relative to the compile-time def line.
+        const compileLine=_patternOffsets[nameMatch[1]];
+        const liveLine=_liveDefLine(nameMatch[1]);
+        if(liveLine==null){
+          // Not found in the CURRENTLY VISIBLE buffer — e.g. this pattern
+          // lives in a different tab. compileLine is a raw line-index from
+          // whatever buffer it was run in; positioning against it here
+          // would paint the bar over unrelated code in the active buffer
+          // purely by numeric coincidence. The traceback text is still
+          // right there in the log, so just don't draw a misleading bar.
+          clearErrorLine();
+        }else{
+          const absLine=liveLine+(relLine-1-compileLine);
+          showErrorLine(absLine);
+          const ta=document.getElementById('codeEditor');
+          ta.scrollTop=Math.max(0,(absLine-3)*_editorLineHeightPx());
+          positionErrorLine();
+        }
       }
     }
     return;
@@ -1319,6 +1375,18 @@ function handleMsg(msg){
   if(msg.live)updateLive(msg.live);
   updateSignals(msg.signals||{});
   updatePatterns(msg.patterns||[]);
+  _tickGlow(msg.patterns||[]);
+  _tickVisual(msg);
+  _lastPatterns=msg.patterns||[];
+  // The active mini-notation step moves every tick even when the running
+  // pattern set doesn't change, so — unlike the glow/pill updates above,
+  // which just toggle a style on an already-built span — this needs a full
+  // rebuild of #editorHL each broadcast. Gated on the buffer actually
+  // containing p.seq( so idle buffers don't pay for it.
+  {
+    const buf=document.getElementById('codeEditor').value;
+    if(buf.includes('p.seq(')||buf.includes('p.hit_steps('))updateHighlight();
+  }
 }
 
 // ── TRANSPORT ────────────────────────────────────────────────────────────────
@@ -1545,7 +1613,27 @@ function getBlock(){
 // ── ERROR LINE HIGHLIGHT ────────────────────────────────────────────────────
 // Mirrors the #editorHL overlay technique: an absolutely-positioned bar
 // synced to the textarea's scroll position, sized to one line-height.
-function _editorLineHeightPx(){return _editorFontSize*1.7;}
+//
+// The CSS previously left line-height as the unitless ratio 1.7, so the
+// ACTUAL rendered line-box height was whatever the browser's text-layout
+// engine computed from fontSize*1.7 (13*1.7=22.1px) — a fractional pixel
+// value each engine is free to round differently. positionErrorLine() (and
+// the glow/scroll math) independently assumed exactly fontSize*1.7 in JS.
+// Those two numbers can drift apart — WebKit (the native app's WKWebView)
+// rounds fractional line-boxes differently than Chromium, and the drift
+// compounds with every line, which reads as the bar slowly floating away
+// from its target row the further down the buffer it is. Fix: compute ONE
+// rounded whole-pixel value and force it as an inline line-height on both
+// #codeEditor and #editorHL, so the actual rendered line-box height is
+// bit-for-bit the same number this math uses — no engine-specific rounding
+// left for the two to disagree on.
+let _editorLineHeight=22;
+function _syncEditorLineHeight(){
+  _editorLineHeight=Math.round(_editorFontSize*1.7);
+  document.getElementById('codeEditor').style.lineHeight=_editorLineHeight+'px';
+  document.getElementById('editorHL').style.lineHeight=_editorLineHeight+'px';
+}
+function _editorLineHeightPx(){return _editorLineHeight;}
 function showErrorLine(lineIdx){
   _errLine=lineIdx;
   positionErrorLine();
@@ -1576,7 +1664,14 @@ function evalCode(code){
   if(code===undefined){code=bufs[activeTab].trim();_lastRunOffset=0;}
   if(!code)return;
   clearErrorLine();
-  for(const m of code.matchAll(/^def\s+(\w+)\s*\(/gm))_patternOffsets[m[1]]=_lastRunOffset;
+  // Each def's OWN line within the block, not just the block's start line —
+  // a block with multiple defs (e.g. Ctrl+Shift+Enter over a whole buffer)
+  // previously mapped every one of them to the same (first) line, so error
+  // highlighting for the 2nd+ pattern in a block pointed at the wrong line.
+  for(const m of code.matchAll(/^def\s+(\w+)\s*\(/gm)){
+    const localLine=code.slice(0,m.index).split('\n').length-1;
+    _patternOffsets[m[1]]=_lastRunOffset+localLine;
+  }
   const lines=code.split('\n');
   const echoHl=highlightPython(lines[0])+(lines.length>1?`\n<span style="color:var(--text-dark)">··· ${lines.length-1} more line${lines.length>2?'s':''}</span>`:'');
   log(`<span class="hl-prompt">&gt;&gt;&gt;</span> <span class="hl-echo">${echoHl}</span>`,'cmd',true);
@@ -1639,6 +1734,7 @@ let _editorFontSize=EDITOR_FONT_DEFAULT,_editorFontRAF=null;
 function _applyEditorFontSize(){
   document.getElementById('codeEditor').style.fontSize=_editorFontSize+'px';
   document.getElementById('editorHL').style.fontSize=_editorFontSize+'px';
+  _syncEditorLineHeight();
   positionErrorLine();
   _editorFontRAF=null;
 }
@@ -1822,10 +1918,33 @@ function drawSig(name){
 // ── PATTERNS ──────────────────────────────────────────────────────────────────
 const NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 function midiToName(n){return NOTE_NAMES[n%12]+(Math.floor(n/12)-1);}
+// A pattern's note pulses (p.notes[].s) are local to its own cycle (0..length_pulses),
+// but the sequencer schedules it starting at whatever absolute pulse was current at
+// (re)schedule time (e.g. a live hot-swap starts at sequencer.pulse_count, not a
+// multiple of length_pulses) — so playheadPulse%length_pulses alone drifts out of
+// phase with real MIDI output. cycle_start_pulse (sent per-pattern) corrects it.
+function _loopPulse(p,playheadPulse){
+  if(!p.length_pulses)return 0;
+  return _phaseMod(playheadPulse-(p.cycle_start_pulse||0),p.length_pulses);
+}
+function _phaseMod(pulse,length){
+  if(!length)return 0;
+  return ((pulse%length)+length)%length;
+}
 function updatePatterns(patterns){
   const list=document.getElementById('patList');
   const incoming=new Set(patterns.map(p=>p.name));
   [...list.querySelectorAll('.pat-row')].forEach(r=>{if(!incoming.has(r.dataset.name))r.remove();});
+  // Keep _livePatternNames in sync so _wrapGlowLines() (called from
+  // updateHighlight()) knows which def lines to wrap. Re-run the wrap
+  // immediately on a change instead of waiting for the next keystroke, so a
+  // freshly hot-swapped pattern glows right away.
+  const namesKey=[...incoming].sort().join(',');
+  if(namesKey!==_livePatternNamesKey){
+    _livePatternNamesKey=namesKey;
+    _livePatternNames=incoming;
+    updateHighlight();
+  }
   patterns.forEach(p=>{
     if(!patCol[p.name])patCol[p.name]=COLORS[colIdx++%COLORS.length];
     const color=patCol[p.name];
@@ -1847,8 +1966,8 @@ function updatePatterns(patterns){
       notesEl.innerHTML='<span style="font-family:var(--mono);font-size:9px;color:var(--text-dark)">—</span>';
       notesEl.dataset.key='';
     }else{
-      const loopPulse=p.length_pulses>0?playheadPulse%p.length_pulses:0;
-      const activeNow=new Set(p.notes.filter(n=>{const d=Math.max(n.d*pulsesPerBeat,1);return n.s<=loopPulse&&loopPulse<n.s+d;}).map(n=>n.p));
+      const loopPulse=_loopPulse(p,playheadPulse);
+      const activeNow=new Set(p.notes.filter(n=>{const d=Math.max(n.d,1);return n.s<=loopPulse&&loopPulse<n.s+d;}).map(n=>n.p));
       // collect unique pitches in order of first appearance
       const seen=new Set(); const pitches=[];
       p.notes.forEach(n=>{if(!seen.has(n.p)){seen.add(n.p);pitches.push({p:n.p,v:n.v});}});
@@ -1875,8 +1994,1209 @@ function updatePatterns(patterns){
     }
   });
 }
-function clearAndRefreshPatterns(){document.getElementById('patList').innerHTML='';patCol={};colIdx=0;log('Pattern list cleared','dim');}
+function clearAndRefreshPatterns(){document.getElementById('patList').innerHTML='';patCol={};colIdx=0;_livePatternNames=new Set();_livePatternNamesKey='';updateHighlight();log('Pattern list cleared','dim');}
 function clearPattern(name){wsSend({cmd:'clear_pattern',pattern:name});clearAndRefreshPatterns();}
+
+// ── EDITOR NOTE-TRIGGER GLOW ────────────────────────────────────────────────
+// A positioned overlay box drifts out of sync with real text metrics (line
+// wrap, scroll rounding, font zoom) — binding the effect to the actual
+// decorator/def text inside #editorHL sidesteps all of that: it moves with
+// the text because it *is* the text. _wrapGlowLines() (called from inside
+// updateHighlight(), so it re-wraps on every keystroke) finds, for each
+// currently-running pattern name, the `@composition.pattern(...)` decorator
+// line directly above its `def <name>(` line (or the def line itself if
+// there's no decorator, e.g. code hot-swapped without one) and wraps that
+// line's already-highlighted HTML in a <span class="pat-glow">. _tickGlow(),
+// called on every 100ms state broadcast, just toggles that span's
+// text-shadow/filter — cheap, and #editorHL is a display-only overlay so
+// rewriting it doesn't touch the real textarea's cursor or selection.
+function _escRe(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function _liveDefLine(name){
+  const text=document.getElementById('codeEditor').value;
+  const re=new RegExp('^def\\s+'+_escRe(name)+'\\s*\\(','m');
+  const m=re.exec(text);
+  return m?text.slice(0,m.index).split('\n').length-1:null;
+}
+function _wrapGlowLines(html,rawText){
+  if(!_livePatternNames.size)return html;
+  const rawLines=rawText.split('\n'),htmlLines=html.split('\n');
+  if(htmlLines.length!==rawLines.length)return html; // a multi-line triple-quoted string span straddled a line break — bail safely, next keystroke retries
+  const targets={};
+  _livePatternNames.forEach(name=>{
+    const re=new RegExp('^def\\s+'+_escRe(name)+'\\s*\\(');
+    for(let i=0;i<rawLines.length;i++){
+      if(!re.test(rawLines[i]))continue;
+      let target=i;
+      for(let j=i-1;j>=0;j--){
+        const t=rawLines[j].trim();
+        if(t==='')continue;
+        if(t.startsWith('@'))target=j;
+        break;
+      }
+      targets[target]=name;
+      break;
+    }
+  });
+  Object.keys(targets).forEach(li=>{
+    const idx=+li,name=targets[li];
+    htmlLines[idx]=`<span class="pat-glow" data-pattern="${name}">${htmlLines[idx]}</span>`;
+  });
+  return htmlLines.join('\n');
+}
+// Def-line colour flashing is off: it read as noise, and the Visual tab now
+// carries activity display properly. Left as a clear-only pass (rather than
+// ripping out _wrapGlowLines) so .pat-glow still marks def lines for
+// anything else, and so any styles already applied get cleaned up.
+function _tickGlow(patterns){
+  patterns.forEach(p=>{
+    const el=document.querySelector(`#editorHL .pat-glow[data-pattern="${p.name}"]`);
+    if(!el)return;
+    if(el.style.textShadow)el.style.textShadow='';
+    if(el.style.filter)el.style.filter='';
+  });
+}
+// ── VISUAL TAB: PATTERN LATTICE ──────────────────────────────────────────────
+// Structure: every running pattern is a stable node-graph cluster - nodes
+// are its distinct pitches, sized by hit count, wired edge-to-edge in
+// first-appearance order (wrapping last to first, since a looping pattern
+// already is a cycle graph). Clusters sit on a cube-root 3D lattice, each
+// cluster's own nodes on a small Fibonacci sphere - volumetric at both
+// scales, not a ring or a flat plane.
+//
+// Two things keep it alive and connect the clusters, brought back from an
+// earlier attempt and bounded this time:
+//   - a CONDUCTOR: one small epicycle chain, one arm per cluster (harmonic
+//     radii, longest cycle first - the Fourier/Lateralus construction),
+//     scaled to the lattice's own size so its traced curve actually sweeps
+//     through the cluster field. When the pen passes near a cluster, a
+//     link line lights up and that cluster's own render gets a brief
+//     boost - real interplay, because the pen's path is the literal sum of
+//     every cluster's live phase, not scripted. Bounded: one arm per
+//     cluster (no growth) and a short capped trail (no accumulation).
+//   - a CURSOR per cluster: a marker sliding continuously around that
+//     cluster's own node cycle, positioned by the pattern's real phase
+//     interpolated between its two bracketing steps - so every cluster
+//     shows motion always, not just a flash on each onset.
+//
+// Rendered in SVG with hand-rolled 3D projection: vector scales to any
+// display or projector without resampling, and CSS custom properties
+// follow POMSKI's light/dark mode for free. Node positions rebuild only
+// when a pattern's actual pitch set changes; counts, pings, and both kinds
+// of motion update every frame in place.
+//
+// Everything runs off values already broadcast - playhead_pulse, each
+// pattern's notes/length_pulses/drum_map, bpm. Nothing is inferred from
+// source text (the mistake #59 died on): a pitch, a velocity and a cycle
+// length are exact. Between the 100ms broadcasts the pulse is interpolated
+// from bpm so timing stays smooth, re-anchored to truth on every tick.
+const VIZ_NS='http://www.w3.org/2000/svg';
+const VIZ_MAX_CLUSTERS=8,VIZ_LATTICE_SPACING=170,VIZ_PING_MS=550;
+const VIZ_CONDUCTOR_TRAIL_MS=4500,VIZ_NEAR_DIST=95;
+const VIZ_ECHO_INTERVAL_MS=1200,VIZ_ECHO_LIFE_MS=3600,VIZ_ECHO_MAX=4;
+const VIZ_MOTE_SPEED=0.045,VIZ_MOTE_MAX=5;
+let _vizEchoes=[],_vizLastEchoT=0,_vizMotes=[];
+// Beat markers ride the pendulum trail itself: a dot dropped at the pen's
+// current position every time the beat counter actually advances (global_
+// beat is 1-indexed - beat 1 is the downbeat), so reading along the trail
+// tells you where in the bar each point in its recent history fell.
+let _vizBeatMarkers=[],_vizLastMarkedBeat=null;
+function _vizMoteDir(p){
+  const n=Math.hypot(p[0],p[1],p[2]);
+  return n>1?[p[0]/n,p[1]/n,p[2]/n]:[0,0,1];
+}
+function _vizRespawnMote(mote,P,now,label){
+  mote.dir=_vizMoteDir(P);
+  mote.r0=Math.max(20,Math.hypot(P[0],P[1],P[2]));
+  mote.born=now;
+  mote.label=label;
+}
+const VIZ_NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+// Perceived chord, from whatever pitches are actually sounding right now
+// across every cluster combined - a real read of the harmony in the room,
+// not any one pattern's own notes. Template match, largest/tightest fit
+// wins ties; "perceived" because a stray passing tone can still make it
+// pick a 7th chord over the plain triad underneath it - same ambiguity a
+// listener has.
+// Order matters for ties (same size, same leftover-note count): earlier
+// entries win, so plain triads are listed before sus/aug/dim - a stray 9th
+// on a major triad should read as "major, plus a color tone", not sus2.
+const VIZ_CHORDS=[['maj7',[0,4,7,11]],['dom7',[0,4,7,10]],['min7',[0,3,7,10]],
+  ['m7b5',[0,3,6,10]],['maj',[0,4,7]],['min',[0,3,7]],['aug',[0,4,8]],
+  ['dim',[0,3,6]],['sus2',[0,2,7]],['sus4',[0,5,7]]];
+const VIZ_CHORD_SUFFIX={maj:'',min:'m',dim:'dim',aug:'aug',maj7:'maj7',dom7:'7',min7:'m7',m7b5:'m7b5',sus2:'sus2',sus4:'sus4'};
+// Circle of fifths: each step is +7 semitones (mod 12) from the last,
+// starting on C - the standard ordering (C G D A E B F# Db Ab Eb Bb F).
+// A chord's root maps to its position around that circle, then to an
+// angle - a flattened version of the reference image's move (a circle's
+// points corresponded, position for position, onto a rising helix). Here
+// it's a falling text column instead of a helix, but the mechanism is the
+// same: circular position becomes a periodic left-right offset, not a
+// straight line.
+const VIZ_FIFTHS_ORDER=[0,7,2,9,4,11,6,1,8,3,10,5];
+function _vizFifthsAngle(pitchClass){return(VIZ_FIFTHS_ORDER.indexOf(pitchClass)/12)*Math.PI*2;}
+const VIZ_CHORD_RAIN_MS=7000,VIZ_CHORD_RAIN_MAX=14,VIZ_CHORD_RAIN_COL_W=64;
+let _vizChordRain=[],_vizLastChordLabel=null;
+// Scrolling pitch/velocity heatmap, bottom strip. X is time (newest at the
+// right edge, scrolling left, oldest exits at the left - a standard
+// scope/strip-chart convention). Y is two-level: pitch CLASS picks a coarse
+// lane (12 lanes bottom-to-top, C to B, octave discarded so each lane gets
+// real pixel height instead of ~1px per raw semitone), then velocity picks
+// the exact position within that lane - louder sits higher in its own
+// lane, quieter lower. So pitch and velocity both genuinely drive
+// position, not just color.
+// 400 was too low for anything but a sparse composition - several patterns
+// running dense 16th-note material can rack up well over 400 onsets within
+// the 8s window, so the cap itself was truncating dots partway through
+// their life (the "dying halfway across the screen" symptom), not the
+// fade math. Raised well past anything a real composition should hit.
+const VIZ_HEAT_WINDOW_MS=8000,VIZ_HEAT_STRIP_H=90,VIZ_HEAT_MAX=3000;
+// How slowly a node's own dot fades after firing, and how close to
+// invisible it settles once it has.
+const VIZ_NODE_FADE_MS=3500,VIZ_NODE_REST_OPACITY=0.1;
+let _vizHeatDots=[];
+function _vizDetectChord(pitchClasses){
+  const set=new Set(pitchClasses);
+  if(set.size<2)return null;
+  let best=null;
+  for(let root=0;root<12;root++){
+    for(const[name,ivs]of VIZ_CHORDS){
+      if(!ivs.every(iv=>set.has((root+iv)%12)))continue;
+      const extra=set.size-ivs.length;
+      if(!best||ivs.length>best.size||(ivs.length===best.size&&extra<best.extra))
+        best={root,name,size:ivs.length,extra};
+    }
+  }
+  return best?{label:VIZ_NOTE_NAMES[best.root]+VIZ_CHORD_SUFFIX[best.name],root:best.root}:null;
+}
+let _vizClusters=new Map(); // name -> cluster state, persists across ticks
+let _vizConductorTrail=[];
+let _vizClock=null,_vizLastPulse=null,_vizBar=0,_vizBeat=0,_vizBpm=120;
+let _vizSvg=null,_vizEls=null,_vizRAF=null,_vizW=0,_vizH=0;
+let _vizOverlayOn=false;
+let _vizCam={q:[1,0,0,0],dist:1100,fov:900,orbit:true,arcball:false};
+let _vizDrag=null;
+// ── quaternion + projection ──────────────────────────────────────────────────
+function _qMul(a,b){
+  return[a[0]*b[0]-a[1]*b[1]-a[2]*b[2]-a[3]*b[3],
+         a[0]*b[1]+a[1]*b[0]+a[2]*b[3]-a[3]*b[2],
+         a[0]*b[2]-a[1]*b[3]+a[2]*b[0]+a[3]*b[1],
+         a[0]*b[3]+a[1]*b[2]-a[2]*b[1]+a[3]*b[0]];
+}
+function _qNorm(q){const n=Math.hypot(q[0],q[1],q[2],q[3])||1;return[q[0]/n,q[1]/n,q[2]/n,q[3]/n];}
+function _qAxis(x,y,z,ang){
+  const s=Math.sin(ang/2),n=Math.hypot(x,y,z)||1;
+  return[Math.cos(ang/2),x/n*s,y/n*s,z/n*s];
+}
+function _qRot(q,p){
+  const[w,x,y,z]=q,[px,py,pz]=p;
+  const tx=2*(y*pz-z*py),ty=2*(z*px-x*pz),tz=2*(x*py-y*px);
+  return[px+w*tx+(y*tz-z*ty),py+w*ty+(z*tx-x*tz),pz+w*tz+(x*ty-y*tx)];
+}
+function _vizProject(p,cx,cy){
+  const r=_qRot(_vizCam.q,p);
+  const z=r[2]+_vizCam.dist;
+  if(z<1)return null;
+  const s=_vizCam.fov/z;
+  return{x:cx+r[0]*s,y:cy+r[1]*s,z,s};
+}
+function _vizBallVec(x,y){
+  const r=Math.min(_vizW,_vizH)/2||1;
+  const vx=(x-_vizW/2)/r,vy=(y-_vizH/2)/r,d=vx*vx+vy*vy;
+  if(d<=1)return[vx,-vy,Math.sqrt(1-d)];
+  const s=1/Math.sqrt(d);return[vx*s,-vy*s,0];
+}
+function _vizDist3(a,b){return Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);}
+// The circle an arm's tip actually sweeps - same center/radius/plane
+// (center, r, u, v) as the arm itself - sampled and projected point by
+// point since it's tilted in 3D, not a flat ellipse a 2D approximation
+// could get away with.
+function _vizOrbitPath(center,r,u,v,cx,cy,segments){
+  let d='',started=false;
+  for(let i=0;i<=segments;i++){
+    const ang=(i/segments)*Math.PI*2;
+    const world=[center[0]+r*(Math.cos(ang)*u[0]+Math.sin(ang)*v[0]),
+                 center[1]+r*(Math.cos(ang)*u[1]+Math.sin(ang)*v[1]),
+                 center[2]+r*(Math.cos(ang)*u[2]+Math.sin(ang)*v[2])];
+    const s=_vizProject(world,cx,cy);
+    if(!s){started=false;continue;}
+    d+=(started?'L':'M')+s.x.toFixed(1)+' '+s.y.toFixed(1);
+    started=true;
+  }
+  return d;
+}
+// Fibonacci sphere: n points spread evenly over a sphere's surface.
+function _vizSpherePoints(n,r){
+  if(n<=1)return[[0,0,0]];
+  const pts=[],golden=Math.PI*(3-Math.sqrt(5));
+  for(let i=0;i<n;i++){
+    const y=1-(i/(n-1))*2,rad=Math.sqrt(Math.max(0,1-y*y)),theta=golden*i;
+    pts.push([Math.cos(theta)*rad*r,y*r,Math.sin(theta)*rad*r]);
+  }
+  return pts;
+}
+function _vizNode(parent,tag,attrs){
+  const el=document.createElementNS(VIZ_NS,tag);
+  if(attrs)for(const k in attrs)el.setAttribute(k,attrs[k]);
+  parent.appendChild(el);
+  return el;
+}
+function _vizSet(el,attrs){for(const k in attrs)el.setAttribute(k,attrs[k]);return el;}
+function _vizTake(pool,parent,tag,i,attrs){
+  let el=pool[i];
+  if(!el){el=_vizNode(parent,tag,attrs);pool[i]=el;}
+  el.removeAttribute('display');
+  return el;
+}
+function _vizHideFrom(pool,n){for(let i=n;i<pool.length;i++)pool[i].setAttribute('display','none');}
+function _vizNoteName(p){return VIZ_NOTE_NAMES[((p%12)+12)%12]+(Math.floor(p/12)-1);}
+function _vizPulseNow(){
+  if(!_vizClock)return null;
+  const pulsesPerMs=(_vizClock.bpm/60)*_vizClock.ppb/1000;
+  return _vizClock.pulse+(performance.now()-_vizClock.stamp)*pulsesPerMs;
+}
+function _vizCrossed(s,p0,p1){return p0<=p1?(s>p0&&s<=p1):(s>p0||s<=p1);}
+function _vizHull(pts){
+  if(pts.length<3)return pts.slice();
+  const p=pts.slice().sort((a,b)=>a.x-b.x||a.y-b.y);
+  const cross=(o,a,b)=>(a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x);
+  const lo=[],up=[];
+  for(const q of p){while(lo.length>=2&&cross(lo[lo.length-2],lo[lo.length-1],q)<=0)lo.pop();lo.push(q);}
+  for(let i=p.length-1;i>=0;i--){const q=p[i];while(up.length>=2&&cross(up[up.length-2],up[up.length-1],q)<=0)up.pop();up.push(q);}
+  lo.pop();up.pop();
+  return lo.concat(up);
+}
+function _vizLatticePos(i,total){
+  const side=Math.max(1,Math.ceil(Math.cbrt(total)));
+  const x=i%side,y=Math.floor(i/side)%side,z=Math.floor(i/(side*side));
+  const off=(side-1)/2;
+  return[(x-off)*VIZ_LATTICE_SPACING,(y-off)*VIZ_LATTICE_SPACING,(z-off)*VIZ_LATTICE_SPACING];
+}
+// Where a cluster's own phase cursor sits right now: interpolated between
+// whichever two nodes (in step order) bracket the current loop position, so
+// it moves at the pattern's real timing, not evenly-spaced steps.
+function _vizClusterCursor(cl,loopPulse){
+  const nodes=cl.nodes;
+  if(!nodes.length)return null;
+  if(nodes.length===1)return nodes[0].pos;
+  const L=cl.lengthPulses;
+  const rel=((loopPulse-nodes[0].step)%L+L)%L;
+  let acc=0;
+  for(let i=0;i<nodes.length;i++){
+    const a=nodes[i],b=nodes[(i+1)%nodes.length];
+    const segLen=i<nodes.length-1?(b.step-a.step):(L-a.step+b.step);
+    if(rel<acc+segLen||i===nodes.length-1){
+      const t=segLen>0?Math.max(0,Math.min(1,(rel-acc)/segLen)):0;
+      return[a.pos[0]+(b.pos[0]-a.pos[0])*t,a.pos[1]+(b.pos[1]-a.pos[1])*t,a.pos[2]+(b.pos[2]-a.pos[2])*t];
+    }
+    acc+=segLen;
+  }
+  return nodes[0].pos;
+}
+function _tickVisual(msg){
+  _vizClock={pulse:msg.playhead_pulse||0,bpm:msg.bpm||120,
+             ppb:msg.pulses_per_beat||24,stamp:performance.now()};
+  _vizBar=msg.global_bar||0;_vizBeat=msg.global_beat||0;_vizBpm=msg.bpm||120;
+  const live=(msg.patterns||[]).filter(p=>p.length_pulses>0&&!p.muted&&(p.notes||[]).length)
+    .sort((a,b)=>a.name<b.name?-1:1) // alphabetical: stable lattice slots regardless of note content
+    .slice(0,VIZ_MAX_CLUSTERS);
+  const seen=new Set();
+  live.forEach((p,i)=>{
+    seen.add(p.name);
+    let cl=_vizClusters.get(p.name);
+    if(!cl){cl=_vizClusters.set(p.name,{name:p.name,nodes:[],sig:''}).get(p.name);}
+    cl.color=patCol[p.name]||'#7fe3c0';
+    cl.lengthPulses=p.length_pulses;
+    cl.cycleStartPulse=p.cycle_start_pulse||0;
+    cl.center=_vizLatticePos(i,live.length);
+    cl.notes=p.notes;
+    const byPitch={};
+    if(p.drum_map)Object.keys(p.drum_map).forEach(k=>{byPitch[p.drum_map[k]]=k;});
+    cl.drumByPitch=byPitch;
+    const stats=new Map();
+    p.notes.forEach(n=>{
+      let s=stats.get(n.p);
+      if(!s){s={pitch:n.p,count:0,velSum:0,firstStep:n.s};stats.set(n.p,s);}
+      s.count++;s.velSum+=n.v;
+      if(n.s<s.firstStep)s.firstStep=n.s;
+    });
+    const order=[...stats.values()].sort((a,b)=>a.firstStep-b.firstStep);
+    const sig=order.map(s=>s.pitch).join(',');
+    if(sig!==cl.sig){
+      cl.sig=sig;
+      const pts=_vizSpherePoints(order.length,18+Math.min(24,order.length*2.4));
+      cl.nodes=order.map((s,idx)=>({
+        pitch:s.pitch,pos:pts[idx],step:s.firstStep,
+        label:byPitch[s.pitch]||_vizNoteName(s.pitch),pingT:-1e9,lastV:0
+      }));
+    }
+    cl.nodes.forEach(node=>{
+      const s=stats.get(node.pitch);
+      node.count=s?s.count:0;
+      node.avgV=s?s.velSum/s.count:0;
+      node.label=byPitch[node.pitch]||_vizNoteName(node.pitch);
+    });
+  });
+  [..._vizClusters.keys()].forEach(name=>{if(!seen.has(name))_vizClusters.delete(name);});
+}
+let _vizDitherRAF=null;
+// Checked every frame (see _vizFrame), not just on ResizeObserver/window-
+// resize events: Safari's own devtools panel resizing the viewport didn't
+// reliably fire the observer in testing (editor text resized correctly,
+// the visualizer's own measurement didn't), so relying on any single event
+// source to catch every possible resize path proved fragile. Polling once
+// per frame is cheap - it's a getBoundingClientRect() read and an early
+// return when nothing changed - and turns "did something resize" from an
+// event we hope fires into a fact checked 60 times a second regardless of
+// cause. `force` skips the no-change short-circuit, for callers (init,
+// explicit resize handlers) that need the full path to run unconditionally.
+function _vizSyncSize(force){
+  if(!_vizSvg)return;
+  const rect=_vizSvg.getBoundingClientRect();
+  const newW=Math.max(1,Math.round(rect.width)),newH=Math.max(1,Math.round(rect.height));
+  if(!force&&newW===_vizW&&newH===_vizH)return;
+  _vizW=newW;_vizH=newH;
+  _vizSvg.setAttribute('viewBox','0 0 '+_vizW+' '+_vizH);
+  const m=10,len=9,w=_vizW,h=_vizH;
+  if(_vizEls){
+    _vizSet(_vizEls.corners,{d:'M'+m+' '+(m+len)+'V'+m+'H'+(m+len)+
+      'M'+(w-m-len)+' '+m+'H'+(w-m)+'V'+(m+len)+'M'+m+' '+(h-m-len)+'V'+(h-m)+'H'+(m+len)+
+      'M'+(w-m-len)+' '+(h-m)+'H'+(w-m)+'V'+(h-m-len)});
+    // Rebuilding 1000+ dither dots synchronously on every one of those
+    // per-frame checks would be real, wasted work - deferred a frame and
+    // coalesced so a rapid flurry of size changes (dragging a panel edge)
+    // rebuilds it once when things settle, not once per detected change.
+    if(_vizDitherRAF)cancelAnimationFrame(_vizDitherRAF);
+    _vizDitherRAF=requestAnimationFrame(()=>{_vizDitherRAF=null;_vizBuildDither();});
+  }
+}
+function _vizResize(){_vizSyncSize(true);}
+// Ordered (Bayer 4x4) dither, the same halftone-screen construction as a
+// printed dot matrix - a static texture layer, sparse enough to read as
+// grain rather than noise.
+function _vizBuildDither(){
+  const bayer=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+  const spacing=10;
+  while(_vizEls.gDither.firstChild)_vizEls.gDither.removeChild(_vizEls.gDither.firstChild);
+  const cols=Math.ceil(_vizW/spacing)+1,rows=Math.ceil(_vizH/spacing)+1;
+  for(let iy=0;iy<rows;iy++){
+    for(let ix=0;ix<cols;ix++){
+      const v=bayer[iy&3][ix&3]/16;
+      if(v<0.7)continue; // sparse on purpose - grain, not a visible grid
+      // --text-dark sits too close to --bg-input in both themes to read at
+      // low opacity (that's why this went invisible) - --border has
+      // meaningfully more contrast against the panel background in both
+      // light and dark palettes.
+      _vizNode(_vizEls.gDither,'circle',{
+        cx:ix*spacing,cy:iy*spacing,r:0.9,
+        fill:'var(--border)','fill-opacity':(0.35+v*0.35).toFixed(2)
+      });
+    }
+  }
+}
+function _vizFrame(){
+  if(!_vizSvg){_vizRAF=null;return;}
+  _vizRAF=requestAnimationFrame(_vizFrame);
+  if(!_vizOverlayOn)return;
+  _vizSyncSize();
+  const E=_vizEls,w=_vizW,h=_vizH,cx=w/2,cy=h/2;
+  const now=performance.now(),pulse=_vizPulseNow();
+  if(_vizCam.orbit&&!_vizDrag)_vizCam.q=_qNorm(_qMul(_qAxis(0,1,0,0.0018),_vizCam.q));
+  E.head.textContent='BAR '+_vizBar+'   BEAT '+_vizBeat+'   '+_vizBpm.toFixed(1)+' BPM';
+  const clusters=[..._vizClusters.values()];
+  _vizSet(E.headR,{x:w-16});
+  _vizAxisGizmo(E,w,h);
+  if(pulse==null||!clusters.length){
+    E.idle.textContent='NO CYCLES RUNNING';
+    _vizSet(E.idle,{x:cx,y:cy,display:'inline'});
+    [E.hulls,E.hullTags,E.hullTexts,E.edges,E.nodeDots,E.pings,E.labels,E.legendRows,
+     E.armLines,E.cursors,E.echoTrails,E.motes,E.moteLabels,E.chordRain,
+     E.heatDots,E.heatLabels,E.orbits,E.beatMarkers].forEach(p=>_vizHideFrom(p,0));
+    E.heatBorder.setAttribute('display','none');
+    _vizSet(E.conductorTrail,{d:''});
+    E.penLabel.setAttribute('display','none');
+    return;
+  }
+  E.idle.setAttribute('display','none');
+  // Ping any node whose step the playhead just crossed - same real onset
+  // also feeds the scrolling pitch/velocity heatmap strip below.
+  if(_vizLastPulse!=null&&pulse>_vizLastPulse){
+    clusters.forEach(cl=>{
+      const L=cl.lengthPulses,off=cl.cycleStartPulse||0,jumped=(pulse-_vizLastPulse)>=L;
+      const p0=_phaseMod(_vizLastPulse-off,L),p1=_phaseMod(pulse-off,L);
+      cl.notes.forEach(n=>{
+        if(!(jumped||_vizCrossed(n.s,p0,p1)))return;
+        const node=cl.nodes.find(nd=>nd.pitch===n.p);
+        if(node){node.pingT=now;node.lastV=n.v;}
+        _vizHeatDots.push({pc:((n.p%12)+12)%12,v:n.v,color:cl.color,born:now});
+      });
+    });
+    if(_vizHeatDots.length>VIZ_HEAT_MAX)_vizHeatDots.splice(0,_vizHeatDots.length-VIZ_HEAT_MAX);
+  }
+  _vizLastPulse=pulse;
+  // Perceived chord: every pitch actually sounding right now, across every
+  // cluster combined, reduced to pitch class and matched against a chord
+  // template - the harmony in the room, not any one pattern's own notes.
+  let totalNodes=0;
+  const activePitchClasses=[];
+  const originColorByPC={}; // pitch class -> color of a cluster currently sounding it
+  clusters.forEach(cl=>{
+    totalNodes+=cl.nodes.length;
+    const loopPulse=_phaseMod(pulse-(cl.cycleStartPulse||0),cl.lengthPulses);
+    cl.notes.forEach(n=>{
+      const d=Math.max(n.d,1);
+      if(n.s<=loopPulse&&loopPulse<n.s+d){
+        const pc=((n.p%12)+12)%12;
+        activePitchClasses.push(pc);
+        if(!(pc in originColorByPC))originColorByPC[pc]=cl.color;
+      }
+    });
+  });
+  const chord=_vizDetectChord(activePitchClasses);
+  E.headR.textContent=clusters.length+(clusters.length===1?' CYCLE':' CYCLES')+
+    '   '+totalNodes+' NODES';
+  _vizSet(E.headR,{x:w-16});
+  // Chord rain: only spawn on an actual change, not every tick the same
+  // chord keeps sounding - a sustained chord shouldn't flood the column.
+  // Resets on silence so the same chord can retrigger after a real gap.
+  // Colored by whichever cluster is actually sounding the chord's root -
+  // "channel of origin" - snapshotted at spawn since a drop's identity
+  // shouldn't shift color mid-fall if the chord changes again immediately.
+  if(chord){
+    if(chord.label!==_vizLastChordLabel)_vizChordRain.push({
+      text:chord.label,root:chord.root,born:now,
+      color:originColorByPC[chord.root]||'var(--text)'
+    });
+    _vizLastChordLabel=chord.label;
+  }else{
+    _vizLastChordLabel=null;
+  }
+  if(_vizChordRain.length>VIZ_CHORD_RAIN_MAX)_vizChordRain.splice(0,_vizChordRain.length-VIZ_CHORD_RAIN_MAX);
+  // ── CONDUCTOR: one arm per cluster, harmonic radii, longest cycle first -
+  // scaled to actually reach across the lattice, so its curve threads
+  // through the cluster field rather than floating separately from it.
+  const ranked=clusters.slice().sort((a,b)=>b.lengthPulses-a.lengthPulses);
+  const weights=ranked.map((c,i)=>1/(i+1)),wsum=weights.reduce((a,b)=>a+b,0)||1;
+  const maxR=VIZ_LATTICE_SPACING*0.85;
+  let P=[0,0,0];
+  const nearBoost=new Map(); // cluster name -> 0..1, how close the pen is
+  ranked.forEach((cl,i)=>{
+    const r=(weights[i]/wsum)*maxR;
+    const phase=_phaseMod(pulse-(cl.cycleStartPulse||0),cl.lengthPulses)/cl.lengthPulses;
+    const ang=phase*Math.PI*2-Math.PI/2;
+    const tilt=(i/Math.max(1,ranked.length))*Math.PI*0.7;
+    const u=[Math.cos(tilt),0,Math.sin(tilt)],v=[0,1,0];
+    const N=[P[0]+r*(Math.cos(ang)*u[0]+Math.sin(ang)*v[0]),
+             P[1]+r*(Math.cos(ang)*u[1]+Math.sin(ang)*v[1]),
+             P[2]+r*(Math.cos(ang)*u[2]+Math.sin(ang)*v[2])];
+    const sp=_vizProject(P,cx,cy),sn=_vizProject(N,cx,cy);
+    if(sp&&sn)_vizSet(_vizTake(E.armLines,E.gChain,'line',i,{'stroke-width':1}),
+      {x1:sp.x.toFixed(1),y1:sp.y.toFixed(1),x2:sn.x.toFixed(1),y2:sn.y.toFixed(1),
+       stroke:cl.color,'stroke-opacity':0.3});
+    // The orbit this cluster's arm actually sweeps - dotted, faint, drawn
+    // from the same pivot/radius/plane as the arm so it reads as "this is
+    // the path," not a separate decoration.
+    _vizSet(_vizTake(E.orbits,E.gChain,'path',i,{fill:'none','stroke-dasharray':'2,5','stroke-width':1}),
+      {d:_vizOrbitPath(P,r,u,v,cx,cy,28),stroke:cl.color,'stroke-opacity':0.22});
+    P=N;
+  });
+  _vizHideFrom(E.armLines,ranked.length);
+  _vizHideFrom(E.orbits,ranked.length);
+  clusters.forEach(cl=>{
+    const d=_vizDist3(P,cl.center);
+    if(d<VIZ_NEAR_DIST)nearBoost.set(cl.name,1-d/VIZ_NEAR_DIST);
+  });
+  _vizConductorTrail.push({p:P.slice(),t:now});
+  while(_vizConductorTrail.length&&now-_vizConductorTrail[0].t>VIZ_CONDUCTOR_TRAIL_MS)_vizConductorTrail.shift();
+  // Drop a beat marker at the pen's current spot exactly when the beat
+  // counter advances - reading along the trail then shows bar/beat
+  // position directly, not just where the pen has physically been.
+  const beatKey=_vizBar+':'+_vizBeat;
+  if(beatKey!==_vizLastMarkedBeat){
+    _vizBeatMarkers.push({p:P.slice(),beat:_vizBeat,t:now});
+    _vizLastMarkedBeat=beatKey;
+    if(_vizBeatMarkers.length>80)_vizBeatMarkers.shift();
+  }
+  let bmi=0;
+  _vizBeatMarkers=_vizBeatMarkers.filter(mk=>{
+    const age=now-mk.t;
+    if(age>=VIZ_CONDUCTOR_TRAIL_MS)return false;
+    const s=_vizProject(mk.p,cx,cy);
+    if(!s)return true; // behind the camera right now - keep it, may swing back into view
+    const fade=1-age/VIZ_CONDUCTOR_TRAIL_MS;
+    const downbeat=mk.beat===1; // global_beat is 1-indexed - beat 1 is the downbeat
+    _vizSet(_vizTake(E.beatMarkers,E.gChain,'circle',bmi++,{}),
+      {cx:s.x.toFixed(1),cy:s.y.toFixed(1),r:(downbeat?4:2).toFixed(1),
+       fill:downbeat?(ranked[0]?ranked[0].color:'var(--text)'):'none',
+       stroke:ranked[0]?ranked[0].color:'var(--text)','stroke-width':1,
+       'fill-opacity':(downbeat?fade*0.9:0).toFixed(2),
+       'stroke-opacity':(fade*0.7).toFixed(2)});
+    return true;
+  });
+  _vizHideFrom(E.beatMarkers,bmi);
+  // Feedback: every so often, freeze a copy of the trail-so-far and let it
+  // fade on its own, longer-lived than the live trail - a delayed echo of
+  // the same gesture, the way audio feedback repeats a decaying copy of
+  // recent output rather than the live signal looping forever unbounded.
+  if(now-_vizLastEchoT>VIZ_ECHO_INTERVAL_MS){
+    _vizLastEchoT=now;
+    _vizEchoes.push({pts:_vizConductorTrail.map(pt=>pt.p.slice()),born:now});
+    if(_vizEchoes.length>VIZ_ECHO_MAX)_vizEchoes.shift();
+  }
+  let eei=0;
+  _vizEchoes.forEach(echo=>{
+    const age=now-echo.born;
+    if(age>=VIZ_ECHO_LIFE_MS)return;
+    let ed='',estarted=false;
+    echo.pts.forEach(p=>{
+      const s=_vizProject(p,cx,cy);
+      if(!s){estarted=false;return;}
+      ed+=(estarted?'L':'M')+s.x.toFixed(1)+' '+s.y.toFixed(1);estarted=true;
+    });
+    _vizSet(_vizTake(E.echoTrails,E.gChain,'path',eei++,{fill:'none','stroke-width':1}),
+      {d:ed,stroke:ranked[0]?ranked[0].color:'var(--text)',
+       'stroke-opacity':(0.22*(1-age/VIZ_ECHO_LIFE_MS)).toFixed(2)});
+  });
+  _vizHideFrom(E.echoTrails,eei);
+  let cd='',started=false;
+  _vizConductorTrail.forEach(pt=>{
+    const s=_vizProject(pt.p,cx,cy);
+    if(!s){started=false;return;}
+    cd+=(started?'L':'M')+s.x.toFixed(1)+' '+s.y.toFixed(1);started=true;
+  });
+  _vizSet(E.conductorTrail,{d:cd,stroke:ranked[0]?ranked[0].color:'var(--text)'});
+  const penS=_vizProject(P,cx,cy);
+  if(penS){
+    _vizSet(E.pen,{cx:penS.x.toFixed(1),cy:penS.y.toFixed(1),display:'inline'});
+    // Beat readout follows the pendulum head instead of sitting fixed.
+    _vizSet(E.penLabel,{x:(penS.x+7).toFixed(1),y:(penS.y-9).toFixed(1),display:'inline'});
+    E.penLabel.textContent=_vizBar+':'+_vizBeat;
+  }else{
+    E.pen.setAttribute('display','none');
+    E.penLabel.setAttribute('display','none');
+  }
+  // Link line from the pen to whichever cluster it's currently near - the
+  // visible moment of interplay, since P is the sum of every cluster's
+  // live phase, not scripted.
+  let lki=0;
+  clusters.forEach(cl=>{
+    const boost=nearBoost.get(cl.name);
+    if(!boost)return;
+    const cs=_vizProject(cl.center,cx,cy);
+    if(!cs||!penS)return;
+    _vizSet(_vizTake(E.conductorLinks,E.gChain,'line',lki++,{'stroke-width':1.2}),
+      {x1:penS.x.toFixed(1),y1:penS.y.toFixed(1),x2:cs.x.toFixed(1),y2:cs.y.toFixed(1),
+       stroke:cl.color,'stroke-opacity':(boost*0.7).toFixed(2)});
+  });
+  _vizHideFrom(E.conductorLinks,lki);
+  // ── MOTES: markers born at the pendulum head, carrying whatever's most
+  // interesting right now (the perceived chord, or else the cluster the
+  // pen is nearest to) outward toward the viewer. Tiered blur as they near
+  // the frame edge stands in for depth-of-field falloff; once a mote goes
+  // fully soft or passes behind the camera it's respawned right back at
+  // the pen's current position rather than just deleted, so the stream
+  // never runs dry.
+  const dominant=[...nearBoost.entries()].sort((a,b)=>b[1]-a[1])[0];
+  const moteLabel=(chord?chord.label:null)||(dominant?dominant[0]:(ranked[0]?ranked[0].name:''));
+  while(_vizMotes.length<VIZ_MOTE_MAX){
+    const mote={};_vizRespawnMote(mote,P,now,moteLabel);_vizMotes.push(mote);
+  }
+  const maxRadial=Math.min(w,h)/2;
+  let moi=0,mli=0;
+  _vizMotes.forEach(mote=>{
+    const dist=mote.r0+(now-mote.born)*VIZ_MOTE_SPEED;
+    const world=[mote.dir[0]*dist,mote.dir[1]*dist,mote.dir[2]*dist];
+    const s=_vizProject(world,cx,cy);
+    const radial=s?Math.hypot(s.x-cx,s.y-cy)/maxRadial:2;
+    if(!s||radial>1.15||now-mote.born>7000){_vizRespawnMote(mote,P,now,moteLabel);return;}
+    const tier=radial<0.55?0:radial<0.85?1:2;
+    const r=Math.max(1.5,3.2*s.s);
+    const dot=_vizTake(E.motes,E.gMotes,'circle',moi++,{});
+    _vizSet(dot,{cx:s.x.toFixed(1),cy:s.y.toFixed(1),r:r.toFixed(1),
+      fill:ranked[0]?ranked[0].color:'var(--text)',
+      'fill-opacity':(tier===2?0.35:tier===1?0.6:0.85).toFixed(2),
+      filter:tier===2?'url(#vizBlurHeavy)':tier===0?'none':'url(#vizBlurSoft)'});
+    if(tier===0&&mote.label){
+      const lbl=_vizTake(E.moteLabels,E.gLabels,'text',mli++,{'font-size':8,'text-anchor':'start'});
+      _vizSet(lbl,{x:(s.x+r+3).toFixed(1),y:s.y.toFixed(1),fill:'var(--text)','fill-opacity':0.55});
+      lbl.textContent=mote.label;
+    }
+  });
+  _vizHideFrom(E.motes,moi);_vizHideFrom(E.moteLabels,mli);
+  // ── Build one global depth-sorted draw list (nodes + cursors across all
+  // clusters) so occlusion between clusters is correct.
+  const allNodes=[],cursors=[],legendRows=[];
+  clusters.forEach(cl=>{
+    const boost=nearBoost.get(cl.name)||0;
+    const hullPts=[];
+    cl.nodes.forEach(node=>{
+      const world=[cl.center[0]+node.pos[0],cl.center[1]+node.pos[1],cl.center[2]+node.pos[2]];
+      const s=_vizProject(world,cx,cy);
+      if(!s)return;
+      const pingAge=now-node.pingT,pinging=pingAge<VIZ_PING_MS;
+      allNodes.push({cl,node,sx:s.x,sy:s.y,depth:s.z,scale:s.s,pinging,pingAge,boost});
+      hullPts.push({x:s.x,y:s.y});
+    });
+    cl.hullPts=hullPts;
+    cl.centerProj=_vizProject(cl.center,cx,cy);
+    cl.boost=boost;
+    legendRows.push(cl);
+    const loopPulse=_phaseMod(pulse-(cl.cycleStartPulse||0),cl.lengthPulses);
+    const cursorLocal=_vizClusterCursor(cl,loopPulse);
+    if(cursorLocal){
+      const cw=[cl.center[0]+cursorLocal[0],cl.center[1]+cursorLocal[1],cl.center[2]+cursorLocal[2]];
+      const cs=_vizProject(cw,cx,cy);
+      if(cs)cursors.push({cl,sx:cs.x,sy:cs.y,depth:cs.z,scale:cs.s});
+    }
+  });
+  // Halos + hulls - brighter when the conductor is currently passing near.
+  let hi=0,ti=0;
+  clusters.forEach(cl=>{
+    if(cl.hullPts.length<2||!cl.centerProj)return;
+    const hull=cl.hullPts.length>=3?_vizHull(cl.hullPts):cl.hullPts;
+    let ox=0,oy=0;hull.forEach(p=>{ox+=p.x;oy+=p.y;});ox/=hull.length;oy/=hull.length;
+    const pad=14;
+    const pts=hull.map(p=>{
+      const dx=p.x-ox,dy=p.y-oy,len=Math.hypot(dx,dy)||1;
+      return(p.x+dx/len*pad).toFixed(1)+','+(p.y+dy/len*pad).toFixed(1);
+    }).join(' ');
+    _vizSet(_vizTake(E.hulls,E.gHulls,'polygon',hi++,{'stroke-linejoin':'round'}),
+      {points:pts,fill:cl.color,'fill-opacity':(0.06+cl.boost*0.1).toFixed(3),
+       stroke:cl.color,'stroke-opacity':(0.4+cl.boost*0.4).toFixed(2),
+       'stroke-width':(1+cl.boost*1.2).toFixed(2)});
+    let minY=Infinity,tagX=ox;
+    hull.forEach(p=>{if(p.y<minY){minY=p.y;tagX=p.x;}});
+    const text=cl.name.toUpperCase()+' · '+cl.nodes.length;
+    const tw=text.length*5.4+10;
+    _vizSet(_vizTake(E.hullTags,E.gHulls,'rect',ti,{rx:2}),
+      {x:(tagX-tw/2).toFixed(1),y:(minY-pad-15).toFixed(1),width:tw.toFixed(1),height:12,
+       fill:'var(--bg-input)','fill-opacity':0.92,stroke:cl.color,'stroke-opacity':(0.6+cl.boost*0.4).toFixed(2),'stroke-width':1});
+    _vizSet(_vizTake(E.hullTexts,E.gHulls,'text',ti,{'text-anchor':'middle','font-size':8,'dominant-baseline':'middle'}),
+      {x:tagX.toFixed(1),y:(minY-pad-9).toFixed(1),fill:'var(--text)','fill-opacity':0.85})
+      .textContent=text;
+    ti++;
+  });
+  _vizHideFrom(E.hulls,hi);_vizHideFrom(E.hullTags,ti);_vizHideFrom(E.hullTexts,ti);
+  // Edges: the pattern's own play-order cycle, wired node to node.
+  let ei=0;
+  clusters.forEach(cl=>{
+    const n=cl.nodes.length;
+    if(n<2)return;
+    for(let i=0;i<n;i++){
+      const a=cl.nodes[i],b=cl.nodes[(i+1)%n];
+      const wa=[cl.center[0]+a.pos[0],cl.center[1]+a.pos[1],cl.center[2]+a.pos[2]];
+      const wb=[cl.center[0]+b.pos[0],cl.center[1]+b.pos[1],cl.center[2]+b.pos[2]];
+      const sa=_vizProject(wa,cx,cy),sb=_vizProject(wb,cx,cy);
+      if(!sa||!sb)continue;
+      _vizSet(_vizTake(E.edges,E.gEdges,'line',ei++,{'stroke-width':1}),
+        {x1:sa.x.toFixed(1),y1:sa.y.toFixed(1),x2:sb.x.toFixed(1),y2:sb.y.toFixed(1),
+         stroke:cl.color,'stroke-opacity':0.32});
+    }
+  });
+  _vizHideFrom(E.edges,ei);
+  // Nodes, depth-sorted so near ones draw over far ones across all clusters.
+  allNodes.sort((a,b)=>b.depth-a.depth);
+  let ni=0,li=0,pi=0;
+  allNodes.forEach(item=>{
+    const{cl,node,sx,sy,scale,pinging,pingAge,boost}=item;
+    const r=Math.max(2,(2.5+Math.sqrt(node.count)*2+(node.avgV/127)*2)*scale);
+    // Continuous decay, not a binary switch: bright right after a ping,
+    // easing down over VIZ_NODE_FADE_MS to a near-transparent rest state -
+    // a node that's never fired stays ghostly until its first onset.
+    const brightness=Math.max(0,1-pingAge/VIZ_NODE_FADE_MS);
+    const dotOpacity=Math.min(1,VIZ_NODE_REST_OPACITY+(0.95-VIZ_NODE_REST_OPACITY)*brightness+boost*0.25);
+    _vizSet(_vizTake(E.nodeDots,E.gNodes,'circle',ni++,{}),
+      {cx:sx.toFixed(1),cy:sy.toFixed(1),r:r.toFixed(1),fill:cl.color,
+       'fill-opacity':dotOpacity.toFixed(2)});
+    if(pinging){
+      const t=pingAge/VIZ_PING_MS;
+      _vizSet(_vizTake(E.pings,E.gEdges,'circle',pi++,{fill:'none','stroke-width':1}),
+        {cx:sx.toFixed(1),cy:sy.toFixed(1),r:(r+t*16).toFixed(1),
+         stroke:cl.color,'stroke-opacity':(1-t).toFixed(2)});
+      const lbl=_vizTake(E.labels,E.gLabels,'text',li++,{'text-anchor':'start','font-size':9});
+      _vizSet(lbl,{x:(sx+r+3).toFixed(1),y:sy.toFixed(1),fill:'var(--text)','fill-opacity':(0.85*(1-t*0.4)).toFixed(2)});
+      lbl.textContent=node.label;
+    }
+  });
+  _vizHideFrom(E.nodeDots,ni);_vizHideFrom(E.pings,pi);_vizHideFrom(E.labels,li);
+  // Cursors: continuous per-cluster motion, always on, tracking real phase.
+  cursors.sort((a,b)=>b.depth-a.depth);
+  let cui=0;
+  cursors.forEach(({cl,sx,sy,scale})=>{
+    const r=Math.max(1.5,3*scale);
+    _vizSet(_vizTake(E.cursors,E.gNodes,'circle',cui++,{}),
+      {cx:sx.toFixed(1),cy:sy.toFixed(1),r:r.toFixed(1),fill:'var(--text)','fill-opacity':0.9,
+       stroke:cl.color,'stroke-width':1});
+  });
+  _vizHideFrom(E.cursors,cui);
+  // Chord rain: falls down a single column at the right edge. Each entry's
+  // horizontal position within that column is fixed at spawn from its
+  // root's circle-of-fifths angle, so entries land in a repeating side-to-
+  // side pattern down the column rather than a dead-straight line -
+  // adjacent chords a fifth apart land close together, a tritone away
+  // lands on the opposite side.
+  const railX=w-34-72;
+  let cri=0;
+  _vizChordRain=_vizChordRain.filter(drop=>{
+    const age=now-drop.born;
+    if(age>=VIZ_CHORD_RAIN_MS)return false;
+    const t=age/VIZ_CHORD_RAIN_MS;
+    const ang=_vizFifthsAngle(drop.root);
+    const x=railX+Math.cos(ang)*(VIZ_CHORD_RAIN_COL_W/2);
+    const y=-16+t*(h+32);
+    const fade=t<0.08?t/0.08:t>0.85?(1-t)/0.15:1;
+    _vizSet(_vizTake(E.chordRain,E.gLabels,'text',cri++,{'text-anchor':'middle','font-size':10}),
+      {x:x.toFixed(1),y:y.toFixed(1),fill:drop.color,'fill-opacity':Math.max(0,Math.min(1,fade*0.9)).toFixed(2)})
+      .textContent=drop.text;
+    return true;
+  });
+  _vizHideFrom(E.chordRain,cri);
+  // Heatmap strip, bottom of the window.
+  const laneH=VIZ_HEAT_STRIP_H/12;
+  E.heatBorder.removeAttribute('display');
+  _vizSet(E.heatBorder,{x1:0,y1:h-VIZ_HEAT_STRIP_H,x2:w,y2:h-VIZ_HEAT_STRIP_H});
+  let hli=0;
+  for(let pc=0;pc<12;pc++){
+    _vizSet(_vizTake(E.heatLabels,E.gLabels,'text',hli++,{'font-size':7,'text-anchor':'start'}),
+      {x:4,y:(h-pc*laneH-laneH/2).toFixed(1),fill:'var(--text-dark)','fill-opacity':0.6})
+      .textContent=VIZ_NOTE_NAMES[pc];
+  }
+  _vizHideFrom(E.heatLabels,hli);
+  // Flat fill only - the rim+specular-highlight treatment doubled the
+  // element count (a real cost once thousands of dots accumulate) and
+  // looked muddy at this size rather than reading as depth. Reverted.
+  let hdi=0;
+  _vizHeatDots=_vizHeatDots.filter(dot=>{
+    const age=now-dot.born;
+    if(age>=VIZ_HEAT_WINDOW_MS)return false;
+    const t=age/VIZ_HEAT_WINDOW_MS;
+    const x=w-t*w;
+    const laneBottom=h-dot.pc*laneH;
+    const y=laneBottom-(dot.v/127)*laneH;
+    const fade=t>0.85?(1-t)/0.15:1;
+    const r=2+(dot.v/127)*3;
+    _vizSet(_vizTake(E.heatDots,E.gLabels,'circle',hdi++,{}),
+      {cx:x.toFixed(1),cy:y.toFixed(1),r:r.toFixed(1),fill:dot.color,
+       'fill-opacity':Math.max(0,Math.min(1,fade*0.85)).toFixed(2)});
+    return true;
+  });
+  _vizHideFrom(E.heatDots,hdi);
+  // Legend, top-right now: this used to be the only thing drawn here, top-
+  // left, in a dedicated tab with no competing content. Now it renders
+  // behind real code text that starts at the left margin, so it lives on
+  // the right edge instead - same 16px margin convention, same internal
+  // layout, just mirrored (block spans w-186 to w-16 rather than 16 to 186).
+  legendRows.sort((a,b)=>a.name<b.name?-1:1);
+  const lx=w-186;
+  legendRows.forEach((cl,i)=>{
+    const row=E.legendRows[i]||_vizMakeLegendRow(E,i);
+    row.g.removeAttribute('display');
+    const y=42+i*13;
+    const phase=_phaseMod(pulse-(cl.cycleStartPulse||0),cl.lengthPulses)/cl.lengthPulses;
+    _vizSet(row.swatch,{x:lx,y:y-3,fill:cl.color});
+    _vizSet(row.name,{x:lx+12,y});row.name.textContent=cl.name.slice(0,10);
+    _vizSet(row.count,{x:lx+114,y});row.count.textContent=String(cl.nodes.length).padStart(3);
+    _vizSet(row.barBg,{x:lx+126,y:y-3.5});
+    _vizSet(row.barFg,{x:lx+127,y:y-2.5,width:Math.max(1,44*phase).toFixed(1),fill:cl.color});
+  });
+  for(let i=legendRows.length;i<E.legendRows.length;i++)E.legendRows[i].g.setAttribute('display','none');
+}
+function _vizMakeLegendRow(E,i){
+  const g=_vizNode(E.gUI,'g',{});
+  const mono={'font-family':'ui-monospace,SFMono-Regular,Menlo,monospace','font-size':9,'dominant-baseline':'middle'};
+  const row={g,
+    swatch:_vizNode(g,'rect',{width:6,height:6}),
+    name:_vizNode(g,'text',Object.assign({fill:'var(--text)','fill-opacity':0.75},mono)),
+    count:_vizNode(g,'text',Object.assign({fill:'var(--text-dim)','text-anchor':'end'},mono)),
+    barBg:_vizNode(g,'rect',{width:44,height:7,fill:'none',stroke:'var(--text-dark)','stroke-opacity':0.5}),
+    barFg:_vizNode(g,'rect',{height:5,'fill-opacity':0.7})};
+  E.legendRows[i]=row;return row;
+}
+function _vizAxisGizmo(E,w,h){
+  // Sits in the 3D viewing area proper - above the heatmap strip along the
+  // bottom, not overlapping it.
+  const ox=w-42,oy=h-VIZ_HEAT_STRIP_H-42,len=18;
+  [[len,0,0],[0,len,0],[0,0,len]].forEach((ax,i)=>{
+    const r=_qRot(_vizCam.q,ax);
+    _vizSet(E.gizmo[i].line,{x1:ox,y1:oy,x2:(ox+r[0]).toFixed(1),y2:(oy+r[1]).toFixed(1)});
+    _vizSet(E.gizmo[i].text,{x:(ox+r[0]*1.35).toFixed(1),y:(oy+r[1]*1.35).toFixed(1)});
+  });
+}
+function _vizCamReset(){_vizCam.q=[1,0,0,0];_vizCam.dist=1100;_vizSyncCamUI();}
+function _vizSyncCamUI(){
+  const a=document.getElementById('vizArcballBtn'),o=document.getElementById('vizOrbitBtn');
+  if(a){a.textContent='ARCBALL '+(_vizCam.arcball?'ON':'OFF');a.classList.toggle('on',_vizCam.arcball);}
+  if(o){o.textContent='ORBIT '+(_vizCam.orbit?'ON':'OFF');o.classList.toggle('on',_vizCam.orbit);}
+}
+function _vizInit(){
+  _vizSvg=document.getElementById('visualSvg');
+  if(!_vizSvg)return;
+  if(_vizEls){_vizResize();return;}
+  const mono={'font-family':'ui-monospace,SFMono-Regular,Menlo,monospace','dominant-baseline':'middle'};
+  const defs=_vizNode(_vizSvg,'defs',{});
+  // Two fixed blur tiers stand in for depth-of-field falloff near the frame
+  // edge - discrete rather than a true continuous lens blur, but SVG
+  // filters are static, so a small set of predefined tiers is the practical
+  // way to do it without rebuilding a filter per element per frame.
+  const soft=_vizNode(defs,'filter',{id:'vizBlurSoft',x:'-60%',y:'-60%',width:'220%',height:'220%'});
+  _vizNode(soft,'feGaussianBlur',{stdDeviation:1.6});
+  const heavy=_vizNode(defs,'filter',{id:'vizBlurHeavy',x:'-100%',y:'-100%',width:'300%',height:'300%'});
+  _vizNode(heavy,'feGaussianBlur',{stdDeviation:3.5});
+  const gDither=_vizNode(_vizSvg,'g',{});
+  const gHulls=_vizNode(_vizSvg,'g',{});
+  const gChain=_vizNode(_vizSvg,'g',{fill:'none'});
+  const gEdges=_vizNode(_vizSvg,'g',{fill:'none'});
+  const gMotes=_vizNode(_vizSvg,'g',{});
+  const gNodes=_vizNode(_vizSvg,'g',{});
+  const gLabels=_vizNode(_vizSvg,'g',mono);
+  const gUI=_vizNode(_vizSvg,'g',{});
+  _vizEls={gDither,gHulls,gChain,gEdges,gMotes,gNodes,gLabels,gUI,
+    hulls:[],hullTags:[],hullTexts:[],edges:[],pings:[],nodeDots:[],cursors:[],
+    labels:[],legendRows:[],armLines:[],conductorLinks:[],echoTrails:[],
+    motes:[],moteLabels:[],chordRain:[],heatDots:[],heatLabels:[],
+    orbits:[],beatMarkers:[],
+    corners:_vizNode(gUI,'path',{fill:'none',stroke:'var(--text-dark)','stroke-width':1}),
+    heatBorder:_vizNode(gUI,'line',{stroke:'var(--border-dim)','stroke-width':1}),
+    conductorTrail:_vizNode(gChain,'path',{fill:'none','stroke-width':1,'stroke-opacity':0.35}),
+    pen:_vizNode(gUI,'circle',{r:2.5,fill:'var(--text)'}),
+    penLabel:_vizNode(gUI,'text',Object.assign({'font-size':8,fill:'var(--text)','fill-opacity':0.6},mono)),
+    head:_vizNode(gUI,'text',Object.assign({x:16,y:20,'font-size':9,fill:'var(--text-dim)'},mono)),
+    headR:_vizNode(gUI,'text',Object.assign({y:20,'font-size':9,fill:'var(--text-dim)','text-anchor':'end'},mono)),
+    idle:_vizNode(gUI,'text',Object.assign({'font-size':9,fill:'var(--text-dark)','text-anchor':'middle'},mono)),
+    gizmo:['X','Y','Z'].map((label,i)=>{
+      const line=_vizNode(gUI,'line',{stroke:'var(--text-dark)','stroke-width':1});
+      const text=_vizNode(gUI,'text',Object.assign({'font-size':8,fill:'var(--text-dark)','text-anchor':'middle'},mono));
+      text.textContent=label;
+      return{line,text};
+    })};
+  // Arcball drag/dolly listen on document, not on #visualSvg: the layer is
+  // pointer-events:none (has to be - it sits behind live editor text, a
+  // plain click or scroll there must reach the textarea, not the camera).
+  // Gated on the Cmd modifier instead of a persistent arcball-mode toggle,
+  // so holding Cmd while dragging/scrolling controls the camera and
+  // everything else (typing, clicking, normal scrolling of the code)
+  // passes through untouched. Wired once here, but checks _vizOverlayOn
+  // every time so it's inert whenever the layer's toggled off.
+  document.addEventListener('pointerdown',e=>{
+    if(!_vizOverlayOn||!e.metaKey||!_vizSvg)return;
+    e.preventDefault();
+    const r=_vizSvg.getBoundingClientRect();
+    _vizDrag=_vizBallVec(e.clientX-r.left,e.clientY-r.top);
+  });
+  document.addEventListener('pointermove',e=>{
+    if(!_vizDrag||!_vizSvg)return;
+    e.preventDefault();
+    const r=_vizSvg.getBoundingClientRect();
+    const v1=_vizBallVec(e.clientX-r.left,e.clientY-r.top),v0=_vizDrag;
+    const ax=[v0[1]*v1[2]-v0[2]*v1[1],v0[2]*v1[0]-v0[0]*v1[2],v0[0]*v1[1]-v0[1]*v1[0]];
+    const dot=Math.max(-1,Math.min(1,v0[0]*v1[0]+v0[1]*v1[1]+v0[2]*v1[2]));
+    if(Math.hypot(ax[0],ax[1],ax[2])>1e-6)
+      _vizCam.q=_qNorm(_qMul(_qAxis(ax[0],ax[1],ax[2],Math.acos(dot)*2),_vizCam.q));
+    _vizDrag=v1;
+  });
+  const endDrag=()=>{_vizDrag=null;};
+  document.addEventListener('pointerup',endDrag);
+  document.addEventListener('pointercancel',endDrag);
+  document.addEventListener('wheel',e=>{
+    if(!_vizOverlayOn||!e.metaKey)return;
+    e.preventDefault();
+    _vizCam.dist=Math.max(300,Math.min(3200,_vizCam.dist*(1+Math.sign(e.deltaY)*0.08)));
+  },{passive:false});
+  // window's own resize event never fires when just the right-hand panel
+  // gets dragged wider/narrower - only an actual browser/app window resize
+  // does. That left the viewBox sized to whatever the panel measured at
+  // the moment the tab was first opened, and SVG's default
+  // preserveAspectRatio then letterboxed the (stale, usually smaller)
+  // logical content into the middle of the now differently-sized element
+  // - which is exactly the "dots never reach the edges" symptom. A
+  // ResizeObserver on the element itself fires for any size change,
+  // regardless of what caused it.
+  try{
+    new ResizeObserver(_vizResize).observe(_vizSvg);
+  }catch(e){/* ResizeObserver unavailable - falls back to window resize only */}
+  _vizResize();
+  if(!_vizRAF)_vizRAF=requestAnimationFrame(_vizFrame);
+}
+window.addEventListener('resize',_vizResize);
+// Cmd+Option+V toggles the visualizer as a background layer behind the
+// editor text (z-index:-1 on #visualSvg, living inside .editor-wrap itself
+// now - no separate tab). Cmd+, was the first choice but that's the
+// universal macOS/browser-chrome "Preferences" reservation - every app and
+// every browser claims it at the native menu level before a web page's own
+// JS ever sees the keystroke, confirmed by it failing identically in plain
+// Safari with no pywebview involved at all. Cmd+Option dodges both that
+// class of OS/browser reservation and the Emacs-style Ctrl-only text-
+// navigation bindings Cocoa text fields honor by default (this editor's
+// own textarea included). e.code (physical key), not just e.key, since
+// Option alone would normally compose an accented character - checking
+// code sidesteps that regardless of whether Cmd suppresses it as expected.
+function _vizToggleOverlay(){
+  _vizOverlayOn=!_vizOverlayOn;
+  const svg=document.getElementById('visualSvg');
+  if(svg)svg.style.display=_vizOverlayOn?'block':'none';
+  if(_vizOverlayOn)_vizInit(); // lazy - first call does real setup, later calls just resize
+}
+document.addEventListener('keydown',e=>{
+  if(e.metaKey&&e.altKey&&(e.code==='KeyV'||e.key==='v'||e.key==='V')){e.preventDefault();_vizToggleOverlay();}
+});
+// The editor used to breathe its letter-spacing with note density. It read
+// as the text wiggling while you were trying to work in it, so it's gone -
+// this clears any spacing a previous session's build left applied.
+{
+  const ta=document.getElementById('codeEditor'),hl=document.getElementById('editorHL');
+  if(ta)ta.style.letterSpacing='';
+  if(hl)hl.style.letterSpacing='';
+}
+// ── MINI-NOTATION STEP HIGHLIGHT ────────────────────────────────────────────
+// p.seq("x [xx] x ?0.6") builds its rhythm from a small grammar (space =
+// step, [..] = subdivision, ?N = probability, _ = sustain) that
+// subsequence.mini_notation.parse() evaluates server-side. That grammar is
+// purely arithmetic — even subdivision by token count, no randomness in
+// timing — so it's ported to JS here and re-run against the literal text
+// already in the editor, tracking each event's character span alongside its
+// beat position. No server changes needed: playhead position and pattern
+// length already arrive on the 100ms broadcast, so "which step is now" and
+// "which characters produced it" are both derivable purely client-side from
+// the same string the user wrote. Python has no backtick string literal —
+// only "..." and '...' are real syntax — so only those two are matched.
+function _mnScan(text){
+  const toks=[];
+  let i=0,n=text.length;
+  while(i<n){
+    const c=text[i];
+    if(c===' '||c==='\t'){i++;continue;}
+    if(c==='['){toks.push({b:'[',s:i,e:i+1});i++;continue;}
+    if(c===']'){toks.push({b:']',s:i,e:i+1});i++;continue;}
+    let j=i;
+    while(j<n&&text[j]!==' '&&text[j]!=='\t'&&text[j]!=='['&&text[j]!==']')j++;
+    toks.push({raw:text.slice(i,j),s:i,e:j});
+    i=j;
+  }
+  return toks;
+}
+function _mnGroup(toks){
+  const stack=[[]];
+  for(const t of toks){
+    if(t.b==='['){const g=[];stack[stack.length-1].push(g);stack.push(g);}
+    else if(t.b===']'){if(stack.length<=1)return null;stack.pop();}
+    else stack[stack.length-1].push(t);
+  }
+  return stack.length===1?stack[0]:null;
+}
+function _mnDistribute(toks,startTime,duration,out){
+  const stepDur=toks.length?duration/toks.length:0;
+  toks.forEach((t,i)=>{
+    const time=startTime+i*stepDur;
+    if(Array.isArray(t)){_mnDistribute(t,time,stepDur,out);return;}
+    let symbol=t.raw;
+    // Mirrors mini_notation.py: "?" in token AND token doesn't start with
+    // "?", split on the LAST "?" (rsplit), fall back to the whole token as
+    // symbol if what follows isn't a valid float.
+    if(t.raw.indexOf('?')!==-1&&t.raw[0]!=='?'){
+      const qi=t.raw.lastIndexOf('?');
+      const probStr=t.raw.slice(qi+1);
+      if(/^-?\d+(\.\d+)?$/.test(probStr.trim()))symbol=t.raw.slice(0,qi);
+    }
+    if(symbol==='~'||symbol==='.')return;
+    out.push({time,duration:stepDur,symbol,s:t.s,e:t.e});
+  });
+}
+function _mnPostSustain(events){
+  const out=[];let last=null;
+  events.forEach(ev=>{
+    if(ev.symbol==='_'){if(last){last.duration+=ev.duration;last.e=ev.e;}}
+    else{out.push(ev);last=ev;}
+  });
+  return out;
+}
+function _mnParse(notation,totalDuration){
+  if(totalDuration<=0)return [];
+  const grouped=_mnGroup(_mnScan(notation));
+  if(!grouped)return [];
+  const events=[];
+  _mnDistribute(grouped,0,totalDuration,events);
+  return _mnPostSustain(events);
+}
+// Wraps the raw-text char range [rawStart,rawEnd) of `html` (already-escaped
+// markup produced from that same raw text) in `openTag`, walking html and
+// raw in lockstep — "<...>" runs are zero-width, and each of &amp; &lt; &gt;
+// counts as one raw character. Leaves html unchanged if the range can't be
+// pinned down cleanly.
+function _wrapRawRange(html,rawStart,rawEnd,openTag){
+  if(rawEnd<=rawStart)return html;
+  let hi=0,ri=0,outStart=-1,outEnd=-1;
+  const n=html.length;
+  while(hi<n){
+    if(html[hi]==='<'){
+      const close=html.indexOf('>',hi);
+      hi=close===-1?n:close+1;
+      continue;
+    }
+    if(ri===rawStart&&outStart===-1)outStart=hi;
+    if(ri===rawEnd){outEnd=hi;break;}
+    if(html.startsWith('&amp;',hi))hi+=5;
+    else if(html.startsWith('&lt;',hi))hi+=4;
+    else if(html.startsWith('&gt;',hi))hi+=4;
+    else hi+=1;
+    ri+=1;
+  }
+  if(outEnd===-1&&ri===rawEnd)outEnd=hi;
+  if(outStart===-1||outEnd===-1||outEnd<outStart)return html;
+  return html.slice(0,outStart)+openTag+html.slice(outStart,outEnd)+'</span>'+html.slice(outEnd);
+}
+// Nearest preceding top-level `def <name>(` at or above a given line — ties
+// a p.seq(...) call back to the pattern it's running inside.
+function _mnEnclosingPattern(rawLines,lineIdx){
+  for(let i=lineIdx;i>=0;i--){
+    const m=/^def\s+(\w+)\s*\(/.exec(rawLines[i]);
+    if(m)return m[1];
+  }
+  return null;
+}
+// No 'd' (hasIndices) regex flag — that's an ES2022 feature, and native
+// WKWebView's JS engine version tracks the specific macOS build, not
+// something to assume is current. Group-start offset is computed by hand
+// instead: "p.seq(" plus whitespace can't itself contain the quote
+// character, so the FIRST occurrence of the quote inside the full match is
+// unambiguously the opening quote, one character before the content starts.
+//
+// Built fresh inside the function, not as a module-level const: this
+// function is called from updateHighlight() at page load (line ~1268),
+// long before a module-level const positioned near the function itself
+// would initialize - a real ReferenceError ("Cannot access uninitialized
+// variable") whenever the restored buffer already contains p.seq(, which
+// is exactly what a real saved session has. Aborts the whole script before
+// connect() ever runs, which is why the editor looked permanently blank
+// and the app never came online. A fresh regex per call also means no
+// leftover .lastIndex from a previous run to reset.
+function _wrapMiniNotation(html,rawText,patterns){
+  if(!rawText.includes('p.seq('))return html;
+  const rawLines=rawText.split('\n'),htmlLines=html.split('\n');
+  if(htmlLines.length!==rawLines.length)return html;
+  const patByName={};patterns.forEach(p=>{patByName[p.name]=p;});
+  const lineStarts=[];let acc=0;
+  rawLines.forEach(l=>{lineStarts.push(acc);acc+=l.length+1;});
+  const seqRe=/p\.seq\(\s*(['"])((?:(?!\1)[^\n])*)\1/g;
+  const byLine={};
+  let m;
+  while((m=seqRe.exec(rawText))){
+    const notation=m[2];
+    const contentStart=m.index+m[0].indexOf(m[1])+1;
+    let li=0;
+    while(li+1<lineStarts.length&&lineStarts[li+1]<=contentStart)li++;
+    const patName=_mnEnclosingPattern(rawLines,li);
+    const p=patName?patByName[patName]:null;
+    if(!p||!p.length_pulses||pulsesPerBeat<=0)continue;
+    const loopBeat=_loopPulse(p,playheadPulse)/pulsesPerBeat;
+    const events=_mnParse(notation,p.length_pulses/pulsesPerBeat);
+    const active=events.find(ev=>ev.time<=loopBeat&&loopBeat<ev.time+ev.duration);
+    if(!active)continue;
+    const absStart=contentStart+active.s,absEnd=contentStart+active.e;
+    const col0=absStart-lineStarts[li],col1=absEnd-lineStarts[li];
+    (byLine[li]=byLine[li]||[]).push({colStart:col0,colEnd:col1,color:patCol[patName]||'#fff'});
+  }
+  Object.keys(byLine).forEach(li=>{
+    const idx=+li;
+    byLine[li].sort((a,b)=>b.colStart-a.colStart).forEach(({colStart,colEnd,color})=>{
+      const tag=`<span class="mini-active" style="background:${color}40;box-shadow:0 0 0 1px ${color},0 0 6px ${color}">`;
+      htmlLines[idx]=_wrapRawRange(htmlLines[idx],colStart,colEnd,tag);
+    });
+  });
+  return htmlLines.join('\n');
+}
+// p.hit_steps(pitch, steps=[...], ...) already produces its notes through
+// the ordinary p.note() path server-side, so - unlike p.seq's mini-
+// notation, which has no representation anywhere else - the exact timing
+// is already sitting in the broadcast note list. No need to re-derive grid
+// math (which would need the pattern's default_grid, not currently
+// broadcast): hit_steps places its notes in exactly the order the steps
+// list is written, so zipping that list's literal left-to-right order
+// against this pattern's own broadcast notes filtered to the resolved
+// pitch recovers which listed step is firing right now, with no timing
+// logic duplicated. Degrades honestly rather than guessing: a bare
+// variable or expression as the pitch argument can't be resolved
+// statically, so that call is simply skipped, same as p.seq only handling
+// literal strings. Single-line calls only, same restriction p.seq's own
+// regex already has.
+function _hsResolvePitch(tok,drumMap){
+  const str=/^\s*(['"])((?:(?!\1).)*)\1\s*$/.exec(tok);
+  if(str)return(drumMap&&(str[2] in drumMap))?drumMap[str[2]]:null;
+  const num=/^\s*(-?\d+)\s*$/.exec(tok);
+  return num?parseInt(num[1],10):null;
+}
+// First top-level comma (or end of args) - depth-aware so a later
+// argument's own [...] or (...) can't be mistaken for the split point.
+function _hsFirstArgEnd(argsText){
+  let depth=0,inStr=null;
+  for(let i=0;i<argsText.length;i++){
+    const ch=argsText[i];
+    if(inStr){if(ch==='\\\\'){i++;continue;}if(ch===inStr)inStr=null;continue;}
+    if(ch==='"'||ch==="'"){inStr=ch;continue;}
+    if(ch==='('||ch==='['||ch==='{')depth++;
+    else if(ch===')'||ch===']'||ch==='}'){if(depth===0)return i;depth--;}
+    else if(ch===','&&depth===0)return i;
+  }
+  return argsText.length;
+}
+function _wrapHitSteps(html,rawText,patterns){
+  if(!rawText.includes('p.hit_steps('))return html;
+  const rawLines=rawText.split('\n'),htmlLines=html.split('\n');
+  if(htmlLines.length!==rawLines.length)return html;
+  const patByName={};patterns.forEach(p=>{patByName[p.name]=p;});
+  const lineStarts=[];let acc=0;
+  rawLines.forEach(l=>{lineStarts.push(acc);acc+=l.length+1;});
+  const callRe=/p\.hit_steps\(/g;
+  const byLine={};
+  let m;
+  while((m=callRe.exec(rawText))){
+    const openParen=m.index+m[0].length-1;
+    const lineEnd=rawText.indexOf('\n',openParen);
+    const scanEnd=lineEnd===-1?rawText.length:lineEnd;
+    let depth=0,close=-1,inStr=null;
+    for(let i=openParen;i<scanEnd;i++){
+      const ch=rawText[i];
+      if(inStr){if(ch==='\\\\'){i++;continue;}if(ch===inStr)inStr=null;continue;}
+      if(ch==='"'||ch==="'"){inStr=ch;continue;}
+      if(ch==='(')depth++;
+      else if(ch===')'){depth--;if(depth===0){close=i;break;}}
+    }
+    if(close===-1)continue;
+    const argsStart=openParen+1,argsText=rawText.slice(argsStart,close);
+    let li=0;
+    while(li+1<lineStarts.length&&lineStarts[li+1]<=argsStart)li++;
+    const patName=_mnEnclosingPattern(rawLines,li);
+    const p=patName?patByName[patName]:null;
+    if(!p||!p.length_pulses)continue;
+    const pitchTok=argsText.slice(0,_hsFirstArgEnd(argsText));
+    const pitch=_hsResolvePitch(pitchTok,p.drum_map);
+    if(pitch==null)continue; // not a literal - can't resolve without tracing values
+    const stepsMatch=/steps\s*=\s*\[([^\]]*)\]/.exec(argsText);
+    if(!stepsMatch)continue;
+    const listStart=argsStart+stepsMatch.index+stepsMatch[0].indexOf('[')+1;
+    const tokens=[];
+    const numRe=/-?\d+/g;
+    let nm;
+    while((nm=numRe.exec(stepsMatch[1])))tokens.push({s:listStart+nm.index,e:listStart+nm.index+nm[0].length});
+    if(!tokens.length)continue;
+    const matchingNotes=(p.notes||[]).filter(n=>n.p===pitch); // broadcast order == steps-list order
+    const loopPulse=_loopPulse(p,playheadPulse);
+    tokens.forEach((tok,idx)=>{
+      const note=matchingNotes[idx];
+      if(!note)return;
+      const d=Math.max(note.d,1);
+      if(!(note.s<=loopPulse&&loopPulse<note.s+d))return;
+      const col0=tok.s-lineStarts[li],col1=tok.e-lineStarts[li];
+      (byLine[li]=byLine[li]||[]).push({colStart:col0,colEnd:col1,color:patCol[patName]||'#fff'});
+    });
+  }
+  Object.keys(byLine).forEach(li=>{
+    const idx=+li;
+    byLine[li].sort((a,b)=>b.colStart-a.colStart).forEach(({colStart,colEnd,color})=>{
+      const tag=`<span class="mini-active" style="background:${color}40;box-shadow:0 0 0 1px ${color},0 0 6px ${color}">`;
+      htmlLines[idx]=_wrapRawRange(htmlLines[idx],colStart,colEnd,tag);
+    });
+  });
+  return htmlLines.join('\n');
+}
 function toggleSolo(name,btn){
   const list=document.getElementById('patList');
   const allNames=[...list.querySelectorAll('.pat-row')].map(r=>r.dataset.name);
@@ -1908,22 +3228,33 @@ function toggleLight(){
   const on=document.body.classList.toggle('light');
   document.getElementById('lightToggle').classList.toggle('on',on);
   document.getElementById('lightToggleLbl').textContent=on?'On':'Off';
-  localStorage.setItem('pomski_light',on?'1':'0');
+  try{localStorage.setItem('pomski_light',on?'1':'0');}catch(e){}
 }
-if(localStorage.getItem('pomski_light')==='1'){
-  document.body.classList.add('light');
-  document.getElementById('lightToggle').classList.add('on');
-  document.getElementById('lightToggleLbl').textContent='On';
-}
+// localStorage access itself (not just a missing/malformed value) can throw
+// in a WKWebView whose persistent data store has degraded under heavy
+// reuse (many relaunches in one dev session, for instance) - a real
+// failure mode seen directly: this ran unguarded, at top level, ahead of
+// connect() further down, so the throw silently killed the rest of the
+// script on every launch until the data store was wiped. Every other
+// localStorage call in this file was already wrapped; these four (light
+// mode read/write, err-highlight read/write) were the ones that weren't.
+try{
+  if(localStorage.getItem('pomski_light')==='1'){
+    document.body.classList.add('light');
+    document.getElementById('lightToggle').classList.add('on');
+    document.getElementById('lightToggleLbl').textContent='On';
+  }
+}catch(e){}
 
 // Some prefer errors to fail unnoticeably during a performance rather than
 // have the editor flag the exact line — default on, opt out in Prefs.
-let _errHlEnabled=localStorage.getItem('pomski_err_highlight')!=='0';
+let _errHlEnabled=true;
+try{_errHlEnabled=localStorage.getItem('pomski_err_highlight')!=='0';}catch(e){}
 function toggleErrHl(){
   _errHlEnabled=!_errHlEnabled;
   document.getElementById('errHlToggle').classList.toggle('on',_errHlEnabled);
   document.getElementById('errHlToggleLbl').textContent=_errHlEnabled?'On':'Off';
-  localStorage.setItem('pomski_err_highlight',_errHlEnabled?'1':'0');
+  try{localStorage.setItem('pomski_err_highlight',_errHlEnabled?'1':'0');}catch(e){}
   if(!_errHlEnabled)clearErrorLine();
 }
 if(_errHlEnabled){

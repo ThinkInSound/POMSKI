@@ -2,6 +2,7 @@
 # Written by 'subroutine use --here'. Safe to delete: without it, new items go
 # wherever they went before, and nothing already recorded changes.
 connection = "local"
+workspace_id = "01a04609-fd06-7c44-9bf4-aa5cbab72cf1"  # personal
 workspace = "personal"
-project_id = "01a04556-15fe-7c2f-ada6-a5880ad21dc2"  # POMSKI
-project = "POMSKI"
+project_id = "01a0460a-d939-77d2-94b1-5b3249f9babe"  # pomski
+project = "pomski"
